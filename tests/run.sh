@@ -8,7 +8,7 @@ cutadapt --version
 starcode --version
 snakemake --version
 blr --version
-picard MarkDuplicates --version
+picard MarkDuplicates --version || true
 ema
 
 ( cd testdata && bwa index chr1mini.fasta )
