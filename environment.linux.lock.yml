@@ -4,11 +4,11 @@ channels:
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=0_gnu
+  - _openmp_mutex=4.5=1_llvm
   - appdirs=1.4.3=py_1
   - attrs=19.3.0=py_0
   - bcftools=1.9=h68d8f2e_9
-  - blas=2.14=openblas
+  - blas=2.15=openblas
   - bowtie2=2.3.5.1=py36he513fc3_0
   - bwa=0.7.17=hed695b0_7
   - bzip2=1.0.8=h516909a_2
@@ -17,7 +17,7 @@ dependencies:
   - cffi=1.13.2=py36h8022711_0
   - chardet=3.0.4=py36_1003
   - click=7.0=py_0
-  - coloredlogs=10.0=py36_1000
+  - coloredlogs=14.0=py36_0
   - colormath=3.0.0=py_2
   - configargparse=1.0=py_0
   - cryptography=2.8=py36h72c5cf5_1
@@ -39,28 +39,28 @@ dependencies:
   - future=0.18.2=py36_0
   - gatk4=4.1.4.1=1
   - gettext=0.19.8.1=hc5be6a0_1002
-  - gitdb2=2.0.6=py_0
-  - gitpython=3.0.5=py_0
+  - gitdb2=3.0.2=py_0
+  - gitpython=3.0.8=py_0
   - glib=2.58.3=py36h6f030ca_1002
   - gsl=2.5=h294904e_1
-  - gst-plugins-base=1.14.5=h0935bb2_1
-  - gstreamer=1.14.5=h36ae1b5_1
+  - gst-plugins-base=1.14.5=h0935bb2_2
+  - gstreamer=1.14.5=h36ae1b5_2
   - hapcut2=1.2=hed50d52_0
   - htslib=1.9=h4da6232_3
-  - humanfriendly=6.1=py36_0
+  - humanfriendly=7.1.1=py36_0
   - icu=64.2=he1b5a44_1
-  - idna=2.8=py36_1000
+  - idna=2.9=py_1
   - importlib_metadata=1.5.0=py36_0
   - importlib_resources=1.0.2=py36_1000
   - ipython_genutils=0.2.0=py_1
   - jinja2=2.11.1=py_0
   - jpeg=9c=h14c3975_1001
   - jsonschema=3.2.0=py36_0
-  - jupyter_core=4.6.1=py36_0
+  - jupyter_core=4.6.3=py36_0
   - kiwisolver=1.1.0=py36hc9558a2_0
   - krb5=1.16.4=h2fd8d38_0
-  - libblas=3.8.0=14_openblas
-  - libcblas=3.8.0=14_openblas
+  - libblas=3.8.0=15_openblas
+  - libcblas=3.8.0=15_openblas
   - libclang=9.0.1=default_hde54327_0
   - libcurl=7.68.0=hda55be3_0
   - libdeflate=1.5=h516909a_0
@@ -68,12 +68,11 @@ dependencies:
   - libffi=3.2.1=he1b5a44_1006
   - libgcc-ng=9.2.0=h24d8f2e_2
   - libgfortran-ng=7.3.0=hdf63c60_5
-  - libgomp=9.2.0=h24d8f2e_2
   - libiconv=1.15=h516909a_1005
-  - liblapack=3.8.0=14_openblas
-  - liblapacke=3.8.0=14_openblas
+  - liblapack=3.8.0=15_openblas
+  - liblapacke=3.8.0=15_openblas
   - libllvm9=9.0.1=hc9558a2_0
-  - libopenblas=0.3.7=h5ec1e0e_6
+  - libopenblas=0.3.8=h5ec1e0e_0
   - libpng=1.6.37=hed695b0_0
   - libssh2=1.8.2=h22169c7_2
   - libstdcxx-ng=9.2.0=hdf63c60_2
@@ -81,8 +80,9 @@ dependencies:
   - libxcb=1.13=h14c3975_1002
   - libxkbcommon=0.10.0=he1b5a44_0
   - libxml2=2.9.10=hee79883_0
+  - llvm-openmp=9.0.1=hc9558a2_2
   - lzstring=1.0.4=py_1001
-  - markdown=3.2=py_0
+  - markdown=3.2.1=py_0
   - markupsafe=1.1.1=py36h516909a_0
   - matplotlib=3.1.1=py36_2
   - matplotlib-base=3.1.1=py36h250f245_2
@@ -99,15 +99,15 @@ dependencies:
   - openssl=1.1.1d=h516909a_0
   - pandas=1.0.1=py36hb3f55d8_0
   - parallel=20200122=0
-  - pcre=8.43=he1b5a44_0
+  - pcre=8.44=he1b5a44_0
   - perl=5.26.2=h516909a_1006
-  - picard-slim=2.21.8=0
+  - picard-slim=2.21.9=0
   - pigz=2.3.4=0
   - pip=20.0.2=py_2
-  - psutil=5.6.7=py36h516909a_0
+  - psutil=5.7.0=py36h516909a_0
   - pthread-stubs=0.4=h14c3975_1001
-  - pycparser=2.19=py36_1
-  - pyopenssl=19.1.0=py36_0
+  - pycparser=2.19=py_2
+  - pyopenssl=19.1.0=py_1
   - pyparsing=2.4.6=py_0
   - pyqt=5.12.3=py36hcca6a23_1
   - pyrsistent=0.15.7=py36h516909a_0
@@ -120,7 +120,7 @@ dependencies:
   - qt=5.12.5=hd8c4c69_1
   - ratelimiter=1.2.0=py36_1000
   - readline=8.0=hf8c457e_0
-  - requests=2.22.0=py36_1
+  - requests=2.23.0=py36_0
   - ruamel.yaml=0.16.6=py36h516909a_0
   - ruamel.yaml.clib=0.2.0=py36h516909a_0
   - samtools=1.9=h10a08f8_12
@@ -135,19 +135,19 @@ dependencies:
   - tbb=2019.9=hc9558a2_1
   - tk=8.6.10=hed695b0_0
   - toposort=1.5=py_3
-  - tornado=6.0.3=py36h516909a_3
-  - tqdm=4.42.1=py_0
+  - tornado=6.0.3=py36h516909a_4
+  - tqdm=4.43.0=py_0
   - traitlets=4.3.3=py36_0
   - urllib3=1.25.7=py36_0
   - vcflib=1.0.0_rc2=h56106d0_2
   - wheel=0.34.2=py_1
-  - wrapt=1.11.2=py36h516909a_0
+  - wrapt=1.12.0=py36h516909a_0
   - xopen=0.8.4=py36_0
   - xorg-libxau=1.0.9=h14c3975_0
   - xorg-libxdmcp=1.1.3=h516909a_0
   - xz=5.2.4=h14c3975_1001
   - yaml=0.2.2=h516909a_1
-  - zipp=2.2.0=py_0
+  - zipp=3.0.0=py_0
   - zlib=1.2.11=h516909a_1006
   - pip:
     - pyqt5-sip==4.19.18

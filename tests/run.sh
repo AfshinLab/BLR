@@ -1,6 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 
+uname
 samtools --version
 bowtie2 --version
 minimap2 --version
@@ -10,6 +11,12 @@ snakemake --version
 blr --version
 picard MarkDuplicates --version || true
 ema
+
+if [[ $(uname) == Darwin ]]; then
+  md5="md5 -r"
+else
+  md5=md5sum
+fi
 
 ( cd testdata && bwa index chr1mini.fasta )
 ( cd testdata && bowtie2-build chr1mini.fasta chr1mini.fasta > /dev/null )
@@ -32,9 +39,9 @@ blr config \
 
 pushd outdir-bowtie2
 blr run
-m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | md5sum | cut -f1 -d" ")
+m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | $md5 | cut -f1 -d" ")
 test $m == 61b23ba7b0e7a00f788033729de6bdca
 
 # Cut away columns 2 and 3 as these change order between linux and osx
-m2=$(cut -f1,4- mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase | md5sum | cut -f1 -d" ")
+m2=$(cut -f1,4- mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase | $md5 | cut -f1 -d" ")
 test $m2 == 70c907df8a996d2b3ba3f06fb942b244

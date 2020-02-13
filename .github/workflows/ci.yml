@@ -5,13 +5,22 @@ on: [push]
 jobs:
   run:
     name: Run pipeline
-    runs-on: ubuntu-latest
     timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v2
+      - name: Add conda to PATH
+        if: runner.os == 'macOS'
+        run: echo ::add-path::$CONDA/condabin
       - name: Create Conda environment
         run: |
-          conda env create --quiet -n testenv -f environment.linux.lock.yml
+          set -x
+          envfile=environment.$(echo ${{ runner.os }} | tr A-Z a-z | sed 's|macos|osx|').lock.yml
+          conda create -n bla python=3.7
+          conda env create -n testenv -f ${envfile}
           conda install -n testenv flake8 pytest
       - name: Run flake8
         run: |
