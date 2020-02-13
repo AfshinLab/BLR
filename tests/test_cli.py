@@ -83,19 +83,6 @@ def test_mappers(tmpdir, read_mapper):
     assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.bam")
 
 
-@pytest.mark.parametrize("duplicate_marker", ["sambamba", "samblaster"])
-def test_duplicate_markers(tmpdir, duplicate_marker):
-    workdir = tmpdir / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("duplicate_marker", duplicate_marker)]
-    )
-    run(workdir=workdir, targets=["mapped.sorted.tag.mkdup.bam"])
-    n_input_fastq_reads = 2 * count_fastq_reads(Path(workdir / "trimmed_barcoded.1.fastq.gz"))
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.mkdup.bam")
-
-
 def test_final_compressed_reads_exist(tmpdir):
     workdir = tmpdir / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
