@@ -8,8 +8,7 @@ cutadapt --version
 starcode --version
 snakemake --version
 blr --version
-samblaster --version
-sambamba --version
+picard MarkDuplicates --version
 ema
 
 ( cd testdata && bwa index chr1mini.fasta )
