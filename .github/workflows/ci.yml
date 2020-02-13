@@ -1,0 +1,33 @@
+name: CI
+
+on: [push]
+
+jobs:
+  run:
+    name: Run pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create Conda environment
+        run: |
+          conda env create --quiet -n testenv -f environment.linux.lock.yml
+          conda install -n testenv flake8 pytest
+      - name: Run flake8
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate testenv
+          flake8 src/ tests/
+      - name: Download test dataset
+        env:
+          testdata_version: "0.3"
+        run: |
+          wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
+          tar xf blr-testdata-${testdata_version}.tar.gz
+          ln -s blr-testdata-${testdata_version} testdata
+      - name: Run tests
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate testenv
+          pip install -e .
+          tests/run.sh
