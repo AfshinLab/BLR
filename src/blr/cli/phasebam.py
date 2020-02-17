@@ -13,7 +13,6 @@ Outputs:
 
 import pysam
 import logging
-import time
 from tqdm import tqdm
 from collections import Counter, OrderedDict
 
@@ -188,35 +187,6 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
     molecule_phase_dict = decide_molecule_phase(molecule_phase_dict, anomaly_file, summary)
 
     return read_phase_dict, molecule_phase_dict
-
-
-class Timer():
-
-    def __init__(self):
-        self.points = list()
-
-        self.summary = Counter()
-        self.n = int()
-
-    def mark(self):
-        self.points.append(time.clock())
-
-    def get_results(self):
-        for i in range(len(self.points) - 1):
-            delta = self.points[i + 1] = self.points[i]
-            print(f"t{i + 1}: {delta}")
-
-    def save(self):
-        self.n += 1
-        for i in range(len(self.points) - 1):
-            delta = self.points[i + 1] - self.points[i]
-            self.summary[f"t{i + 1}"] += delta
-        self.points = list()
-
-    def get_average(self):
-        print(f"time\taverage")
-        for t, sum in self.summary.items():
-            print(f"{t}\t{sum / self.n}")
 
 
 def skip_read(read, phased_snv_dict, summary):
