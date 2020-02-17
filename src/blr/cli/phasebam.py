@@ -190,15 +190,15 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
 
 
 def skip_read(read, phased_snv_dict, summary):
-    if read.reference_start is not None and read.reference_end is None:
-        summary["Read with ref start but no ref end"] += 1
+    if read.is_unmapped:
         return True
     if read.reference_name not in phased_snv_dict:
         summary["Reads without phased SNV in chr"] += 1
         return True
     # if first variant is after read, continue to next read
-    if read.reference_end < first_item(phased_snv_dict[read.reference_name], read.reference_end + 1):
-        return True
+    #if read.reference_end < first_item(phased_snv_dict[read.reference_name], read.reference_end + 1):
+    #    return True
+    # TODO: Uncomment. Doesn't work currently since dict does not have entries removed anymore
 
 
 def first_item(iterable, stop_iteration_value=None):
