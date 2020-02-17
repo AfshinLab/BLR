@@ -48,7 +48,7 @@ rule multiqc_summarize:
     input:
         raw_read_1_qc = "trimmed.barcoded.1_fastqc.html",
         raw_read_2_qc = "trimmed.barcoded.2_fastqc.html",
-        bam = "mapped.sorted.tag.mkdup.bcmerge.mol.filt.bam",
+        bam = "mapped.sorted.tag.mkdup.bcmerge.mol.filt.phase.bam" if not config["BQSR"] else "mapped.sorted.tag.mkdup.bcmerge.mol.filt.BQSR.phase.bam",
         plots = "figures"
     log:
         "multiqc.log"

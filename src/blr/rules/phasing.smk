@@ -65,3 +65,25 @@ rule hapcut2_stats:
          " -v1 {input.vcf1}"
          " -v2 {input.vcf2}"
          " > {output.stats}"
+
+rule phase_bam:
+    """
+    Sets alignments phasing tags (default HP tags) to match phasing results.
+    """
+    output:
+        bam = bamfile_basename + ".phase.bam",
+        anomaly_file = "bam_phasing_anomalies.tsv"
+    input:
+        bam = bamfile_basename + ".bam",
+        hapcut2_phase_file = bamfile_basename + ".phase"
+    log: "phase_bam.log"
+    shell:
+        "blr phasebam"
+        " --molecule-tag {config[molecule_tag]}"
+        " --phase-set-tag {config[phase_set_tag]}"
+        " --haplotype-tag {config[haplotype_tag]}"
+        " {input.bam}"
+        " {input.hapcut2_phase_file}"
+        " {output.anomaly_file}"
+        " -o {output.bam}"
+        " 2> {log}"
