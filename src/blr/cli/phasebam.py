@@ -139,6 +139,7 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
     :param bam_file: file, SAM format
     :param molecule_tag: str, SAM tag
     :param phased_snv_dict: dict, dict[chrom][pos][nucleotide] = phase_info
+    :anomaly_file: open tsv file for writing weird reads to
     :param summary: Counter instance, from collections
     :return: dict[read.query_name] = haplotype, dict[molecule] = haplotype
     """
@@ -224,21 +225,18 @@ def get_phased_variants(read, phased_snv_dict):
     :return: dict[pos][nucleotide] = phase_info, updated phased_snv_dict
     """
     variants_at_read = dict()
-    chrom = read.reference_name
-    to_be_removed = list()
 
-    if chrom in phased_snv_dict:
-        for var_pos, haplotype_info in phased_snv_dict[chrom].items():
+    for var_pos, haplotype_info in phased_snv_dict[read.reference_name].items():
 
-            # Variant upstream of read => remove var from dict
-            if var_pos < read.reference_start:
-                to_be_removed.append(var_pos)
-            # Variant at read => save pos, keep in dict
-            if read.reference_start <= var_pos and var_pos <= read.reference_end:
-                variants_at_read[var_pos] = haplotype_info
-            # Variant downstream of read => keep in dict and return SNV positions found
-            else:
-                break
+        # Variant upstream of read => remove var from dict
+        if var_pos < read.reference_start:
+            continue
+        # Variant at read => save pos, keep in dict
+        elif read.reference_start <= var_pos and var_pos <= read.reference_end:
+            variants_at_read[var_pos] = haplotype_info
+        # Variant downstream of read => keep in dict and return SNV positions found
+        else:
+            break
 
     return variants_at_read, phased_snv_dict
 
