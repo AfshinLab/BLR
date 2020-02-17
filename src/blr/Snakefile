@@ -197,6 +197,8 @@ rule mark_duplicates:
         " OUTPUT={output.bam}"
         " METRICS_FILE={output.metrics}"
         " BARCODE_TAG={config[cluster_tag]}"
+        # Running without `USE_JDK_DEFLATER=true` & `USE_JDK_INFLATER=true` causes fatal error. See issue: 
+        # https://github.com/broadinstitute/picard/issues/1329
         " USE_JDK_DEFLATER=true"
         " USE_JDK_INFLATER=true"
         " ASSUME_SORTED=true"
