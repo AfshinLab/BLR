@@ -27,7 +27,8 @@ def main(args):
     summary = Counter()
 
     # Save hetSNV info
-    phased_snv_dict = get_phased_snvs_hapcut2_format(args.hapcut2_phase_file, args.min_phase_qual, summary)
+    phased_snv_dict = get_phased_snvs_hapcut2_format(args.hapcut2_phase_file, args.min_phred_switch_error,
+                                                     args.discard_pruning, summary)
 
     # Phase reads & corresponding molecules at hetSNV sites
     read_phase_dict, molecule_phase_dict = phase_reads_and_molecules(args.input_bam, args.molecule_tag,
@@ -51,6 +52,7 @@ def main(args):
             # Choose phase from the read/molecule phasing information
             phase = decide_haplotype(read_phase, molecule_phase, read, anomaly_file, summary)
             if phase:
+                summary["Total reads phased"] += 1
                 ps_tag = phase[0]
                 hp_tag = phase[1]
                 read.set_tag("PS", ps_tag)
@@ -63,7 +65,7 @@ def main(args):
     logger.info("Finished")
 
 
-def get_phased_snvs_hapcut2_format(hapcut2_file, min_phase_qual, summary):
+def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, discard_pruning, summary):
     """
     Gets phasing information from HapCUT2 output phase file and turns into dictionary.
 
@@ -98,30 +100,38 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phase_qual, summary):
             if line.startswith("BLOCK:"):
                 block_counter += 1
                 phase_block = block_counter
-                summary["Phase blocks in HapCUT2 file"] += 1
+                summary["HapCUT2 file: Phase blocks"] += 1
                 continue
-            # Part of the HapCUT2 output file, but no documentation of what it means.
-            # TODO: Figure out what this means & write code to handle case accordingly
+            # Marks end of block
             elif line.strip() == "*" * 8:
-                summary["Weird '********' lines in HapCUT2 file"] += 1
                 continue
 
-            _, call_1, call_2, chrom, pos, ref, alt, _, _, _, phase_qual, _ = line.split()
+            _, call_1, call_2, chrom, pos, ref, alt, _, pruned, phase_phred_score, _, _ = line.split()
 
-            # Can be present whenever HapCUT2 is run without pruning, aka without `--discrete_pruning 1`
+            # Unphased variant
             if call_1 == "-" and call_2 == "-":
-                summary["Non-phased sites in HapCUT2 file"] += 1
+                summary["HapCUT2 file: Non-phased sites"] += 1
                 continue
 
-            # Filter: Min phred score
-            if float(phase_qual) < min_phase_qual:
-                summary["Phase sites under min quality in HapCUT2 file"] += 1
+            # Filter: Phred score for switch error here
+            if phase_phred_score is not "." and float(phase_phred_score) > min_phred_switch_error:
+                summary["HapCUT2 file: Phase sites under min quality"] += 1
+                continue
+
+            # Filter: Phred score for mismatch at SNV
+            if discard_pruning and int(pruned):
+                summary["HapCUT2 file: Pruned SNVs"] += 1
                 continue
 
             # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
 
             # translate calls (0 or 1) to nucleotides. If h1 and h2 != ref there will be two csv alt, hence the split
             variants = [ref] + alt.split(",")
+
+            for call in variants:
+                if len(ref) != len(call):
+                    continue
+
             phased_snv_h1 = variants[int(call_1)]
             phased_snv_h2 = variants[int(call_2)]
 
@@ -129,7 +139,7 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phase_qual, summary):
             if not chrom in phased_snv_dict:
                 phased_snv_dict[chrom] = OrderedDict()
             phased_snv_dict[chrom][int(pos)] = (phase_block, phased_snv_h1, phased_snv_h2)
-            summary["Usable phased sites in HapCUT2 file"] += 1
+            summary["HapCUT2 file: Usable phased sites"] += 1
 
     return phased_snv_dict
 
@@ -417,8 +427,10 @@ def add_arguments(parser):
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output phased BAM to file rather then stdout.")
-    parser.add_argument("--min-phase-qual", default=0,
-                        help="Minimum phred score required for phased hetSNV from hapcut2 phase file.")
+    parser.add_argument("--min-phred-switch-error", default=30,
+                        help="Minimum phred score for switch error at any given variant. Default: %(default)s.")
+    parser.add_argument("--discard-pruning", default=True,
+                        help="Discard phasing events marked as pruned by HapCUT2.")
     parser.add_argument("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
     parser.add_argument("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")
     parser.add_argument("--phase-set-tag", default="PS", help="Phase set SAM tag. Default: %(default)s")
