@@ -118,6 +118,8 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phase_qual, summary):
                 summary["Phase sites under min quality in HapCUT2 file"] += 1
                 continue
 
+            # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
+
             # translate calls (0 or 1) to nucleotides. If h1 and h2 != ref there will be two csv alt, hence the split
             variants = [ref] + alt.split(",")
             phased_snv_h1 = variants[int(call_1)]
@@ -224,12 +226,15 @@ def get_phased_variants(read, phased_snv_dict):
     :param phased_snv_dict: dict, dict[chrom][pos][nucleotide] = phase_info, must be sorted within chromosomes
     :return: dict[pos][nucleotide] = phase_info, updated phased_snv_dict
     """
+
     variants_at_read = dict()
+    removal_list = list()
 
     for var_pos, haplotype_info in phased_snv_dict[read.reference_name].items():
 
         # Variant upstream of read => remove var from dict
         if var_pos < read.reference_start:
+            removal_list.append(var_pos)
             continue
         # Variant at read => save pos, keep in dict
         elif read.reference_start <= var_pos and var_pos <= read.reference_end:
@@ -237,6 +242,10 @@ def get_phased_variants(read, phased_snv_dict):
         # Variant downstream of read => keep in dict and return SNV positions found
         else:
             break
+
+    # Remove variants upstream of reads
+    for pos_to_remove in removal_list:
+        del phased_snv_dict[read.reference_name][pos_to_remove]
 
     return variants_at_read, phased_snv_dict
 
@@ -255,6 +264,10 @@ def phase_read(read, variants_at_read, summary):
     read_haplotype = Counter()
 
     for ref_pos, seq_pos in pos_translations.items():
+
+        # TODO: Add handling of deletions
+        if not seq_pos:
+            continue
 
         # Using read.query_alignment_sequence compensates for insertions (rather than read.seq)
         nt = read.query_alignment_sequence[seq_pos]
