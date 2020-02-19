@@ -16,7 +16,7 @@ import logging
 from tqdm import tqdm
 from collections import Counter, OrderedDict
 
-from blr.utils import print_stats, get_bamtag
+from blr.utils import print_stats, get_bamtag, PySAMIO
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,7 @@ def main(args):
                                                                      phased_snv_dict, anomaly_file, summary)
 
     # Write output (setting phasing)
-    with pysam.AlignmentFile(args.input_bam, "rb") as infile, \
-            pysam.AlignmentFile(args.output, "wb", template=infile) as out:
+    with PySAMIO(args.input_bam, args.output, __name__) as (infile, out):
         for read in tqdm(infile.fetch(until_eof=True), desc="Writing output", unit=" reads",
                          total=summary["Total reads"]):
             molecule_phase = None
@@ -106,42 +105,65 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, discard
             elif line.strip() == "*" * 8:
                 continue
 
+            # Extract relevant information from phase file
             _, call_1, call_2, chrom, pos, ref, alt, _, pruned, phase_phred_score, _, _ = line.split()
 
-            # Unphased variant
-            if call_1 == "-" and call_2 == "-":
-                summary["HapCUT2 file: Non-phased sites"] += 1
+            # Variant filtering
+            if skip_variant(call_1, call_2, phase_phred_score, min_phred_switch_error, discard_pruning, pruned,
+                            summary):
                 continue
 
-            # Filter: Phred score for switch error here
-            if phase_phred_score is not "." and float(phase_phred_score) > min_phred_switch_error:
-                summary["HapCUT2 file: Phase sites under min quality"] += 1
-                continue
-
-            # Filter: Phred score for mismatch at SNV
-            if discard_pruning and int(pruned):
-                summary["HapCUT2 file: Pruned SNVs"] += 1
-                continue
-
-            # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
-
-            # translate calls (0 or 1) to nucleotides. If h1 and h2 != ref there will be two csv alt, hence the split
+            # Format vars to list. If h1 != ref and h2 != ref there will be two csv alt, hence the split.
             variants = [ref] + alt.split(",")
 
+            # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
+            # SVs
             for call in variants:
                 if len(ref) != len(call):
+                    summary["HapCUT2 file: Phased SVs (not used)"] += 1
                     continue
 
+            # translate calls (0 or 1) to nucleotides.
             phased_snv_h1 = variants[int(call_1)]
             phased_snv_h2 = variants[int(call_2)]
 
             # Add phasing info to dict
-            if not chrom in phased_snv_dict:
+            if chrom not in phased_snv_dict:
                 phased_snv_dict[chrom] = OrderedDict()
             phased_snv_dict[chrom][int(pos)] = (phase_block, phased_snv_h1, phased_snv_h2)
             summary["HapCUT2 file: Usable phased sites"] += 1
 
     return phased_snv_dict
+
+
+def skip_variant(call_1, call_2, phase_phred_score, min_phred_switch_error, discard_pruning, pruned, summary):
+    """
+
+    :param call_1:
+    :param call_2:
+    :param phase_phred_score:
+    :param min_phred_switch_error:
+    :param discard_pruning:
+    :param pruned:
+    :param summary:
+    :return:
+    """
+    # Filter: Unphased variant
+    if call_1 == "-" and call_2 == "-":
+        summary["HapCUT2 file: Non-phased entries"] += 1
+        return True
+
+    # Filter: Phred score for switch error here
+    if phase_phred_score != "." and float(phase_phred_score) > min_phred_switch_error:
+        summary["HapCUT2 file: Phase entries under min quality"] += 1
+        return True
+
+    # Filter: Phred score for mismatch at SNV
+    if discard_pruning and int(pruned):
+        summary["HapCUT2 file: Pruned entries"] += 1
+        return True
+
+    return False
 
 
 def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_file, summary):
@@ -209,9 +231,8 @@ def skip_read(read, phased_snv_dict, summary):
         summary["Reads without phased SNV in chr"] += 1
         return True
     # if first variant is after read, continue to next read
-    #if read.reference_end < first_item(phased_snv_dict[read.reference_name], read.reference_end + 1):
-    #    return True
-    # TODO: Uncomment. Doesn't work currently since dict does not have entries removed anymore
+    if read.reference_end < first_item(phased_snv_dict[read.reference_name], read.reference_end + 1):
+        return True
 
 
 def first_item(iterable, stop_iteration_value=None):
@@ -422,13 +443,14 @@ def add_arguments(parser):
                         help="Phased VCF file. Must be sorted.")
     parser.add_argument("anomaly_file",
                         help="File to output information with anomalous reads, such as those with conflicting read/"
-                             "molecule phasing information. These will also be written to output but will not have any "
-                             "phasing information added to them.")
+                             "molecule phasing information. These will also be written to output but will not have "
+                             "any phasing information added to them.")
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output phased BAM to file rather then stdout.")
     parser.add_argument("--min-phred-switch-error", default=30,
-                        help="Minimum phred score for switch error at any given variant. Default: %(default)s.")
+                        help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been "
+                             "run using the '--error_analysis_mode 1' option. Default: %(default)s.")
     parser.add_argument("--discard-pruning", default=True,
                         help="Discard phasing events marked as pruned by HapCUT2.")
     parser.add_argument("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
