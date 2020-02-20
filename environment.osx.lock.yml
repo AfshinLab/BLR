@@ -7,7 +7,7 @@ dependencies:
   - attrs=19.3.0=py_0
   - bcftools=1.9=h16e57c4_9
   - blas=2.14=openblas
-  - bowtie2=2.3.5=py36h5c9b4e4_0
+  - bowtie2=2.3.5.1=py36h2dec4b4_0
   - bwa=0.7.17=h2573ce8_7
   - bzip2=1.0.8=h0b31af3_2
   - ca-certificates=2019.11.28=hecc5488_0
@@ -17,9 +17,9 @@ dependencies:
   - click=7.0=py_0
   - coloredlogs=10.0=py36_1000
   - colormath=3.0.0=py_2
-  - configargparse=0.13.0=py_1
+  - configargparse=1.0=py_0
   - cryptography=2.8=py36hafa8578_1
-  - curl=7.65.3=h22ea746_0
+  - curl=7.68.0=h8754def_0
   - cutadapt=2.5=py36h01d97ff_0
   - cycler=0.10.0=py_2
   - datrie=0.8=py36h01d97ff_0
@@ -39,14 +39,12 @@ dependencies:
   - gsl=2.5=ha2d443c_1
   - hapcut2=1.2=hd50730b_0
   - htslib=1.9=h356306b_9
-  - humanfriendly=4.18=py36_1
+  - humanfriendly=6.1=py36_0
   - icu=64.2=h6de7cb9_1
   - idna=2.8=py36_1000
   - importlib_metadata=1.5.0=py36_0
   - importlib_resources=1.0.2=py36_1000
-  - inflect=4.0.0=py36_1
   - ipython_genutils=0.2.0=py_1
-  - jaraco.itertools=5.0.0=py_0
   - jinja2=2.11.1=py_0
   - jsonschema=3.2.0=py36_0
   - jupyter_core=4.6.1=py36_0
@@ -54,7 +52,7 @@ dependencies:
   - krb5=1.16.4=h1752a42_0
   - libblas=3.8.0=14_openblas
   - libcblas=3.8.0=14_openblas
-  - libcurl=7.65.3=h16faf7d_0
+  - libcurl=7.68.0=h709d2b2_0
   - libcxx=9.0.1=1
   - libdeflate=1.3=h01d97ff_0
   - libedit=3.1.20170329=hcfe32e1_1001
@@ -69,25 +67,25 @@ dependencies:
   - libxml2=2.9.10=h53d96d6_0
   - llvm-openmp=9.0.1=h28b9765_2
   - lzstring=1.0.4=py_1001
-  - markdown=3.1.1=py_0
+  - markdown=3.2=py_0
   - markupsafe=1.1.1=py36h0b31af3_0
   - matplotlib=3.1.1=py36_2
   - matplotlib-base=3.1.1=py36h11da6c2_2
   - minimap2=2.17=hfbae3c0_1
-  - more-itertools=8.2.0=py_0
   - multiqc=1.8=py_1
   - nbformat=5.0.4=py_0
   - ncurses=6.1=h0a44026_1002
   - networkx=2.2=py_1
   - nomkl=3.0=0
-  - numpy=1.17.5=py36hde6bac1_0
+  - numpy=1.18.1=py36hde6bac1_0
   - openjdk=8.0.192=h0b31af3_1004
   - openssl=1.1.1d=h0b31af3_0
-  - pandas=1.0.0=py36h4f17bb1_0
+  - pandas=1.0.1=py36h4f17bb1_0
   - parallel=20200122=0
   - perl=5.26.2=haec8ef5_1006
+  - picard-slim=2.21.8=0
   - pigz=2.3.4=0
-  - pip=20.0.2=py36_1
+  - pip=20.0.2=py_2
   - psutil=5.6.7=py36h0b31af3_0
   - pycparser=2.19=py36_1
   - pyopenssl=19.1.0=py36_0
@@ -104,10 +102,8 @@ dependencies:
   - requests=2.22.0=py36_1
   - ruamel.yaml=0.16.6=py36h0b31af3_0
   - ruamel.yaml.clib=0.2.0=py36h0b31af3_0
-  - sambamba=0.6.6=2
-  - samblaster=0.1.24=h770b8ee_3
   - samtools=1.9=h8aa4d43_12
-  - setuptools=45.1.0=py36_0
+  - setuptools=45.2.0=py36_0
   - simplejson=3.17.0=py36h0b31af3_0
   - six=1.14.0=py36_0
   - smmap2=2.0.5=py_0
@@ -118,16 +114,16 @@ dependencies:
   - tbb=2019.9=ha1b3eb9_1
   - tk=8.6.10=hbbe82c9_0
   - toposort=1.5=py_3
-  - tornado=6.0.3=py36h0b31af3_0
-  - tqdm=4.42.0=py_0
+  - tornado=6.0.3=py36h0b31af3_3
+  - tqdm=4.42.1=py_0
   - traitlets=4.3.3=py36_0
   - urllib3=1.25.7=py36_0
   - vcflib=1.0.0_rc2=he0122c3_2
-  - wheel=0.34.2=py36_0
+  - wheel=0.34.2=py_1
   - wrapt=1.11.2=py36h0b31af3_0
   - xopen=0.8.4=py36_0
   - xz=5.2.4=h1de35cc_1001
   - yaml=0.2.2=h0b31af3_1
-  - zipp=2.1.0=py_0
+  - zipp=2.2.0=py_0
   - zlib=1.2.11=h0b31af3_1006
 

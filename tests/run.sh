@@ -8,8 +8,7 @@ cutadapt --version
 starcode --version
 snakemake --version
 blr --version
-samblaster --version
-sambamba --version
+picard MarkDuplicates --version || true
 ema
 
 ( cd testdata && bwa index chr1mini.fasta )
@@ -33,9 +32,9 @@ blr config \
 
 pushd outdir-bowtie2
 blr run
-m=$(samtools view mapped.sorted.tag.mkdup.bcmerge.mol.filt.bam | md5sum | cut -f1 -d" ")
-test $m == d3974efe2eedbb6e4cd5fc19792183f1
+m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | md5sum | cut -f1 -d" ")
+test $m == 61b23ba7b0e7a00f788033729de6bdca
 
 # Cut away columns 2 and 3 as these change order between linux and osx
-m2=$(cut -f1,4- mapped.sorted.tag.mkdup.bcmerge.mol.filt.phase | md5sum | cut -f1 -d" ")
+m2=$(cut -f1,4- mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase | md5sum | cut -f1 -d" ")
 test $m2 == 70c907df8a996d2b3ba3f06fb942b244

@@ -1,6 +1,6 @@
 
 variants = "variants.reference.vcf" if config["reference_variants"] else "variants.called.vcf"
-bamfile_basename = "mapped.sorted.tag.mkdup.bcmerge.mol.filt.BQSR" if config["BQSR"] else "mapped.sorted.tag.mkdup.bcmerge.mol.filt"
+bamfile_basename = f"mapped.sorted.tag.bcmerge.mkdup.mol.filt{'.BQSR' if config['BQSR'] else ''}"
 
 rule hapcut2_extracthairs:
     output:

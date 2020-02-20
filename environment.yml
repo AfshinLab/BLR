@@ -13,8 +13,6 @@ dependencies:
   - minimap2
   - pysam
   - cutadapt=2.5
-  - sambamba=0.6.6
-  - samblaster
   - hapcut2=1.2
   - samtools
   - snakemake-minimal
@@ -30,3 +28,4 @@ dependencies:
   - bcftools
   - gatk4
   - pandas
+  - picard-slim

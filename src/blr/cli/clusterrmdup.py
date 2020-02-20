@@ -218,18 +218,12 @@ class PositionTracker:
         self.add_read_pair_and_barcode(read=read, mate=mate, barcode=barcode)
 
     def add_read_pair_and_barcode(self, read, mate, barcode):
-        if read.is_duplicate:
-            self.read_pos_has_duplicates = True
-        if mate.is_duplicate:
-            self.mate_pos_has_duplciates = True
-
         self.updated_since_validation = True
         self.reads += 2
         self.barcodes.add(barcode)
 
     def valid_duplicate_position(self):
-        check = self.read_pos_has_duplicates and self.mate_pos_has_duplciates and len(self.barcodes) >= 2 and \
-                self.updated_since_validation
+        check = len(self.barcodes) >= 2 and self.updated_since_validation
         self.updated_since_validation = False
         return check
 
@@ -323,7 +317,7 @@ def reduce_several_step_redundancy(merge_dict):
 
 def add_arguments(parser):
     parser.add_argument("input",
-                        help="Coordinate-sorted SAM/BAM file tagged with barcodes and duplicates marked.")
+                        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
     parser.add_argument("merge_log",
                         help="CSV log file containing all merges done. File is in format: "
                              "{old barcode id},{new barcode id}")

@@ -22,6 +22,11 @@ def main(args):
     with PySAMIO(args.input, args.output, __name__) as (openin, openout):
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):
             summary["Total reads"] += 1
+
+            if read.is_duplicate:
+                summary["Duplicate reads removed"] += 1
+                continue
+
             no_mols = get_bamtag(pysam_read=read, tag=args.number_tag)
 
             # If barcode is not in all_molecules the barcode does not have enough proximal reads to make a single
@@ -33,6 +38,7 @@ def main(args):
 
                 strip_barcode(pysam_read=read, tags_to_be_removed=tags_to_remove, removed_tags=removed_tags)
 
+            summary["Reads written"] += 1
             openout.write(read)
 
     summary.update({f"Unique {tag} tags removed": len(removed_tags[tag]) for tag in tags_to_remove})
