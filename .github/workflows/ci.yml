@@ -27,6 +27,7 @@ jobs:
           source $CONDA/etc/profile.d/conda.sh
           conda activate testenv
           flake8 src/ tests/
+          flake8 --select=W292 environment.yml
       - name: Download test dataset
         env:
           testdata_version: "0.3"
