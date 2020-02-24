@@ -1,0 +1,43 @@
+name: CI
+
+on: [push]
+
+jobs:
+  run:
+    name: Run pipeline
+    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Add conda to PATH
+        if: runner.os == 'macOS'
+        run: echo ::add-path::$CONDA/condabin
+      - name: Create Conda environment
+        run: |
+          set -x
+          envfile=environment.$(echo ${{ runner.os }} | tr A-Z a-z | sed 's|macos|osx|').lock.yml
+          conda create -n bla python=3.7
+          conda env create -n testenv -f ${envfile}
+          conda install -n testenv flake8 pytest
+      - name: Run flake8
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate testenv
+          flake8 src/ tests/
+          flake8 --select=W292 environment.yml
+      - name: Download test dataset
+        env:
+          testdata_version: "0.3"
+        run: |
+          wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
+          tar xf blr-testdata-${testdata_version}.tar.gz
+          ln -s blr-testdata-${testdata_version} testdata
+      - name: Run tests
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate testenv
+          pip install -e .
+          tests/run.sh
