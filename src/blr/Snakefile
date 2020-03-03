@@ -68,7 +68,8 @@ rule multiqc_summarize:
         raw_read_1_qc = "trimmed.barcoded.1_fastqc.html",
         raw_read_2_qc = "trimmed.barcoded.2_fastqc.html",
         bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        plots = "figures"
+        plots = "figures",
+        phasing_data = "phasing_stats.tsv"
     log:
         "multiqc.log"
     shell:

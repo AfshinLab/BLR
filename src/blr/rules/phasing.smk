@@ -81,6 +81,25 @@ rule hapcut2_stats:
          " -v2 {input.vcf2}"
          " > {output.stats}"
 
+rule prep_stats_for_multiqc:
+    output: "phasing_stats.tsv"
+    input: "phasing_stats.txt"
+    run:
+        header = ["Sample Name"]
+        values = [" "]  # No sample name as of current.
+        with open(input[0], "r") as file:
+            for line in file:
+                head, value = line.split(":")
+                header.append(head.strip())
+                if head in ["N50", "AN50"]: # Format N50 and AN50 as per Mbp.
+                    values.append(str(float(value.strip())/1_000_000))
+                else:
+                    values.append(value.strip())
+
+        with open(output[0], "w") as file:
+            print("\t".join(header), file=file)
+            print("\t".join(values), file=file)
+
 
 rule compress_and_index_phased_vcf:
     "Compress and index VCF files."

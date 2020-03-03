@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
+MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
 
 
 def add_arguments(parser):
@@ -70,16 +71,22 @@ def create_and_populate_analysis_directory(directory: Path, reads1: Path, reads2
         logger.error(e)
         sys.exit(1)
 
-    # Write the configuration file
-    configuration = read_binary("blr", CONFIGURATION_FILE_NAME)
-    with (directory / CONFIGURATION_FILE_NAME).open("wb") as f:
-        f.write(configuration)
+    # Write the configuration files
+    write_config_to_dir(CONFIGURATION_FILE_NAME, directory)
+    write_config_to_dir(MULTIQC_CONFIG_FILE_NAME, directory)
 
     # Update with library type into
     change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)])
 
     create_symlink(reads1, directory, "reads.1.fastq.gz")
     create_symlink(reads2, directory, "reads.2.fastq.gz")
+
+
+def write_config_to_dir(file_name: str, directory: Path):
+    # Write the configuration file
+    configuration = read_binary("blr", file_name)
+    with (directory / file_name).open("wb") as f:
+        f.write(configuration)
 
 
 def fail_if_inaccessible(path):
