@@ -125,7 +125,7 @@ def test_BQSR(tmpdir):
         [("genome_reference", REFERENCE_GENOME), ("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
          ("variant_caller", "gatk")]
     )
-    target = "mapped.sorted.tag.mkdup.bcmerge.mol.filt.BQSR.bam"
+    target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_file()
 
