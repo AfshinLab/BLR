@@ -16,12 +16,26 @@ elif config["library_type"] == "10x":
 include: "rules/phasing.smk"
 
 
-rule final:
-   input:
+def get_final_targets(wildcards):
+    # Start with files required for all.
+    input_files = [
         "reads.1.final.fastq.gz",
         "reads.2.final.fastq.gz",
-        "phasing_stats.txt",
         "multiqc_report.html"
+    ]
+    if config["reference_variants"]:
+        input_files.append("phasing_stats.txt")
+    elif config["variant_caller"] == "gatk" and config["BQSR"]:
+        input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.phase.bam")
+    else:
+        input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam")
+
+    return input_files
+
+
+rule final:
+   input:
+        get_final_targets
 
 
 rule fastqc_raw_reads:
@@ -287,7 +301,7 @@ rule recal_base_qual_scores:
 rule apply_recal:
     "Adjusts bam file with results from gatk base score recalibration"
     output:
-        recal_bam = "mapped.sorted.tag.mkdup.bcmerge.mol.filt.BQSR.bam"
+        recal_bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
     input:
         bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
         recal_table = "gatk_BQSR_table.txt"
@@ -312,13 +326,22 @@ rule index_bam_pre_variant_caller:
         " {output.bai}"
 
 
+def get_input_call_variants(wildcards):
+    basename = "mapped.sorted.tag.bcmerge.mkdup.mol.filt"
+    if config["variant_caller"] == "gatk" and config["BQSR"]:
+        basename += ".BQSR"
+
+    return {"bam": f"{basename}.bam",
+            "bai": f"{basename}.bam.bai"}
+
+
 rule call_variants:
     output:
          vcf = "variants.called.vcf"
     input:
-         bam = f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.{'BQSR.' if config['BQSR'] else ''}bam",
-         index = f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.{'BQSR' if config['BQSR'] else ''}bam.bai"
+         unpack(get_input_call_variants)
     log: "call_variants.log"
+    threads: 2
     run:
         commands = {
             "freebayes":
@@ -346,10 +369,9 @@ rule call_variants:
                 " --threads {threads}"
                 " -o {output.vcf} 2>> {log}",
             "gatk":
-                "gatk --java-options -Xmx{config[heap_space]}g HaplotypeCaller"
+                "gatk --java-options '-Xmx{config[heap_space]}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
                 " -R {config[genome_reference]}"
                 " -I {input.bam}"
-                " -ERC GVCF"
                 " -O {output.vcf} 2> {log}",
             # This option is currently not included in the pipeline documentation, but it will run on any system which
             # - runs Linux (it's not maintained for any other system)

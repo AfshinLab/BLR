@@ -34,6 +34,15 @@ def count_fastq_reads(path):
     return n
 
 
+def bam_has_tag(path, tag):
+    with pysam.AlignmentFile(path) as file:
+        for alignment in file:
+            if alignment.has_tag(tag):
+                return True
+
+    return False
+
+
 def test_init(tmpdir):
     init(tmpdir / "analysis", TESTDATA_BLR_READ1, "blr")
 
@@ -144,3 +153,17 @@ def test_plot_figures(tmpdir):
     target = "figures"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_dir()
+
+
+def test_haplotag(tmpdir):
+    workdir = tmpdir / "analysis"
+    init(workdir, TESTDATA_BLR_READ1, "blr")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("genome_reference", REFERENCE_GENOME)]
+    )
+    target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
+    run(workdir=workdir, targets=[target])
+    assert bam_has_tag(workdir / target, "HP")
+    assert bam_has_tag(workdir / target, "PS")
+
