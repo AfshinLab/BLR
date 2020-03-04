@@ -21,8 +21,9 @@ rule link_to_whitelist:
     output: "barcodes_whitelist.txt"
     shell: "ln -s {config[barcode_whitelist]} {output}"
 
+
 rule count_10x:
-    "Create list of per-barcode count"
+    """Create list of per-barcode count"""
     output:
         counts_ncnt = temp("reads.ema-ncnt"),
         counts_fcnt = temp("reads.ema-fcnt")
@@ -38,8 +39,9 @@ rule count_10x:
         " -w {input.whitelist}"
         " -o reads 2> {log}"
 
+
 rule preproc_10x:
-    "Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."
+    """Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."""
     output:
         bins = directory("temp_bins")
     input:
@@ -65,8 +67,9 @@ rule preproc_10x:
             " -o {output.bins} {input.counts_ncnt} 2>&1 | tee {log}"
         )
 
+
 rule merge_bins_and_split_pairs:
-    "Merge bins of trimmed and barcoded reads together and split into read pairs."
+    """Merge bins of trimmed and barcoded reads together and split into read pairs."""
     output:
         r1_fastq="trimmed.barcoded.1.fastq.gz",
         r2_fastq="trimmed.barcoded.2.fastq.gz"
@@ -78,8 +81,9 @@ rule merge_bins_and_split_pairs:
         " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"
         " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
 
+
 rule split_nobc_reads:
-    "Split non-barcoded reads into read pairs."
+    """Split non-barcoded reads into read pairs."""
     output:
         r1_fastq="trimmed.non_barcoded.1.fastq.gz",
         r2_fastq="trimmed.non_barcoded.2.fastq.gz",

@@ -1,3 +1,6 @@
+"""
+Rules related to phasing of variants (called or reference set)
+"""
 
 variants = "variants.reference.vcf" if config["reference_variants"] else "variants.called.vcf"
 if config["variant_caller"] == "gatk" and config["BQSR"]:
@@ -5,7 +8,9 @@ if config["variant_caller"] == "gatk" and config["BQSR"]:
 else:
     bamfile_basename = "mapped.sorted.tag.bcmerge.mkdup.mol.filt"
 
+
 rule hapcut2_extracthairs:
+    """Extract heterozygous variants covered by alignments in BAM"""
     output:
         unlinked = bamfile_basename + ".unlinked.txt"
     input:
@@ -21,6 +26,7 @@ rule hapcut2_extracthairs:
 
 
 rule hapcut2_linkfragments:
+    """Link heterozygous variants together using barcode information"""
     output:
         linked = bamfile_basename + ".linked.txt"
     input:
@@ -38,6 +44,7 @@ rule hapcut2_linkfragments:
 
 
 rule hapcut2_phasing:
+    """Phase heterozygous varinats using HapCUT2. Output phased VCF"""
     output:
         phase = bamfile_basename + ".phase",
         phased_vcf = bamfile_basename + ".phase.phased.VCF"
@@ -60,6 +67,8 @@ rule symlink_reference_phased:
 
 
 rule hapcut2_stats:
+    """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
+    for details. """
     output:
         stats = "phasing_stats.txt"
     input:
@@ -73,7 +82,7 @@ rule hapcut2_stats:
 
 
 rule compress_and_index_phased_vcf:
-    "Compress and index VCF files"
+    "Compress and index VCF files."
     output:
         vcf = bamfile_basename + ".phase.phased.vcf.gz",
         index = bamfile_basename + ".phase.phased.vcf.gz.tbi"
@@ -82,8 +91,11 @@ rule compress_and_index_phased_vcf:
     shell:
          "bgzip -c {input.vcf} > {output.vcf} && tabix -p vcf {output.vcf}"
 
+
 rule haplotag:
-    "Transfer haplotype information fron the phased VCF file to the bam file. "
+    """Transfer haplotype information fron the phased VCF file to the bam file. Adds HP tag with haplotype (0 or 1) and 
+    PS tag with phase block information. 
+    """
     output:
         bam = bamfile_basename + ".phase.bam"
     input:
