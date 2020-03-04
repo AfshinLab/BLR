@@ -166,4 +166,3 @@ def test_haplotag(tmpdir):
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
-
