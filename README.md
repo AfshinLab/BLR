@@ -19,9 +19,9 @@ Activate your Conda environment.
     conda activate blr
 
 Choose a name for the analysis. It will be `output_folder` in this example. Create
-the analysis directory.
+the analysis directory. Specify the library type using the `-l` flag, here we choose `blr`.
 
-    blr init --reads1=path/to/sample.R1.fastq.gz path/to/output_folder
+    blr init --reads1=path/to/sample.R1.fastq.gz -l blr path/to/output_folder
 
 Note that BLR expects paired-end reads. However, only the path to the R1 file
 needs to be provided. The R2 file will be found automatically.
@@ -34,10 +34,10 @@ newly created analysis folder.
 Then, you may need to edit the configuration file `blr.yaml`, in
 particular to enter the path to your reference genome. 
 
-    blr set --genome_reference=path/to/GRCh38.fasta
+    blr config --set genome_reference path/to/GRCh38.fasta
 
 To see what other configurations can be altered, read the documentation in 
-the `blr.yaml` file.
+the `blr.yaml` file or run `blr config` to print the current configs to the terminal.
 
 ### 2. Running an analysis
 
