@@ -87,79 +87,124 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, discard
      dict[chrom][pos_snv2] = (block_number. G, C)
 
     :param hapcut2_file:
-    :return:
+    :param min_phred_switch_error:
+    :param discard_pruning:
+    :param summary
+    :return: dict
     """
 
     phased_snv_dict = dict()
-    block_counter = int()
-    with open(hapcut2_file, "r") as openin:
-        for line in openin:
 
-            # Start new phase block
-            if line.startswith("BLOCK:"):
-                block_counter += 1
-                phase_block = block_counter
-                summary["HapCUT2 file: Phase blocks"] += 1
-                continue
-            # Marks end of block
-            elif line.strip() == "*" * 8:
-                continue
-
-            # Extract relevant information from phase file
-            _, call_1, call_2, chrom, pos, ref, alt, _, pruned, phase_phred_score, _, _ = line.split()
-
+    with PhaseBlockReader(hapcut2_file) as reader:
+        for position in reader:
+            print(position)
             # Variant filtering
-            if skip_variant(call_1, call_2, phase_phred_score, min_phred_switch_error, discard_pruning, pruned,
-                            summary):
+            if skip_variant(position, min_phred_switch_error, discard_pruning, summary):
                 continue
-
-            # Format vars to list. If h1 != ref and h2 != ref there will be two csv alt, hence the split.
-            variants = [ref] + alt.split(",")
 
             # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
-            # SVs
-            for call in variants:
-                if len(ref) != len(call):
+            for call in position.variants:
+                if len(position.ref) != len(call):
                     summary["HapCUT2 file: Phased SVs (not used)"] += 1
                     continue
 
-            # translate calls (0 or 1) to nucleotides.
-            phased_snv_h1 = variants[int(call_1)]
-            phased_snv_h2 = variants[int(call_2)]
-
             # Add phasing info to dict
-            if chrom not in phased_snv_dict:
-                phased_snv_dict[chrom] = OrderedDict()
-            phased_snv_dict[chrom][int(pos)] = (phase_block, phased_snv_h1, phased_snv_h2)
+            if position.chrom not in phased_snv_dict:
+                phased_snv_dict[position.chrom] = OrderedDict()
+
+            phased_snv_dict[position.chrom][position.pos] = (position.phaseblock, position.hap1, position.hap2)
             summary["HapCUT2 file: Usable phased sites"] += 1
+
+        summary["HapCUT2 file: Phase blocks"] = position.phaseblock
 
     return phased_snv_dict
 
 
-def skip_variant(call_1, call_2, phase_phred_score, min_phred_switch_error, discard_pruning, pruned, summary):
-    """
+class PhaseBlockReader:
+    def __init__(self, filename):
+        self.filename = filename
+        self._file = open(self.filename, "r")
+        self.block_count = 0
 
-    :param call_1:
-    :param call_2:
-    :param phase_phred_score:
-    :param min_phred_switch_error:
-    :param discard_pruning:
-    :param pruned:
-    :param summary:
-    :return:
+    def __enter__(self):
+        return self
+
+    def __iter__(self):
+        for line in self._file:
+            if line.startswith("BLOCK:"):
+                self.block_count += 1
+                continue
+
+            if line.strip() == "*" * 8:
+                continue
+
+            yield(PhasedSNV(line, self.block_count))
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._file.close()
+
+
+class PhasedSNV:
     """
+    Phased SNV information from HapCUT2 output file.
+    See: https://github.com/vibansal/HapCUT2/blob/master/outputformat.md for specifics.
+    """
+    def __init__(self, line, phaseblock):
+        self.phaseblock = phaseblock
+
+        line_entries = line.strip().split(maxsplit=11)
+
+        # VCF file index (1-based index of the line in the input VCF describing variant)
+        self.index = int(line_entries[0])
+
+        # allele on haploid chromosome copy A (0 means reference allele, 1 means variant allele, - for an unphased
+        # variant)
+        self.call1 = int(line_entries[1]) if line_entries[1] != "-" else None
+
+        # allele on haploid chromosome copy B (0 means reference allele, 1 means variant allele, - for an unphased
+        # variant)
+        self.call2 = int(line_entries[2]) if line_entries[2] != "-" else None
+
+        self.chrom = line_entries[3]
+        self.pos = int(line_entries[4])
+        self.ref = line_entries[5]         # reference allele (allele corresponding to 0 in column 2 or 3)
+        self.alt = line_entries[6]         # variant allele (allele corresponding to 1 in column 2 or 3)
+
+        self.variants = [self.ref] + self.alt.split(",")
+
+        self.hap1 = self.variants[self.call1] if self.call1 is not None else None
+        self.hap2 = self.variants[self.call2] if self.call2 is not None else None
+
+        self.genotype = line_entries[7]    # VCF genotype field (unedited, directly from original VCF)
+
+        self.is_pruned = int(line_entries[8]) == 1
+        self.is_phased = self.call1 is not None and self.call2 is not None
+
+        # switch quality: phred-scaled estimated probability that there is a switch error starting at this SNV (0
+        # means switch error is likely, 100 means switch is unlikely)
+        self.switch_qual = float(line_entries[9]) if line_entries[9] != "." else None
+
+        # mismatch quality: phred-scaled estimated probability that there is a mismatch [single SNV] error at this
+        # SNV (0 means SNV is low quality, 100 means SNV is high quality)
+        self.missmatch_qual = float(line_entries[10])
+
+    def __str__(self):
+        return ", ".join(f"{k} = {v}" for k, v in vars(self).items())
+
+
+def skip_variant(position, min_phred_switch_error, discard_pruning, summary):
     # Filter: Unphased variant
-    if call_1 == "-" and call_2 == "-":
+    if not position.is_phased:
         summary["HapCUT2 file: Non-phased entries"] += 1
         return True
 
     # Filter: Phred score for switch error here
-    if phase_phred_score != "." and float(phase_phred_score) > min_phred_switch_error:
+    if position.switch_qual and position.switch_qual < min_phred_switch_error:
         summary["HapCUT2 file: Phase entries under min quality"] += 1
         return True
 
     # Filter: Phred score for mismatch at SNV
-    if discard_pruning and int(pruned):
+    if discard_pruning and position.is_pruned:
         summary["HapCUT2 file: Pruned entries"] += 1
         return True
 
