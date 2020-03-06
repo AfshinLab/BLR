@@ -58,6 +58,7 @@ rule hapcut2_phasing:
          " --fragments {input.linked}"
          " --vcf {input.vcf}"
          " --out {output.phase}"
+         " --error_analysis_mode 1"
          " --outvcf 1 2> {log}"
 
 
@@ -92,44 +93,48 @@ rule compress_and_index_phased_vcf:
          "bgzip -c {input.vcf} > {output.vcf} && tabix -p vcf {output.vcf}"
 
 
+def get_haplotag_input(wildcards):
+    inputfiles = {"bam": bamfile_basename + ".bam"}
+    if config["reference_variants"] or config["haplotag_tool"] == "blr":
+        inputfiles.update({
+            "hapcut2_phase_file": bamfile_basename + ".phase"
+        })
+    elif config["haplotag_tool"] == "whatshap":
+        inputfiles.update({
+            "vcf": bamfile_basename + ".phase.phased.vcf.gz",
+            "vcf_index": bamfile_basename + ".phase.phased.vcf.gz.tbi",
+        })
+    return inputfiles
+
+
 rule haplotag:
     """Transfer haplotype information fron the phased VCF file to the bam file. Adds HP tag with haplotype (0 or 1) and 
-    PS tag with phase block information. 
+    PS tag with phase set information. 
     """
     output:
         bam = bamfile_basename + ".phase.bam"
     input:
-        bam = bamfile_basename + ".bam",
-        vcf = bamfile_basename + ".phase.phased.vcf.gz",
-        vcf_index = bamfile_basename + ".phase.phased.vcf.gz.tbi",
-    log: "whatshap_haplotag.log"
-    shell:
-        "whatshap haplotag"
-        " {input.vcf}"
-        " {input.bam}"
-        " -o {output.bam}"
-        " --reference {config[genome_reference]}"
-        " 2> {log}"
+        unpack(get_haplotag_input)
+    log: "haplotag.log"
+    run:
+        commands = {
+            "whatshap":
+                "whatshap haplotag"
+                " {input.vcf}"
+                " {input.bam}"
+                " -o {output.bam}"
+                " --linked-read-distance-cutoff 30000"
+                " --reference {config[genome_reference]}",
+            "blr":
+                "blr phasebam"
+                " --molecule-tag {config[molecule_tag]}"
+                " --phase-set-tag {config[phase_set_tag]}"
+                " --haplotype-tag {config[haplotype_tag]}"
+                " {input.bam}"
+                " {input.hapcut2_phase_file}"
+                " -o {output.bam}"
+        }
 
+        command = commands[config["haplotag_tool"]].format(**locals(), **globals())
 
-rule phase_bam:
-    """
-    Sets alignments phasing tags (default HP tags) to match phasing results.
-    """
-    output:
-        bam = bamfile_basename + ".phase.bam",
-        anomaly_file = "bam_phasing_anomalies.tsv"
-    input:
-        bam = bamfile_basename + ".bam",
-        hapcut2_phase_file = bamfile_basename + ".phase"
-    log: "phase_bam.log"
-    shell:
-        "blr phasebam"
-        " --molecule-tag {config[molecule_tag]}"
-        " --phase-set-tag {config[phase_set_tag]}"
-        " --haplotype-tag {config[haplotype_tag]}"
-        " {input.bam}"
-        " {input.hapcut2_phase_file}"
-        " {output.anomaly_file}"
-        " -o {output.bam}"
-        " 2> {log}"
+        shell("{command} 2> {log}")

@@ -67,6 +67,10 @@ properties:
     type: string
     description: Which variant caller to use.
     pattern: "gatk|bcftools|freebayes|deepvariant"
+  haplotag_tool:
+    type: string
+    description: Whish haplotype tagging tool to use.
+    pattern: "blr|whatshap"
   heap_space:
     type: integer
     description: Heap space to run java scripts with (gatk).

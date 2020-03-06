@@ -165,27 +165,17 @@ def test_plot_figures(tmpdir):
     assert Path(workdir / target).is_dir()
 
 
-def test_haplotag(tmpdir):
+@pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
+def test_haplotag(tmpdir, haplotype_tool):
     workdir = tmpdir / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
+        [("genome_reference", REFERENCE_GENOME),
+         ("reference_variants", "null")]
     )
     target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
     run(workdir=workdir, targets=[target])
-    assert bam_has_tag(workdir / target, "HP")
-    assert bam_has_tag(workdir / target, "PS")
-
-
-def test_phasebam(tmpdir):
-    workdir = tmpdir / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
-    )
-    target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
-    run(workdir=workdir, targets=[target])
-    assert count_bam_tags((workdir / target), "PS") == count_bam_tags((workdir / target), "HP")
-
+    assert bam_has_tag(workdir / target, "HP")  # Check that tag HP have been added
+    assert bam_has_tag(workdir / target, "PS")  # Check that tag PS have been added
+    assert count_bam_tags((workdir / target), "PS") == count_bam_tags((workdir / target), "HP")  # Confirm same count.

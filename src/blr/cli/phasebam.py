@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def main(args):
     logger.info("Starting analysis")
-    anomaly_file = open(args.anomaly_file, 'w')
+    anomaly_file = open(args.anomaly_file_name, 'w')
     summary = Counter()
 
     # Save hetSNV info
@@ -53,9 +53,9 @@ def main(args):
             if phase:
                 summary["Total reads phased"] += 1
                 ps_tag = phase[0]
-                hp_tag = phase[1]
-                read.set_tag("PS", ps_tag)
+                hp_tag = int(phase[1])
                 read.set_tag("HP", hp_tag)
+                read.set_tag("PS", ps_tag)
 
             out.write(read)
 
@@ -440,19 +440,19 @@ def add_arguments(parser):
     parser.add_argument("input_bam",
                         help="BAM file. To read from stdin use '-'. Must be sorted.")
     parser.add_argument("hapcut2_phase_file",
-                        help="Phased VCF file. Must be sorted.")
-    parser.add_argument("anomaly_file",
-                        help="File to output information with anomalous reads, such as those with conflicting read/"
-                             "molecule phasing information. These will also be written to output but will not have "
-                             "any phasing information added to them.")
+                        help="Phaseblock file from HapCUT2. Must be sorted.")
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output phased BAM to file rather then stdout.")
-    parser.add_argument("--min-phred-switch-error", default=30,
-                        help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been "
-                             "run using the '--error_analysis_mode 1' option. Default: %(default)s.")
+    parser.add_argument("--anomaly-file-name", default="haplotag_anomalies.tsv",
+                        help="File to output information with anomalous reads, such as those with conflicting read/"
+                             "molecule phasing information. These will also be written to output but will not have "
+                             "any phasing information added to them. Default: &(default)s")
+    parser.add_argument("--min-phred-switch-error", default=30, type=float,
+                        help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been"
+                             " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
     parser.add_argument("--discard-pruning", default=True,
-                        help="Discard phasing events marked as pruned by HapCUT2.")
+                        help="Discard phasing events marked as pruned by HapCUT2. Default: %(default)s.")
     parser.add_argument("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
     parser.add_argument("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")
     parser.add_argument("--phase-set-tag", default="PS", help="Phase set SAM tag. Default: %(default)s")

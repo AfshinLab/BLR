@@ -33,6 +33,10 @@ reference_variants: # Path to reference variants used for phasing, if None will 
 phasing_ground_truth: # Path to phased variants used for calculating stats
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
 
+# Tool for tagging haplotype information from phasing onto BAM. 'whatshap' only works for called variants while
+# 'blr' works for phasing with reference variants.
+haplotag_tool: blr # Choose 'whatshap' or 'blr'
+
 ##############################
 # Software-specific settings #
 ##############################
