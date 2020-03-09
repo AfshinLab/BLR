@@ -22,7 +22,7 @@ def main(args):
     with PySAMIO(args.input, args.output, __name__) as (openin, openout):
         for read in tqdm(openin.fetch(until_eof=True), desc="Processing reads"):
             summary["Reads in"] += 1
-            value = get_bamtag(read, args.tag)
+            value = str(get_bamtag(read, args.tag))
 
             if value in values:
                 summary["Reads out"] += 1
@@ -41,7 +41,7 @@ def get_values(values):
         with open(values[0], 'r') as values_file:
             return {v.strip() for v in values_file if v != ""}
     else:
-        return set(values)
+        return {str(v) for v in values}
 
 
 def print_counts(counts):
