@@ -235,7 +235,7 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
 
             # Get variants at the current read and remove any variants whenever reads have passed their position
             if prev_read_pos != (read.reference_name, read.reference_start, read.reference_end):
-                variants_at_read, phased_snv_dict = get_phased_variants(read, phased_snv_dict)
+                variants_at_read = get_phased_variants(read, phased_snv_dict)
                 prev_read_pos = (read.reference_name, read.reference_start, read.reference_end)
 
             # Link molecule to phasing information
@@ -300,7 +300,7 @@ def get_phased_variants(read, phased_snv_dict):
 
     :param read: pysam read alignment
     :param phased_snv_dict: dict, dict[chrom][pos][nucleotide] = phase_info, must be sorted within chromosomes
-    :return: dict[pos][nucleotide] = phase_info, updated phased_snv_dict
+    :return: dict[pos][nucleotide] = phase_info
     """
 
     variants_at_read = dict()
@@ -313,7 +313,7 @@ def get_phased_variants(read, phased_snv_dict):
             removal_list.append(var_pos)
             continue
         # Variant at read => save pos, keep in dict
-        elif read.reference_start <= var_pos and var_pos <= read.reference_end:
+        elif read.reference_start <= var_pos <= read.reference_end:
             variants_at_read[var_pos] = haplotype_info
         # Variant downstream of read => keep in dict and return SNV positions found
         else:
@@ -323,7 +323,7 @@ def get_phased_variants(read, phased_snv_dict):
     for pos_to_remove in removal_list:
         del phased_snv_dict[read.reference_name][pos_to_remove]
 
-    return variants_at_read, phased_snv_dict
+    return variants_at_read
 
 
 def phase_read(read, variants_at_read, summary):
@@ -492,7 +492,7 @@ def add_arguments(parser):
     parser.add_argument("--anomaly-file-name", default="haplotag_anomalies.tsv",
                         help="File to output information with anomalous reads, such as those with conflicting read/"
                              "molecule phasing information. These will also be written to output but will not have "
-                             "any phasing information added to them. Default: &(default)s")
+                             "any phasing information added to them. Default: %(default)s")
     parser.add_argument("--min-phred-switch-error", default=30, type=float,
                         help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been"
                              " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
