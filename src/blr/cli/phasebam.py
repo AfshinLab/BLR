@@ -97,9 +97,9 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, discard
 
     with PhaseBlockReader(hapcut2_file) as reader:
         for position in reader:
-            print(position)
             # Variant filtering
             if skip_variant(position, min_phred_switch_error, discard_pruning, summary):
+                summary["HapCUT2 file: Skipped sites"] += 1
                 continue
 
             # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
@@ -112,10 +112,10 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, discard
             if position.chrom not in phased_snv_dict:
                 phased_snv_dict[position.chrom] = OrderedDict()
 
-            phased_snv_dict[position.chrom][position.pos] = (position.phaseblock, position.hap1, position.hap2)
+            phased_snv_dict[position.chrom][position.pos] = (position.phaseset, position.hap1, position.hap2)
             summary["HapCUT2 file: Usable phased sites"] += 1
 
-        summary["HapCUT2 file: Phase blocks"] = position.phaseblock
+        summary["HapCUT2 file: Phase blocks"] = reader.block_count
 
     return phased_snv_dict
 
@@ -130,15 +130,23 @@ class PhaseBlockReader:
         return self
 
     def __iter__(self):
+        phaseset = None
         for line in self._file:
             if line.startswith("BLOCK:"):
                 self.block_count += 1
+                phaseset = None
                 continue
 
             if line.strip() == "*" * 8:
                 continue
 
-            yield(PhasedSNV(line, self.block_count))
+            # Use first block entry to define phaseset.
+            if not phaseset:
+                first_enty = PhasedSNV(line)
+                phaseset = first_enty.pos
+                yield first_enty
+            else:
+                yield PhasedSNV(line, phaseset=phaseset)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
@@ -149,16 +157,14 @@ class PhasedSNV:
     Phased SNV information from HapCUT2 output file.
     See: https://github.com/vibansal/HapCUT2/blob/master/outputformat.md for specifics.
     """
-    def __init__(self, line, phaseblock):
-        self.phaseblock = phaseblock
-
+    def __init__(self, line, phaseset=None):
         line_entries = line.strip().split(maxsplit=11)
 
         # VCF file index (1-based index of the line in the input VCF describing variant)
         self.index = int(line_entries[0])
 
         # allele on haploid chromosome copy A (0 means reference allele, 1 means variant allele, - for an unphased
-        # variant)
+        # variant). In some cases the call can also be >1 if there are multiple ALT on a position.
         self.call1 = int(line_entries[1]) if line_entries[1] != "-" else None
 
         # allele on haploid chromosome copy B (0 means reference allele, 1 means variant allele, - for an unphased
@@ -168,7 +174,7 @@ class PhasedSNV:
         self.chrom = line_entries[3]
         self.pos = int(line_entries[4])
         self.ref = line_entries[5]         # reference allele (allele corresponding to 0 in column 2 or 3)
-        self.alt = line_entries[6]         # variant allele (allele corresponding to 1 in column 2 or 3)
+        self.alt = line_entries[6]         # variant allele(s) (allele corresponding to 1 in column 2 or 3)
 
         self.variants = [self.ref] + self.alt.split(",")
 
@@ -187,6 +193,10 @@ class PhasedSNV:
         # mismatch quality: phred-scaled estimated probability that there is a mismatch [single SNV] error at this
         # SNV (0 means SNV is low quality, 100 means SNV is high quality)
         self.missmatch_qual = float(line_entries[10])
+
+        # phaseset is defined as the first position of the current phase block. This is the same notation as used for
+        # the PS tag in phased VCF files.
+        self.phaseset = phaseset if phaseset else self.pos
 
     def __str__(self):
         return ", ".join(f"{k} = {v}" for k, v in vars(self).items())
@@ -442,6 +452,7 @@ def decide_molecule_phase(molecule_phase_dict, anomaly_file, summary):
             line = "\t".join([f"MI:{molecule}", "h1=h2"])
             print(line, file=anomaly_file)
             summary["Moleules with equal support for haplotypes"] += 1
+            del molecule_phase_dict[molecule]
             continue
 
         molecule_haplotype = max(phase_info, key=phase_info.get)
