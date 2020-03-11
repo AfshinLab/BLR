@@ -56,6 +56,8 @@ def main(args):
                 hp_tag = int(phase[1])
                 read.set_tag("HP", hp_tag)
                 read.set_tag("PS", ps_tag)
+            elif args.discard_untagged:
+                continue
 
             out.write(read)
 
@@ -509,6 +511,9 @@ def add_arguments(parser):
                              " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
     parser.add_argument("--discard-pruning", default=True,
                         help="Discard phasing events marked as pruned by HapCUT2. Default: %(default)s.")
+    parser.add_argument("--discard-untagged", default=False, action="store_true",
+                        help="Discard alignments not tagged with haplotype info from output. Default: %(default)s.")
+
     parser.add_argument("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
     parser.add_argument("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")
     parser.add_argument("--phase-set-tag", default="PS", help="Phase set SAM tag. Default: %(default)s")
