@@ -44,4 +44,4 @@ test $m == 61b23ba7b0e7a00f788033729de6bdca
 
 # Cut away columns 2 and 3 as these change order between linux and osx
 m2=$(cut -f1,4- mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase | $md5 | cut -f1 -d" ")
-test $m2 == 70c907df8a996d2b3ba3f06fb942b244
+test $m2 == e6c512bfeb7cb1b230a9320f22c32937

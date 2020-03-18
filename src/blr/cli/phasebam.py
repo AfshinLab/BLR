@@ -27,8 +27,8 @@ def main(args):
     summary = Counter()
 
     # Save hetSNV info
-    phased_snv_dict = get_phased_snvs_hapcut2_format(args.hapcut2_phase_file, args.min_phred_switch_error,
-                                                     args.min_phred_missmatch_error, args.discard_pruning, summary)
+    phased_snv_dict = get_phased_snvs_hapcut2_format(args.hapcut2_phase_file, args.min_switch_error,
+                                                     args.min_missmatch_error, args.include_pruned, summary)
 
     # Phase reads & corresponding molecules at hetSNV sites
     read_phase_dict, molecule_phase_dict = phase_reads_and_molecules(args.input_bam, args.molecule_tag,
@@ -50,7 +50,7 @@ def main(args):
 
             # Choose phase from the read/molecule phasing information
             phase = decide_haplotype(read_phase, molecule_phase, read, args.tag_priority, anomaly_file, summary)
-            if phase:
+            if phase and not read.is_unmapped:  # Don't assign phase to unmapped reads.
                 summary["Total reads phased"] += 1
                 ps_tag = phase[0]
                 hp_tag = phase[1]
@@ -71,8 +71,7 @@ def main(args):
     logger.info("Finished")
 
 
-def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, min_phred_missmatch_error, discard_pruning,
-                                   summary):
+def get_phased_snvs_hapcut2_format(hapcut2_file, min_switch_error, min_missmatch_error, include_pruned, summary):
     """
     Gets phasing information from HapCUT2 output phase file and turns into dictionary.
 
@@ -95,9 +94,9 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, min_phr
      dict[chrom][pos_snv2] = (block_number. G, C)
 
     :param hapcut2_file: str. Path to hapcut2 phaseblock file
-    :param min_phred_switch_error: int. Threshold for switch error rate for variant
-    :param min_phred_missmatch_error: int. Threshold for missmatch error rate for variant
-    :param discard_pruning: bool. Whether to remove pruned variants.
+    :param min_switch_error: int. Threshold for switch error rate for variant
+    :param min_missmatch_error: int. Threshold for missmatch error rate for variant
+    :param include_pruned: bool. Whether to include pruned variants.
     :param summary. dict. Summary instance.
     :return: dict
     """
@@ -105,22 +104,27 @@ def get_phased_snvs_hapcut2_format(hapcut2_file, min_phred_switch_error, min_phr
     phased_snv_dict = dict()
 
     with PhaseBlockReader(hapcut2_file) as reader:
-        for position in reader:
+        for variant in tqdm(reader, desc="Parsing variants"):
+            summary["HapCUT2 file: Total variants"] += 1
+
             # Variant filtering
-            if skip_variant(position, min_phred_switch_error, min_phred_missmatch_error, discard_pruning, summary):
+            if skip_variant(variant, min_switch_error, min_missmatch_error, include_pruned, summary):
                 summary["HapCUT2 file: Skipped sites"] += 1
                 continue
 
             # Add phasing info to dict
-            if position.chrom not in phased_snv_dict:
-                phased_snv_dict[position.chrom] = OrderedDict()
+            if variant.chrom not in phased_snv_dict:
+                phased_snv_dict[variant.chrom] = OrderedDict()
 
-            phased_snv_dict[position.chrom][position.pos] = (position.phaseset, position.hap1, position.hap2)
+            phased_snv_dict[variant.chrom][variant.pos] = (variant.phaseset, variant.hap1, variant.hap2)
             summary["HapCUT2 file: Usable phased sites"] += 1
 
         summary["HapCUT2 file: Phase blocks"] = reader.block_count
 
-    return phased_snv_dict
+    # Variants are ordered within phasesets but different phasesets might overlap. Thus sorting is required.
+    sorted_snvs = {ref: OrderedDict(sorted(snvs.items())) for ref, snvs in phased_snv_dict.items()}
+
+    return sorted_snvs
 
 
 class PhaseBlockReader:
@@ -164,22 +168,22 @@ class PhaseBlockReader:
 
             # Use first block entry to define phaseset.
             if not phaseset:
-                first_enty = PhasedSNV(line)
+                first_enty = PhasedVariant(line)
                 phaseset = first_enty.phaseset
                 yield first_enty
             else:
-                yield PhasedSNV(line, phaseset=phaseset)
+                yield PhasedVariant(line, phaseset=phaseset)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
 
 
-class PhasedSNV:
+class PhasedVariant:
     """
-    Phased SNV information from HapCUT2 output file.
+    Phased variant information from HapCUT2 output file.
     See: https://github.com/vibansal/HapCUT2/blob/master/outputformat.md for specifics.
     """
-    def __init__(self, line, phaseset=None):
+    def __init__(self, line, phaseset=None, max_phred=100.0):
         line_entries = line.strip().split(maxsplit=11)
 
         # VCF file index (1-based index of the line in the input VCF describing variant)
@@ -209,8 +213,9 @@ class PhasedSNV:
         self.is_phased = self.call1 is not None and self.call2 is not None
 
         # switch quality: phred-scaled estimated probability that there is a switch error starting at this SNV (0
-        # means switch error is likely, 100 means switch is unlikely)
-        self.switch_qual = float(line_entries[9]) if line_entries[9] != "." else None
+        # means switch error is likely, 100 means switch is unlikely). If '.' (i.e. switch error not calculated) the
+        # max_phred value is used.
+        self.switch_qual = float(line_entries[9]) if line_entries[9] != "." else max_phred
 
         # mismatch quality: phred-scaled estimated probability that there is a mismatch [single SNV] error at this
         # SNV (0 means SNV is low quality, 100 means SNV is high quality)
@@ -220,7 +225,9 @@ class PhasedSNV:
         # as used for the PS tag in phased VCF files.
         self.phaseset = phaseset if phaseset else (self.pos + 1)
 
-        self.normalize()
+        # Attempt to normalize variants that are not SNVs.
+        if not self.is_snv():
+            self.normalize()
 
     def is_snv(self):
         """Check if varinats are all single-nucleotide variants (SNVs)"""
@@ -254,29 +261,29 @@ class PhasedSNV:
         self.pos, self.hap1, self.hap2 = pos, ref, alt
 
 
-def skip_variant(position, min_phred_switch_error, min_phred_missmatch_error, discard_pruning, summary):
+def skip_variant(variant, min_switch_error, min_missmatch_error, include_pruned, summary):
     # Filter: Unphased variant
-    if not position.is_phased:
+    if not variant.is_phased:
         summary["HapCUT2 file: Non-phased entries"] += 1
         return True
 
     # Filter: Only SNVs
     # TODO: Add support for phased SVs (1 bp deletion, insertion and bigger should currently not work)
-    if not position.is_snv():
+    if not variant.is_snv():
         summary["HapCUT2 file: Phased SVs (not used)"] += 1
         return True
 
     # Filter: Phred score for switch error here
-    if position.switch_qual and position.switch_qual < min_phred_switch_error:
+    if variant.switch_qual < min_switch_error:
         summary["HapCUT2 file: Phase entries under min quality"] += 1
         return True
 
-    if position.missmatch_qual < min_phred_missmatch_error:
+    if variant.missmatch_qual < min_missmatch_error:
         summary["HapCUT2 file: Phase entries under min quality"] += 1
         return True
 
     # Filter: Phred score for mismatch at SNV
-    if discard_pruning and position.is_pruned:
+    if not include_pruned and variant.is_pruned:
         summary["HapCUT2 file: Pruned entries"] += 1
         return True
 
@@ -300,7 +307,6 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
     with pysam.AlignmentFile(bam_file, "rb") as infile:
         for read in tqdm(infile.fetch(until_eof=True), desc="Phasing reads at hetSNV positions", unit=" reads"):
             summary["Total reads"] += 1
-
             # Init criteria for read
             if skip_read(read, phased_snv_dict, summary):
                 continue
@@ -342,9 +348,6 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
 
 def skip_read(read, phased_snv_dict, summary):
     if read.is_unmapped:
-        return True
-
-    if read.flag & 2048 != 0:  # Mate is unmapped.
         return True
 
     if read.reference_name not in phased_snv_dict:
@@ -443,24 +446,24 @@ def translate_positions(read, ref_pos_iterator):
     :param ref_pos_iterator: iterator with positions in reference to be translated
     :return: dict, dict[ref_pos] = seq_pos
     """
-    ref_pos = next(ref_pos_iterator, None)
+    variant_ref_pos = next(ref_pos_iterator, None)
     pos_translations = dict()
 
     # Loop over pairs containing matched query and reference position.
     # NB! Does not work with padded reads.
-    for read_query_pos, read_ref_pos in read.get_aligned_pairs():
-        # TODO Currently skips insertions (read_ref_pos is None) and deletions (read_query_pos is None)
-        if read_ref_pos is None or read_query_pos is None:
+    for read_seq_pos, read_ref_pos in read.get_aligned_pairs():
+        # TODO Currently skips insertions (read_ref_pos is None) and deletions (read_seq_pos is None)
+        if read_ref_pos is None or read_seq_pos is None:
             continue
 
-        while ref_pos < read_ref_pos:
+        while variant_ref_pos < read_ref_pos:
             try:
-                ref_pos = next(ref_pos_iterator)
+                variant_ref_pos = next(ref_pos_iterator)
             except StopIteration:
                 return pos_translations
 
-        if read_ref_pos == ref_pos:
-            pos_translations[ref_pos] = read_query_pos
+        if read_ref_pos == variant_ref_pos:
+            pos_translations[variant_ref_pos] = read_seq_pos
 
     return pos_translations
 
@@ -560,13 +563,13 @@ def add_arguments(parser):
                         help="File to output information with anomalous reads, such as those with conflicting read/"
                              "molecule phasing information. These will also be written to output but will not have "
                              "any phasing information added to them. Default: %(default)s")
-    parser.add_argument("--min-phred-switch-error", default=30, type=float,
+    parser.add_argument("--min-switch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
                         help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been"
                              " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
-    parser.add_argument("--min-phred-missmatch-error", default=30, type=float,
+    parser.add_argument("--min-missmatch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
                         help="Minimum phred score for missmatch error at any given variant. Default: %(default)s.")
-    parser.add_argument("--discard-pruning", default=True,
-                        help="Discard phasing events marked as pruned by HapCUT2. Default: %(default)s.")
+    parser.add_argument("--include-pruned", default=False, action="store_true",
+                        help="Include phasing events marked as pruned by HapCUT2. Default: %(default)s.")
     parser.add_argument("--discard-untagged", default=False, action="store_true",
                         help="Discard alignments not tagged with haplotype info from output. Default: %(default)s.")
     parser.add_argument("--tag-priority", choices=["READ", "MOLECULE", "CONCORDANT"], default="READ", type=str.upper,
