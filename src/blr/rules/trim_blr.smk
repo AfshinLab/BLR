@@ -99,5 +99,6 @@ rule starcode_clustering:
         " -o {output}"
         " -t {threads}"
         " -d {config[barcode_max_dist]}"
+        " -r {config[barcode_ratio]}"
         " --print-clusters"
         " 2> {log}"
