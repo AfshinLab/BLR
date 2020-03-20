@@ -5,22 +5,28 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 import logging
 from tqdm import tqdm
 from collections import Counter
-
-from blr.utils import print_stats, PySAMIO
+from pathlib import Path
+from blr.utils import print_stats, PySAMIO, get_bamtag
+from blr.cli.config import load_yaml
 
 logger = logging.getLogger(__name__)
 
+CONFIGFILE = Path("blr.yaml")
+
 
 def main(args):
-    # Can't be at top since function are defined later
-    function_dict = {
-        "sam": mode_samtags_underline_separation,
-        "ema": mode_ema
-    }
-
     logger.info("Starting analysis")
+
+    # Load configs to find mapper
+    configs, _ = load_yaml(CONFIGFILE)
+    mapper = configs["read_mapper"]
+
+    if mapper == "ema":
+        processing_function = mode_ema
+    else:
+        processing_function = mode_samtags_underline_separation
+
     summary = Counter()
-    processing_function = function_dict[args.format]
 
     # Read SAM/BAM files and transfer barcode information from alignment name to SAM tag
     with PySAMIO(args.input, args.output, __name__) as (infile, outfile):
@@ -66,6 +72,13 @@ def mode_ema(read, _):  # summary is passed to this function but is not used
     # Strip header
     read.query_name = read.query_name.rsplit(":", 1)[0]
 
+    # Modify barcode to remove '-1' added at end by ema e.g 'BX:Z:TTTGTTCATGAGTACG-1' --> 'BX:Z:TTTGTTCATGAGTACG'
+    # These letters are not handled by picard markduplicates.
+    current_barcode = get_bamtag(read, "BX")
+    if current_barcode and current_barcode.endswith("-1"):
+        modified_barcode = current_barcode[:-2]
+        read.set_tag("BX", modified_barcode, value_type="Z")
+
 
 def add_arguments(parser):
     parser.add_argument("input",
@@ -73,6 +86,3 @@ def add_arguments(parser):
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-f", "--format", default="sam", choices=["sam", "ema"],
-                        help="Specify what tag search function to use for finding tags. 'sam' requires SAM tags "
-                             "separated by '_'. 'ema' requires ':<bc-seq>' Default: %(default)s")
