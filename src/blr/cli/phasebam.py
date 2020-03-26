@@ -336,7 +336,7 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
                 molecule = get_bamtag(read, molecule_tag)
                 if molecule and molecule != -1:
                     summary["Phased reads with molecule info"] += 1
-                    molecule_phase_dict = add_phase_info_to_molecules(molecule_phase_dict, molecule, haplotype)
+                    add_phase_info_to_molecules(molecule_phase_dict, molecule, haplotype)
                 else:
                     summary["Phased reads without molecule info"] += 1
 
@@ -470,23 +470,20 @@ def translate_positions(read, ref_pos_iterator):
 
 def add_phase_info_to_molecules(molecule_phase_dict, molecule, haplotype):
     """
-
+    Add phasing information from read to molecule phase dict
     :param molecule_phase_dict:
     :param molecule:
     :param haplotype:
-    :return:
     """
     for hap, sup in haplotype.items():
         if molecule not in molecule_phase_dict:
             molecule_phase_dict[molecule] = Counter()
         molecule_phase_dict[molecule][hap] += sup
 
-    return molecule_phase_dict
-
 
 def decide_molecule_phase(molecule_phase_dict, anomaly_file, summary):
     """
-
+    Compare support for haplotype and deside on final haplotype. If equal support, skip molecule
     :param molecule_phase_dict:
     :param anomaly_file:
     :param summary
@@ -510,7 +507,7 @@ def decide_molecule_phase(molecule_phase_dict, anomaly_file, summary):
 
 def decide_haplotype(read_phase, molecule_phase, read, tag_priority, anomaly_file, summary):
     """
-
+    Compare haplotype information between read and molecule and deside on final haplotype to tag.
     :param read_phase:
     :param molecule_phase:
     :param read:
@@ -522,28 +519,34 @@ def decide_haplotype(read_phase, molecule_phase, read, tag_priority, anomaly_fil
 
     phase = None
     if molecule_phase and read_phase:
+        concordant = True if molecule_phase == read_phase[:2] else False
+
+        if concordant:
+            summary["Read with concordant read/mol phase"] += 1
+        else:
+            summary["Read with discordant read/mol phase"] += 1
+
         if tag_priority == "CONCORDANT":
-            if molecule_phase == read_phase[:2]:
+
+            if concordant:
                 phase = read_phase
-                summary["Concordant read/mol phasing"] += 1
             else:
                 line = "\t".join([read.query_name, "mol_hap!=read_hap"])
                 print(line, file=anomaly_file)
-                summary["Discordant read/mol phasing"] += 1
 
         if tag_priority == "READ":
-            summary["Read phased from read"] += 1
+            summary["Read phased from read info"] += 1
             phase = read_phase
 
         if tag_priority == "MOLECULE":
-            summary["Read phased from only mol info"] += 1
+            summary["Read phased from mol info"] += 1
             phase = molecule_phase
 
     elif read_phase:
-        summary["Read phased from read (no mol info)"] += 1
+        summary["Read phased from read info"] += 1
         phase = read_phase
     elif molecule_phase:
-        summary["Read phased from only mol info"] += 1
+        summary["Read phased from mol info"] += 1
         phase = molecule_phase
     else:
         summary["Reads with no phasing info"] += 1
@@ -555,7 +558,7 @@ def add_arguments(parser):
     parser.add_argument("input_bam",
                         help="BAM file. To read from stdin use '-'. Must be sorted.")
     parser.add_argument("hapcut2_phase_file",
-                        help="Phaseblock file from HapCUT2. Must be sorted.")
+                        help="Phaseblock file from HapCUT2.")
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output phased BAM to file rather then stdout.")
@@ -572,7 +575,7 @@ def add_arguments(parser):
                         help="Include phasing events marked as pruned by HapCUT2. Default: %(default)s.")
     parser.add_argument("--discard-untagged", default=False, action="store_true",
                         help="Discard alignments not tagged with haplotype info from output. Default: %(default)s.")
-    parser.add_argument("--tag-priority", choices=["READ", "MOLECULE", "CONCORDANT"], default="READ", type=str.upper,
+    parser.add_argument("--tag-priority", choices=["READ", "MOLECULE", "CONCORDANT"], default="CONCORDANT", type=str.upper,
                         help="How to prioritise between phasing information."
                              "'READ': Read phase >> Molecule phase,"
                              "'MOLECULE': Molecule phase >> Read phase,"

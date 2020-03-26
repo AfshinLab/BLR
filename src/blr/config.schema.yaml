@@ -69,7 +69,7 @@ properties:
     pattern: "gatk|bcftools|freebayes|deepvariant"
   haplotag_tool:
     type: string
-    description: Whish haplotype tagging tool to use.
+    description: Which haplotype tagging tool to use.
     pattern: "blr|whatshap"
   heap_space:
     type: integer
