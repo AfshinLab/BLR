@@ -14,12 +14,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Add conda to PATH
         if: runner.os == 'macOS'
-        run: echo ::add-path::$CONDA/condabin
+        run: |
+          sudo chown -R $USER /usr/local/miniconda/  # workaround for problem in macOS image
+          echo ::add-path::$CONDA/condabin
       - name: Create Conda environment
         run: |
-          set -x
+          conda info
           envfile=environment.$(echo ${{ runner.os }} | tr A-Z a-z | sed 's|macos|osx|').lock.yml
-          conda create -n bla python=3.7
           conda env create -n testenv -f ${envfile}
           conda install -n testenv flake8 pytest
       - name: Run flake8
