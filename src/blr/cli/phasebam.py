@@ -555,33 +555,32 @@ def decide_haplotype(read_phase, molecule_phase, read, tag_priority, anomaly_fil
 
 
 def add_arguments(parser):
-    parser.add_argument("input_bam",
-                        help="BAM file. To read from stdin use '-'. Must be sorted.")
-    parser.add_argument("hapcut2_phase_file",
-                        help="Phaseblock file from HapCUT2.")
+    arg = parser.add_argument
+    arg("input_bam",
+        help="BAM file. To read from stdin use '-'. Must be sorted.")
+    arg("hapcut2_phase_file",
+        help="Phaseblock file from HapCUT2.")
 
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output phased BAM to file rather then stdout.")
-    parser.add_argument("--anomaly-file-name", default="haplotag_anomalies.tsv",
-                        help="File to output information with anomalous reads, such as those with conflicting read/"
-                             "molecule phasing information. These will also be written to output but will not have "
-                             "any phasing information added to them. Default: %(default)s")
-    parser.add_argument("--min-switch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
-                        help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been"
-                             " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
-    parser.add_argument("--min-missmatch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
-                        help="Minimum phred score for missmatch error at any given variant. Default: %(default)s.")
-    parser.add_argument("--include-pruned", default=False, action="store_true",
-                        help="Include phasing events marked as pruned by HapCUT2. Default: %(default)s.")
-    parser.add_argument("--discard-untagged", default=False, action="store_true",
-                        help="Discard alignments not tagged with haplotype info from output. Default: %(default)s.")
-    parser.add_argument("--tag-priority", choices=["READ", "MOLECULE", "CONCORDANT"], default="CONCORDANT", type=str.upper,
-                        help="How to prioritise between phasing information."
-                             "'READ': Read phase >> Molecule phase,"
-                             "'MOLECULE': Molecule phase >> Read phase,"
-                             "'CONCORDANT': Read phase == Molecule phase (agreement between phases). "
-                             "Default: %(default)s.")
+    arg("-o", "--output", default="-",
+        help="Write output phased BAM to file rather then stdout.")
+    arg("--anomaly-file-name", default="haplotag_anomalies.tsv",
+        help="File to output information with anomalous reads, such as those with conflicting read/"
+             "molecule phasing information. These will also be written to output but will not have "
+             "any phasing information added to them. Default: %(default)s")
+    arg("--min-switch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
+        help="Minimum phred score for switch error at any given variant. Require HapCUT2 to have been"
+             " run using the '--error_analysis_mode 1' option. Default: %(default)s.")
+    arg("--min-missmatch-error", default=30, type=float, choices=range(0, 101), metavar="[0-100]",
+        help="Minimum phred score for missmatch error at any given variant. Default: %(default)s.")
+    arg("--include-pruned", default=False, action="store_true",
+        help="Include phasing events marked as pruned by HapCUT2. Default: %(default)s.")
+    arg("--discard-untagged", default=False, action="store_true",
+        help="Discard alignments not tagged with haplotype info from output. Default: %(default)s.")
+    arg("--tag-priority", choices=["READ", "MOLECULE", "CONCORDANT"], default="CONCORDANT", type=str.upper,
+        help="How to prioritise between phasing information. 'READ': Read phase >> Molecule phase, 'MOLECULE': "
+             "Molecule phase >> Read phase, 'CONCORDANT': Read phase == Molecule phase (agreement between phases). "
+             "Default: %(default)s.")
 
-    parser.add_argument("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
-    parser.add_argument("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")
-    parser.add_argument("--phase-set-tag", default="PS", help="Phase set SAM tag. Default: %(default)s")
+    arg("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
+    arg("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")
+    arg("--phase-set-tag", default="PS", help="Phase set SAM tag. Default: %(default)s")
