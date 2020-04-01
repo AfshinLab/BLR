@@ -1,4 +1,5 @@
 from snakemake.utils import validate
+from blr.utils import ReadGroup
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -15,6 +16,9 @@ elif config["library_type"] == "10x":
 # Import rules for phasing
 include: "rules/phasing.smk"
 
+# Create read group string to tag reads.
+readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
+                      platform="ILLUMINA")
 
 def get_final_targets(wildcards):
     """Define final file names based on configs."""
@@ -121,12 +125,18 @@ rule map_reads:
             "bwa":
                 "bwa mem"
                 " -t {threads}"
+                " -R {readgroup}"
                 " {config[genome_reference]}"
                 " {input.r1_fastq}"
                 " {input.r2_fastq}",
             "bowtie2":
                 "bowtie2"
                 " -p {threads}"
+                " --rg-id {readgroup.identifier}"
+                " --rg {readgroup.LB}"
+                " --rg {readgroup.SM}"
+                " --rg {readgroup.PU}"
+                " --rg {readgroup.PL}"
                 " --reorder"
                 " --maxins 2000"
                 " -x {config[genome_reference]}"
@@ -135,6 +145,7 @@ rule map_reads:
             "minimap2":
                 "minimap2"
                 " -ax sr"
+                " -R {readgroup}"
                 " -t {threads}"
                 " {config[genome_reference]}"
                 " {input.r1_fastq}"
@@ -143,6 +154,7 @@ rule map_reads:
                 "ema align"
                 " -1 <(pigz -cd {input.r1_fastq})"
                 " -2 <(pigz -cd {input.r2_fastq})"
+                " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
                 " -p 10x"
@@ -158,7 +170,7 @@ rule map_reads:
 
 
 rule tagbam:
-    """Add barcodes to BAM files as SAM tags. Also adds a RG tag."""
+    """Add barcodes to BAM files as SAM tags"""
     output:
         bam = "mapped.sorted.tag.bam"
     input:
@@ -167,19 +179,8 @@ rule tagbam:
     shell:
         "blr tagbam"
         " {input.bam}"
-        " -o -"
+        " -o {output.bam}"
         " 2> {log}"
-        " | "
-        "samtools addreplacerg"
-        " -O BAM"
-        " -r ID:1"
-        " -r LB:{config[library_type]}"
-        " -r PU:unit1"
-        " -r SM:20"
-        " -r PL:ILLUMINA"
-        " -"
-        " 2>> {log} "
-        " > {output.bam}"
 
 
 rule clusterrmdup:

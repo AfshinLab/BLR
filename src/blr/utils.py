@@ -167,3 +167,26 @@ def calculate_N50(lengths):
     csumn2 = min(csum[csum >= n2])
     ind = np.where(csum == csumn2)
     return lengths[ind[0][0]]
+
+
+class ReadGroup:
+    """
+    Read group information for read tagging.
+    See SAM format for details: https://samtools.github.io/hts-specs/SAMv1.pdf
+    """
+    def __init__(self, identifier, library, sample, platfrom_unit, platform):
+        self.identifier = identifier
+        self.library = library
+        self.sample = sample
+        self.platform_unit = platfrom_unit
+        self.platform = platform
+
+        self.ID = f"ID:{self.identifier}"
+        self.LB = f"LB:{self.library}"
+        self.SM = f"SM:{self.sample}"
+        self.PU = f"PU:{self.platform_unit}"
+        self.PL = f"PL:{self.platform}"
+
+    def __str__(self):
+        # Repr for '\t' not to be translated
+        return repr("\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL]))
