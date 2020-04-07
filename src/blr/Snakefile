@@ -12,6 +12,8 @@ if config["library_type"] == "blr":
     include: "rules/trim_blr.smk"
 elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
+elif config["library_type"] == "stlfr":
+    include: "rules/trim_stlfr.smk"
 
 # Import rules for phasing
 include: "rules/phasing.smk"
