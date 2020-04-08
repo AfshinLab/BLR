@@ -32,7 +32,7 @@ def main(args):
 
     summary = Counter()
 
-    index_to_barcode = parse_barcodes(args.barcodes)
+    index_to_barcode = {index: barcode for barcode, index in parse_barcodes(args.barcodes)}
 
     in_interleaved = not args.input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -52,14 +52,19 @@ def main(args):
             dnaio.open(args.output1, file2=args.output2, interleaved=out_interleaved, mode="w",
                        fileformat="fastq") as writer:
         for read1, read2 in tqdm(reader, desc="Read pairs processed"):
-            summary["Reads read"] += 1
-            # Header parsing
-            name, r1_rest = read1.name.split(maxsplit=1)
-            _, r2_rest = read2.name.split(maxsplit=1)
+            summary["Read pairs read"] += 1
 
+            name, r1_rest, r2_rest = get_name_and_rests(read1, read2)
+
+            # Remove '/1' from read name and split to get barcode_indeces
             name, barcode_indeces = name.strip("/1").split("#")
 
             barcode = translate_indeces(barcode_indeces, index_to_barcode, summary)
+
+            # Skip read missing barcode for ema mapping.
+            if not barcode and args.mapper == "ema":
+                summary["Read pairs missing barcode"] += 1
+                continue
 
             if barcode:
                 barcode_id = f"{args.barcode_tag}:Z:{barcode}"
@@ -67,47 +72,49 @@ def main(args):
                 if args.mapper == "ema":
                     # The EMA aligner requires reads in 10x format e.g.
                     # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                    new_name = ":".join([name, barcode])
-                    new_name = " ".join((new_name, barcode_id))
+                    new_name = f"{name}:{barcode} {barcode_id}"
                     read1.name, read2.name = new_name, new_name
                 else:
-                    new_name = "_".join([name, barcode_id])
-                    read1.name = " ".join([new_name, r1_rest])
-                    read2.name = " ".join([new_name, r2_rest])
+                    new_name = f"{name}_{barcode_id}"
+                    read1.name = f"{new_name} {r1_rest}"
+                    read2.name = f"{new_name} {r2_rest}"
             else:
                 summary["Read pairs missing barcode"] += 1
-
-                # Skip read missing barcode for ema mapping.
-                if args.mapper == "ema":
-                    continue
+                read1.name = " ".join([name, r1_rest])
+                read2.name = " ".join([name, r2_rest])
 
             # Write to out
             writer.write(read1, read2)
-            summary["Reads written"] += 1
-    print(summary)
+            summary["Read pairs written"] += 1
+
     print_stats(summary)
     logger.info("Finished")
 
 
+def get_name_and_rests(read1, read2):
+    try:
+        name, r1_rest = read1.name.split(maxsplit=1)
+        _, r2_rest = read2.name.split(maxsplit=1)
+        return name, r1_rest, r2_rest
+    except ValueError:
+        return read1.name, str(), str()
+
+
 def translate_indeces(indeces, index_to_barcode, summary):
-    if indeces != "0_0_0":  # stLFR reads are tagged with #0_0_0 if the barcode could not be identified.
+    if indeces == "0_0_0":  # stLFR reads are tagged with #0_0_0 if the barcode could not be identified.
+        summary["Skipped barcode type 0_0_0"] += 1
+        return None
+    else:
         barcodes = [index_to_barcode[int(i)] for i in indeces.split("_") if i != ""]
         summary[f"Barcodes of length {len(barcodes)}"] += 1
-        if barcodes:
-            return "-".join(barcodes)
-    else:
-        summary["Skipped barcode type 0_0_0"] += 1
-    return None
+        return "-".join(barcodes) if barcodes else None
 
 
 def parse_barcodes(file):
-    index_to_barcode = dict()
     with open(file) as f:
         for line in f:
             barcode, index = line.strip().split(maxsplit=1)
-            index_to_barcode[int(index)] = barcode
-
-    return index_to_barcode
+            yield barcode, int(index)
 
 
 def add_arguments(parser):

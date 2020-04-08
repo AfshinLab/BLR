@@ -93,4 +93,4 @@ properties:
     description: Path to stLFR barcodes
   stlfr_adapter:
     type: string
-    description: CTGTCTCTTATACACATCT
+    description: Adaptor sequence for stLFR constructs (from tagmentation)

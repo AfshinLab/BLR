@@ -35,7 +35,7 @@ rule trim_and_tag_stlfr:
         barcodes = "barcodes.txt"
     log:
         trim = "cutadapt_trim.log",
-        tag = "tagstlfr.log"
+        tag = "process_stlfr.log"
     threads: 20
     shell:
         "cutadapt "
