@@ -24,19 +24,16 @@ rule link_to_barcodes:
     shell: "ln -s {config[stlfr_barcodes]} {output}"
 
 
-rule trim_and_tag_stlfr:
-    """Trim away possible 3' atapter and modify header for downstream analysis."""
+rule trim_stlfr:
+    """Trim away possible 3' adapter."""
     output:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz"
+        interleaved_fastq = pipe("trimmed.fastq")
     input:
         r1_fastq = "reads.1.fastq.gz",
         r2_fastq = "reads.2.fastq.gz",
         barcodes = "barcodes.txt"
-    log:
-        trim = "cutadapt_trim.log",
-        tag = "process_stlfr.log"
-    threads: 20
+    log: "cutadapt_trim.log",
+    threads: workflow.cores - 1
     shell:
         "cutadapt "
         " -a {config[stlfr_adapter]}"
@@ -46,14 +43,27 @@ rule trim_and_tag_stlfr:
         " --pair-filter 'both'"
         " -m 25"
         " --interleaved"
+        " -o {output.interleaved_fastq}"
         " {input.r1_fastq}"
         " {input.r2_fastq}"
-        " 2> {log.trim} |"
+        " > {log}"
+
+
+rule tag_stlfr:
+    """Modify header for downstream analysis."""
+    output:
+        r1_fastq = "trimmed.barcoded.1.fastq.gz",
+        r2_fastq = "trimmed.barcoded.2.fastq.gz"
+    input:
+        interleaved_fastq = "trimmed.fastq",
+        barcodes = "barcodes.txt"
+    log: "process_stlfr.log"
+    shell:
         "blr process_stlfr"
         " --o1 {output.r1_fastq}"
         " --o2 {output.r2_fastq}"
         " -b {config[cluster_tag]}"
         " --mapper {config[read_mapper]}"
         " {input.barcodes}"
-        " -"
-        " 2> {log.tag}"
+        " {input.interleaved_fastq}"
+        " 2> {log}"
