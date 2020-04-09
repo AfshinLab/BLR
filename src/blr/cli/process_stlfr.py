@@ -54,34 +54,28 @@ def main(args):
         for read1, read2 in tqdm(reader, desc="Read pairs processed"):
             summary["Read pairs read"] += 1
 
-            name, r1_rest, r2_rest = get_name_and_rests(read1, read2)
+            name = read1.name.split("\t")[0]
 
             # Remove '/1' from read name and split to get barcode_indeces
             name, barcode_indeces = name.strip("/1").split("#")
 
             barcode = translate_indeces(barcode_indeces, index_to_barcode, summary)
 
-            # Skip read missing barcode for ema mapping.
-            if not barcode and args.mapper == "ema":
-                summary["Read pairs missing barcode"] += 1
-                continue
-
             if barcode:
                 barcode_id = f"{args.barcode_tag}:Z:{barcode}"
-
                 if args.mapper == "ema":
                     # The EMA aligner requires reads in 10x format e.g.
                     # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                    new_name = f"{name}:{barcode} {barcode_id}"
-                    read1.name, read2.name = new_name, new_name
+                    name = f"{name}:{barcode} {barcode_id}"
                 else:
-                    new_name = f"{name}_{barcode_id}"
-                    read1.name = f"{new_name} {r1_rest}"
-                    read2.name = f"{new_name} {r2_rest}"
+                    name = f"{name}_{barcode_id}"
             else:
                 summary["Read pairs missing barcode"] += 1
-                read1.name = " ".join([name, r1_rest])
-                read2.name = " ".join([name, r2_rest])
+                if args.mapper == "ema":
+                    continue
+
+            read1.name = name
+            read2.name = name
 
             # Write to out
             writer.write(read1, read2)
@@ -89,15 +83,6 @@ def main(args):
 
     print_stats(summary)
     logger.info("Finished")
-
-
-def get_name_and_rests(read1, read2):
-    try:
-        name, r1_rest = read1.name.split(maxsplit=1)
-        _, r2_rest = read2.name.split(maxsplit=1)
-        return name, r1_rest, r2_rest
-    except ValueError:
-        return read1.name, str(), str()
 
 
 def translate_indeces(indeces, index_to_barcode, summary):
