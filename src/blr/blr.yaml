@@ -5,6 +5,8 @@ cluster_tag: BX    # Used to store barcode cluster id in bam file. 'BX' is 10x g
 molecule_tag: MI  # Used to store molecule ID, same as 10x default.
 num_mol_tag: MN # Used to store number of molecules per barcode
 sequence_tag: RX    # Used to store original barcode sequence in bam file. 'RX' is 10x genomic default
+phase_set_tag: PS # Used to store phase set, same as 10x default. Combined with haplotype it gives phase block.
+haplotype_tag: HP # Used to store haplotype, same as 10x default. Combined with phase set it gives phase block.
 genome_reference:  # Path to indexed reference
 dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
@@ -30,6 +32,10 @@ apply_hamming_correction: false # Apply hamming correction when demultiplexing 1
 reference_variants: # Path to reference variants used for phasing, if None will call variants with `variant_caller`
 phasing_ground_truth: # Path to phased variants used for calculating stats
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
+
+# Tool for tagging haplotype information from phasing onto BAM. 'whatshap' only works for called variants while
+# 'blr' works for phasing with reference variants.
+haplotag_tool: blr # Choose 'whatshap' or 'blr'
 
 ##############################
 # Software-specific settings #

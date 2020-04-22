@@ -6,6 +6,7 @@ import dnaio
 from blr.cli.init import init
 from blr.cli.run import run
 from blr.cli.config import change_config
+from blr.utils import get_bamtag
 
 TESTDATA_BLR_READ1 = Path("testdata/blr_reads.1.fastq.gz")
 TESTDATA_BLR_READ2 = Path("testdata/blr_reads.2.fastq.gz")
@@ -31,6 +32,15 @@ def count_fastq_reads(path):
         n = 0
         for _ in f:
             n += 1
+    return n
+
+
+def count_bam_tags(path, tag):
+    with pysam.AlignmentFile(path, 'rb') as af:
+        n = 0
+        for r in af.fetch(until_eof=True):
+            if get_bamtag(r, tag):
+                n += 1
     return n
 
 
@@ -155,14 +165,17 @@ def test_plot_figures(tmpdir):
     assert Path(workdir / target).is_dir()
 
 
-def test_haplotag(tmpdir):
+@pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
+def test_haplotag(tmpdir, haplotype_tool):
     workdir = tmpdir / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
+        [("genome_reference", REFERENCE_GENOME),
+         ("reference_variants", "null")]
     )
     target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
     run(workdir=workdir, targets=[target])
-    assert bam_has_tag(workdir / target, "HP")
-    assert bam_has_tag(workdir / target, "PS")
+    assert bam_has_tag(workdir / target, "HP")  # Check that tag HP have been added
+    assert bam_has_tag(workdir / target, "PS")  # Check that tag PS have been added
+    assert count_bam_tags((workdir / target), "PS") == count_bam_tags((workdir / target), "HP")  # Confirm same count.
