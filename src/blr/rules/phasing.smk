@@ -67,11 +67,13 @@ rule symlink_reference_phased:
     shell: "ln -s {config[phasing_ground_truth]} {output}"
 
 
+phasing_stats_prefix = "phasing_stats"
+
 rule hapcut2_stats:
     """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
     for details. """
     output:
-        stats = "phasing_stats.txt"
+        stats = expand(f"{phasing_stats_prefix}.{{ext}}", ext=["txt", "tsv"])
     input:
          vcf1 = bamfile_basename + ".phase.phased.VCF",
          vcf2 = "ground_truth.phased.vcf"
@@ -79,26 +81,7 @@ rule hapcut2_stats:
          "blr calculate_haplotype_statistics"
          " -v1 {input.vcf1}"
          " -v2 {input.vcf2}"
-         " > {output.stats}"
-
-rule prep_stats_for_multiqc:
-    output: "phasing_stats.tsv"
-    input: "phasing_stats.txt"
-    run:
-        header = ["Sample Name"]
-        values = [" "]  # No sample name as of current.
-        with open(input[0], "r") as file:
-            for line in file:
-                head, value = line.split(":")
-                header.append(head.strip())
-                if head in ["N50", "AN50"]: # Format N50 and AN50 as per Mbp.
-                    values.append(str(float(value.strip())/1_000_000))
-                else:
-                    values.append(value.strip())
-
-        with open(output[0], "w") as file:
-            print("\t".join(header), file=file)
-            print("\t".join(values), file=file)
+         " -o {phasing_stats_prefix}"
 
 
 rule compress_and_index_phased_vcf:

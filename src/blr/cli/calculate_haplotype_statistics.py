@@ -19,7 +19,14 @@ logger = logging.getLogger(__name__)
 
 def main(args):
     logging.info("Starting analysis")
-    print(vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels))
+    stats = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
+
+    with open(args.output + ".txt", "w") as file:
+        print(stats.to_txt(), file=file)
+
+    with open(args.output + ".tsv", "w") as file:
+        print(stats.to_tsv(), file=file)
+
     logging.info("Finished")
 
 
@@ -356,7 +363,7 @@ class ErrorResult:
         spanlst = sum(self.N50_spanlst.values(), [])
         return statistics.median(spanlst)
 
-    def __str__(self):
+    def to_txt(self):
 
         s = f"switch rate:        {self.get_switch_rate()}\n" \
             f"mismatch rate:      {self.get_mismatch_rate()}\n" \
@@ -365,6 +372,27 @@ class ErrorResult:
             f"AN50:               {self.get_AN50()}\n" \
             f"N50:                {self.get_N50_phased_portion()}\n" \
             f"num snps max blk:   {sum(self.maxblk_snps.values())}"
+
+        return s
+
+    def to_tsv(self):
+
+        # Header. Sample name is included for MultiQC
+        s = "Sample Name\tswitch rate\tmismatch rate\tflat rate\tphased count\tAN50 (Mbp)\tN50 (Mbp)\t" \
+            "num snps max blk\n"
+
+        values = [
+            "",                                           # Need string for MultiQC
+            self.get_switch_rate(),
+            self.get_mismatch_rate(),
+            self.get_flat_error_rate(),
+            self.get_phased_count(),
+            self.get_AN50()/1_000_000,                    # Show as Mbp
+            self.get_N50_phased_portion()/1_000_000,      # Show as Mbp
+            sum(self.maxblk_snps.values())
+        ]
+
+        s += "\t".join(list(map(str, values))) + "\n"
 
         return s
 
@@ -611,3 +639,4 @@ def add_arguments(parser):
                         help="A phased, single sample  VCF file to use as the 'ground truth' haplotype.")
     parser.add_argument('-i', '--indels', action="store_true",
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
+    parser.add_argument("-o", "--output", default="phasing_stats", help="Output file prefix. Default: %(default)s.")
