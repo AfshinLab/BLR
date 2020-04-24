@@ -112,15 +112,17 @@ rule barcode_sort_fastq:
         " pigz > {output.fastq}"
 
 
-rule map_reads:
-    """Map reads using the aligner specified in configs."""
+rule map_sort_tag:
+    """Map reads using the aligner specified in configs. Output is sorted and tagged with barcode."""
     output:
-        bam = "mapped.sorted.bam"
+        bam = "mapped.sorted.tag.bam"
     input:
         r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "ema" else "sorted.1.fastq.gz",
         r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
     threads: 20
-    log: "read_mapping.log"
+    log:
+        map = "read_mapping.log",
+        tag = "tag_bam.log"
     run:
         commands = {
             "bwa":
@@ -163,25 +165,12 @@ rule map_reads:
         command = commands[config["read_mapper"]].format(**locals(), **globals())
 
         shell(
-            "{command} 2> >(tee {log} >&2) |"
+            "{command} 2> {log.map} |"
             "samtools sort -"
-            " -@ {threads}"
-            " -O BAM > {output.bam}"
+            " -@ {threads} |"
+            "blr tagbam -"
+            " -o {output.bam} 2> {log.tag}"
         )
-
-
-rule tagbam:
-    """Add barcodes to BAM files as SAM tags"""
-    output:
-        bam = "mapped.sorted.tag.bam"
-    input:
-        bam = "mapped.sorted.bam"
-    log: "tag_bam.log"
-    shell:
-        "blr tagbam"
-        " {input.bam}"
-        " -o {output.bam}"
-        " 2> {log}"
 
 
 rule clusterrmdup:
