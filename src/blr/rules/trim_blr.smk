@@ -22,22 +22,15 @@ trim_len = sum(map(len, [config["h1"], DBS, config["h2"]]))
 extract_len = len(config["h1"])
 
 
-rule trim_and_tag:
-    """Trim away 5' and possible 3' handles on read1 and trim possible 3' handles on read2.
-    Tag reads with uncorrected and corrected barcode.
-    """
+rule trim:
+    """Trim away 5' and possible 3' handles on read1 and trim possible 3' handles on read2."""
     output:
-        r1_fastq="trimmed.barcoded.1.fastq.gz",
-        r2_fastq="trimmed.barcoded.2.fastq.gz"
+        interleaved_fastq=pipe("trimmed.fastq")
     input:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",
-        uncorrected_barcodes="barcodes.fasta.gz",
-        corrected_barcodes="barcodes.clstr"
-    log:
-        cutadapt="cutadapt_trim.log",
-        tag="tag_fastq.log"
-    threads: 20
+    log: "cutadapt_trim.log"
+    threads: workflow.cores - 1  # rule tag needs one thread
     shell:
         "cutadapt"
         " -g 'XNNN{config[h1]}{DBS}{config[h2]};min_overlap={trim_len}...{config[h3]};optional'"
@@ -47,9 +40,24 @@ rule trim_and_tag:
         " -j {threads}"
         " -m 25"
         " --interleaved"
+        " -o {output.interleaved_fastq}"
         " {input.r1_fastq}"
         " {input.r2_fastq}"
-        " 2> {log.cutadapt} |"
+        " > {log}"
+
+
+rule tag:
+    """Tag reads with uncorrected and corrected barcode."""
+    output:
+        r1_fastq="trimmed.barcoded.1.fastq.gz",
+        r2_fastq="trimmed.barcoded.2.fastq.gz"
+    input:
+        interleaved_fastq="trimmed.fastq",
+        uncorrected_barcodes="barcodes.fasta.gz",
+        corrected_barcodes="barcodes.clstr"
+    log: "tag_fastq.log"
+    threads: 1
+    shell:
         "blr tagfastq"
         " --o1 {output.r1_fastq}"
         " --o2 {output.r2_fastq}"
@@ -58,8 +66,8 @@ rule trim_and_tag:
         " --mapper {config[read_mapper]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
-        " -"
-        " 2> {log.tag}"
+        " {input.interleaved_fastq}"
+        " 2> {log}"
 
 
 rule extract_DBS:
