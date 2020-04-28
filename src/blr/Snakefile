@@ -186,7 +186,7 @@ rule clusterrmdup:
         " {input.bam}"
         " {output.merges}"
         " -o {output.bam}"
-        " -b {config[cluster_tag]} 2>> {log}"
+        " -b {config[cluster_tag]} 2> {log}"
 
 
 rule mark_duplicates:
@@ -245,7 +245,7 @@ rule filterclusters:
         " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
         " -M {config[max_molecules_per_bc]}"
-        " 2>> {log} |"
+        " 2> {log} |"
         " tee {output.bam} |"
         " samtools index  - {output.bai}"
 
@@ -265,7 +265,7 @@ rule bam_to_fastq:
         " -T {config[cluster_tag]},{config[sequence_tag]}"
         " {input.bam}"
         " -1 {output.r1_fastq}"
-        " -2 {output.r2_fastq} 2>> {log}"
+        " -2 {output.r2_fastq} 2> {log}"
 
 
 rule symlink_reference_variants:
