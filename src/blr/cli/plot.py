@@ -3,6 +3,8 @@ Plot data from
 """
 import logging
 import pandas as pd
+import numpy as np
+from collections import OrderedDict
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from pathlib import Path
@@ -14,6 +16,8 @@ ACCEPTED_FILES = [
     "molecule_stats.tsv",   # Output data from 'buildmolecules' in tsv format.
     "barcodes.clstr"        # Output file from starcode clustering of blr library barcodes.
 ]
+
+SIZE_WIDE = (10, 6)
 
 
 def main(args):
@@ -48,7 +52,8 @@ def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
     # - x = reads per cluster
     # - y = frequency
     with Plot("Reads per barcode cluster histogram", output_dir=directory) as (fig, ax):
-        data["Reads"].plot(ax=ax, logy=True, kind="hist")
+        bins = np.logspace(0, np.log10(data['Reads'].max()), num=10)
+        data["Reads"].plot(ax=ax, bins=bins, logy=True, logx=True, kind="hist")
         ax.set_xlabel("Reads per cluster")
 
     # Cumulative sum of read count starting from largest cluster
@@ -62,8 +67,8 @@ def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
     # Histogram over components per barcode cluster
     # - x = number of components per cluster
     # - y = frequency
-    with Plot("Number of components per barcode cluster histogram", output_dir=directory) as (fig, ax):
-        data["Size"].plot(ax=ax, logy=True, kind="hist")
+    with Plot("Nr of components per barcode cluster histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
+        data["Size"].plot(ax=ax, logy=True, bins=data["Size"].max(), kind="hist")
         ax.set_xlabel("Nr components per cluster")
 
     # Histogram of length for canonical fragment
@@ -82,9 +87,13 @@ def process_molecule_stats(file: Path, directory: Path):
 def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     # Histogram of molecule length distribution
     # - x = molecule length in kbp
-    # - y = frequency
-    with Plot("Molecule length histogram", output_dir=directory) as (fig, ax):
-        data["Length"].plot(ax=ax, kind="hist")
+    # - y = sum of lengths in bin
+    with Plot("Molecule length histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
+        bins, weights = bin_sum(data["Length"], binsize=2000)
+
+        plt.hist(bins[:-1], bins, weights=list(weights))
+        ax.set_ylabel("Total DNA mass")
+        ax.set_yticklabels([])
         ax.set_xlabel("Molecule length (kbp)")
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
 
@@ -105,7 +114,9 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     # - x = reads per kilobase molecule
     # - y = frequency
     with Plot("Read per kilobase molecule histogram", output_dir=directory) as (fig, ax):
-        read_per_kb.plot(ax=ax, kind="hist", title="Read per kilobase molecule histogram")
+        max_count = max(map(int, read_per_kb))
+        read_per_kb.plot(ax=ax, bins=range(0, max_count+1), kind="hist", density=True,
+                         title="Read per kilobase molecule histogram")
         ax.set_xlabel("Read count per kbp molecule")
 
     # Histogram of molecule read coverage
@@ -131,18 +142,28 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     # - x = sum of molecule lengths for barcode
     # - y = frequency
     barcode_len = data.groupby("Barcode")["Length"].sum()
-    with Plot("Total molecule length per barcode histogram", output_dir=directory) as (fig, ax):
+    with Plot("Total molecule length per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
         barcode_len.plot(ax=ax, kind="hist")
         ax.set_xlabel("Sum molecule length per barcode (kbp)")
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
 
     # Molecules per barcode
     # - x = molecules per barcode
-    # - y = frequency
+    # - y = log frequency
     barcode_mols = data.groupby("Barcode")["NrMolecules"].count()
-    with Plot("Molecules per barcode histogram", output_dir=directory) as (fig, ax):
-        barcode_mols.plot(ax=ax, kind="hist")
+    with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
+        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+1), kind="hist")
         ax.set_xlabel("Molecules per barcode")
+        ax.set_yscale('log')
+
+
+def bin_sum(data, binsize=2000):
+    bins = range(0, max(data) + binsize, binsize)
+    weights = OrderedDict({b: 0 for b in bins[:-1]})
+    for value in data:
+        current_bin = int(value / binsize) * binsize
+        weights[current_bin] += value
+    return bins, weights.values()
 
 
 class Plot:
@@ -150,8 +171,8 @@ class Plot:
     Plotting class for automatic filename generation, logging and file output. Using the defaults a PNG file with the
     suffix '_mqc.png' is outputed where 'mqc' makes the file detectable as custom content by MultiQC.
     """
-    def __init__(self, title: str, output_dir: Path):
-        self.fig, self.ax = plt.subplots()
+    def __init__(self, title: str, output_dir: Path, figsize=(6.4, 4.8)):
+        self.fig, self.ax = plt.subplots(figsize=figsize)
         self.title = title
         self.filename = self._make_filename()
         if output_dir:
