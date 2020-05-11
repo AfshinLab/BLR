@@ -78,8 +78,6 @@ rule fastqc_raw_reads:
 
 def get_multiqc_input(wildcards):
     inputs = [
-        "trimmed.barcoded.1_fastqc.html",
-        "trimmed.barcoded.2_fastqc.html",
         "final.bam",
         "figures",
         "final.mosdepth.global.dist.txt",
@@ -96,6 +94,9 @@ def get_multiqc_input(wildcards):
     ]
     if config["phasing_ground_truth"]:
         inputs.append("final.phasing_stats.txt")
+
+    if config["read_mapper"] != "lariat":
+        inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
     return inputs
 
 
@@ -139,7 +140,7 @@ rule barcode_sort_fastq:
     Exmaple: @ST-E00269:339:H27G2CCX2:7:1102:21186:8060:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
     """
     output:
-        fastq = "sorted.{nr}.fastq.gz"
+        fastq = "sorted.{nr, 1|2}}.fastq.gz"
     input:
         fastq = "trimmed.barcoded.{nr}.fastq.gz"
     shell:
@@ -150,13 +151,34 @@ rule barcode_sort_fastq:
         " pigz > {output.fastq}"
 
 
+rule barcode_sort_fastq_lariat:
+    """Sort lariat type interleaved fastq"""
+    output:
+        fastq = "sorted.interleaved.fastq.gz"
+    input:
+        fastq = "trimmed.barcoded.interleaved.fastq.gz"
+    shell:
+        "pigz -cd -p 1 {input.fastq} |"
+        " paste - - - - - - - - - |"
+        " sort -k6 |"
+        " tr '\t' '\n' |"
+        " pigz > {output.fastq}"
+
+
+def map_input(wildcards):
+    if config["read_mapper"] == "ema":
+        return {"r1_fastq": "sorted.1.fastq.gz", "r2_fastq": "sorted.2.fastq.gz"}
+    elif config["read_mapper"] == "lariat":
+        return {"interleaved": "sorted.interleaved.fastq.gz"}
+    else:
+        return {"r1_fastq": "trimmed.barcoded.1.fastq.gz", "r2_fastq": "trimmed.barcoded.2.fastq.gz"}
+
+
 rule map_sort_tag:
     """Map reads using the aligner specified in configs. Output is sorted and tagged with barcode."""
     output:
         bam = "initialmapping.bam"
-    input:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "ema" else "sorted.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
+    input: unpack(map_input)
     threads: 20
     log:
         map = "read_mapping.log",
@@ -198,7 +220,36 @@ rule map_sort_tag:
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
-                " -p 10x"
+                " -p 10x",
+            "lariat":
+                # Experimental addition!
+                # Lariat creates a output directory with three files:
+                #  - 000000-chrA_0000000000_pos_bucketed.bam -> Mapped barcode tagged reads for chunk (multiple if run
+                #    on several chunks)
+                #  - ZZZ_unmapped_pos_bucketed.bam --> Unmapped reads
+                #  - bc_sorted_bam.bam --> Concatenated BAM with all reads.
+                # Only the `bc_sorted_bam.bam` is used currently and the rest deleted on step completion. Lariat does not
+                # add read groups (or I cannot figure out how) so this is done separately.
+                "mkdir -p lariat_tmp"
+                " && "
+                "trap 'rm -rf lariat_tmp' EXIT"
+                " && "
+                "lariat"
+                " -reads={input.interleaved}"
+                " -genome={config[genome_reference]}"
+                " -threads={threads}"
+                " -trim_length=0"
+                " -first_chunk=True"
+                " -output=lariat_tmp"
+                " -sample_id={readgroup.sample} &> {log.map}"
+                " && "  
+                "samtools addreplacerg"  
+                " -r {readgroup.ID}"
+                " -r {readgroup.LB}"
+                " -r {readgroup.SM}"
+                " -r {readgroup.PL}"
+                " -r {readgroup.PU}"
+                " lariat_tmp/bc_sorted_bam.bam"
         }
         command = commands[config["read_mapper"]]
 
@@ -206,7 +257,7 @@ rule map_sort_tag:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
 
         shell(
-            command + " 2> {log.map} | "
+            command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam}" +

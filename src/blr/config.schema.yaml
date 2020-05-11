@@ -23,7 +23,7 @@ properties:
     default: HP
   read_mapper:
     type: string
-    pattern: "bwa|bowtie2|minimap2|ema"
+    pattern: "bwa|bowtie2|minimap2|ema|lariat"
     description: Which read mapper to use
   genome_reference:
     type: [ "string", "null" ]
