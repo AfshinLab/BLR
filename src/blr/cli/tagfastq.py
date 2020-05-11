@@ -21,6 +21,7 @@ the read by including it in the header.
 import logging
 import sys
 import dnaio
+from xopen import xopen
 from itertools import islice
 from collections import Counter
 import heapq
@@ -94,8 +95,7 @@ def run_tagfastq(
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r",
                     fileformat="fastq") as reader, \
-            dnaio.open(output1, file2=output2, interleaved=out_interleaved, mode="w",
-                       fileformat="fastq") as writer, \
+            Output(output1, output2, interleaved=out_interleaved, mapper=mapper) as writer, \
             BarcodeReader(uncorrected_barcodes) as uncorrected_barcode_reader:
 
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
@@ -104,6 +104,7 @@ def run_tagfastq(
             name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
             _, nr_and_index2 = read2.name.split(maxsplit=1)
 
+            sample_index = nr_and_index1.split(':')[-1]
             uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
             corrected_barcode_seq = None
 
@@ -121,15 +122,15 @@ def run_tagfastq(
                     new_name = ":".join([name_and_pos, corrected_barcode_seq])
                     new_name = " ".join((new_name, corr_barcode_id))
                     read1.name, read2.name = new_name, new_name
-                else:
+                elif args.mapper != "lariat":
                     new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
                     read1.name = " ".join([new_name, nr_and_index1])
                     read2.name = " ".join([new_name, nr_and_index2])
             else:
                 summary["Reads missing barcode"] += 1
 
-                # EMA aligner cannot handle reads without barcodes so these are skipped.
-                if mapper == "ema":
+                # EMA and lairat aligner cannot handle reads without barcodes so these are skipped.
+                if mapper in ["ema", "lariat"]:
                     continue
 
             # Write to out
@@ -154,6 +155,21 @@ def run_tagfastq(
                     chunk_id += 1
                     tmp_writer = open(tmpdir / chunk_file_template.replace("*", str(chunk_id)), "w")
 
+            elif mapper == "lariat":
+                corrected_barcode_qual = "K" * len(corrected_barcode_seq)
+                sample_index_qual = "K" * (len(sample_index))
+                print(
+                    f"@{name_and_pos}",
+                    read1.sequence,
+                    read1.qualities,
+                    read2.sequence,
+                    read2.qualities,
+                    f"{corrected_barcode_seq}-1",
+                    corrected_barcode_qual,
+                    sample_index,
+                    sample_index,
+                    sep="\n", file=writer
+                )
             else:
                 summary["Read pairs written"] += 1
                 writer.write(read1, read2)
@@ -269,6 +285,26 @@ class BarcodeReader:
 
     def close(self):
         self._file.close()
+
+
+class Output:
+    def __init__(self, file1, file2=None, interleaved=False, mapper=None):
+        if mapper == "lariat":
+            self._open_file = xopen(file1, mode='w')
+        else:
+            if interleaved:
+                self._open_file = dnaio.open(file1, interleaved=True, mode="w", fileformat="fastq")
+            else:
+                self._open_file = dnaio.open(file1, file2=file2, mode="w", fileformat="fastq")
+
+    def __enter__(self):
+        return self._open_file
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._open_file.close()
+
+    def write(self, *args):
+        return self._open_file.write(*args)
 
 
 def add_arguments(parser):

@@ -46,28 +46,50 @@ rule trim:
         " > {log}"
 
 
-rule tag:
-    """Tag reads with uncorrected and corrected barcode."""
-    output:
-        r1_fastq="trimmed.barcoded.1.fastq.gz",
-        r2_fastq="trimmed.barcoded.2.fastq.gz"
-    input:
-        interleaved_fastq="trimmed.fastq",
-        uncorrected_barcodes="barcodes.fasta.gz",
-        corrected_barcodes="barcodes.clstr"
-    log: "tag_fastq.log"
-    threads: 1
-    shell:
-        "blr tagfastq"
-        " --o1 {output.r1_fastq}"
-        " --o2 {output.r2_fastq}"
-        " -b {config[cluster_tag]}"
-        " -s {config[sequence_tag]}"
-        " --mapper {config[read_mapper]}"
-        " {input.uncorrected_barcodes}"
-        " {input.corrected_barcodes}"
-        " {input.interleaved_fastq}"
-        " 2> {log}"
+if config["read_mapper"] != "lariat":
+    rule tag:
+        """Tag reads with uncorrected and corrected barcode."""
+        output:
+            r1_fastq="trimmed.barcoded.1.fastq.gz",
+            r2_fastq="trimmed.barcoded.2.fastq.gz"
+        input:
+            interleaved_fastq="trimmed.fastq",
+            uncorrected_barcodes="barcodes.fasta.gz",
+            corrected_barcodes="barcodes.clstr"
+        log: "tag_fastq.log"
+        threads: 1
+        shell:
+            "blr tagfastq"
+            " --o1 {output.r1_fastq}"
+            " --o2 {output.r2_fastq}"
+            " -b {config[cluster_tag]}"
+            " -s {config[sequence_tag]}"
+            " --mapper {config[read_mapper]}"
+            " {input.uncorrected_barcodes}"
+            " {input.corrected_barcodes}"
+            " {input.interleaved_fastq}"
+            " 2> {log}"
+else:
+    rule tag_interleaved:
+        """Tag reads with uncorrected and corrected barcode."""
+        output:
+            r1_fastq="trimmed.barcoded.interleaved.fastq.gz"
+        input:
+            interleaved_fastq="trimmed.fastq",
+            uncorrected_barcodes="barcodes.fasta.gz",
+            corrected_barcodes="barcodes.clstr"
+        log: "tag_fastq.log"
+        threads: 1
+        shell:
+            "blr tagfastq"
+            " --o1 {output.r1_fastq}"
+            " -b {config[cluster_tag]}"
+            " -s {config[sequence_tag]}"
+            " --mapper {config[read_mapper]}"
+            " {input.uncorrected_barcodes}"
+            " {input.corrected_barcodes}"
+            " {input.interleaved_fastq}"
+            " 2> {log}"
 
 
 rule extract_DBS:
