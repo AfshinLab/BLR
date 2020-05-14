@@ -27,9 +27,10 @@ def get_final_targets(wildcards):
         "reads.2.final.fastq.gz",
         "multiqc_report.html"
     ]
-    if config["reference_variants"]:
+    if config["reference_variants"] and config["phasing_ground_truth"]:
         input_files.append("phasing_stats.txt")
-    elif config["variant_caller"] == "gatk" and config["BQSR"]:
+
+    if config["variant_caller"] == "gatk" and config["BQSR"]:
         input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.phase.bam")
     else:
         input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam")
@@ -57,6 +58,18 @@ rule fastqc_raw_reads:
         " 2> {log}"
 
 
+def get_multiqc_input(wildcards):
+    inputs = [
+        "trimmed.barcoded.1_fastqc.html",
+        "trimmed.barcoded.2_fastqc.html",
+        "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
+        "figures",
+    ]
+    if config["reference_variants"] and config["phasing_ground_truth"]:
+        inputs.append("phasing_stats.tsv")
+
+    return inputs
+
 rule multiqc_summarize:
     """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
     more input files it controls when snakemake runs the multiqc summary.
@@ -65,11 +78,7 @@ rule multiqc_summarize:
         multiqc_data_dir = directory("multiqc_data"),
         summarized_reports = "multiqc_report.html"
     input:
-        raw_read_1_qc = "trimmed.barcoded.1_fastqc.html",
-        raw_read_2_qc = "trimmed.barcoded.2_fastqc.html",
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        plots = "figures",
-        phasing_data = "phasing_stats.tsv"
+        get_multiqc_input
     log:
         "multiqc.log"
     shell:
