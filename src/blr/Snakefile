@@ -17,6 +17,8 @@ elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
 elif config["library_type"] == "stlfr":
     include: "rules/trim_stlfr.smk"
+elif config["library_type"] == "tellseq":
+    include: "rules/trim_tellseq.smk"
 
 # Import rules for phasing
 include: "rules/phasing.smk"
