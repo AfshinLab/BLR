@@ -16,8 +16,6 @@ from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50
 
 logger = logging.getLogger(__name__)
 
-MOL_STATS_FILENAME = "molecule_stats.tsv"
-
 
 def main(args):
     summary = Counter()
@@ -57,10 +55,10 @@ def main(args):
             openout.write(read)
 
     # Write molecule/barcode file stats
-    if args.stats_files:
-        logger.info("Writing statistics files")
+    if args.stats_tsv:
+        logger.info(f"Writing {args.stats_tsv}")
         df = compute_molecule_stats_dataframe(bc_to_mol_dict)
-        df.to_csv(MOL_STATS_FILENAME, sep="\t", index=False)
+        df.to_csv(args.stats_tsv, sep="\t", index=False)
         update_summary_from_molecule_stats(df, summary)
     print_stats(summary, name=__name__)
 
@@ -284,8 +282,8 @@ def add_arguments(parser):
                              "%(default)s")
     parser.add_argument("-b", "--barcode-tag", default="BX",
                         help="SAM tag for storing the error corrected barcode. Default: %(default)s")
-    parser.add_argument("-s", "--stats-files", action="store_true",
-                        help="Write barcode/molecule statistics and data file.")
+    parser.add_argument("-s", "--stats-tsv", metavar="FILE",
+                        help="Write molecule stats in TSV format to FILE")
     parser.add_argument("-m", "--molecule-tag", default="MI",
                         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
                              "Default: %(default)s")
