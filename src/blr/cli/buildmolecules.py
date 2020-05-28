@@ -78,7 +78,7 @@ def parse_reads(pysam_openfile, barcode_tag, summary):
             is_good = False
 
         if read.is_unmapped:
-            summary[f"Unmapped reads"] += 1
+            summary["Unmapped reads"] += 1
             is_good = False
 
         if is_good:
