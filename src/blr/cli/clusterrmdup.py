@@ -68,7 +68,7 @@ def main(args):
     barcodes_written = set()
     with PySAMIO(args.input, args.output, __name__) as (infile, out), \
             open(args.merge_log, "w") as bc_merge_file:
-        print(f"Previous_barcode,New_barcode", file=bc_merge_file)
+        print("Previous_barcode,New_barcode", file=bc_merge_file)
         for read in tqdm(infile.fetch(until_eof=True), desc="Writing output", total=summary["Total reads"]):
 
             # If read barcode in merge dict, change tag and header to compensate.
