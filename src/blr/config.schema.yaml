@@ -79,7 +79,7 @@ properties:
     description: Heap space to run java scripts with (gatk).
   library_type:
     type: string
-    pattern: "blr|10x"
+    pattern: "blr|10x|stlfr"
     description: Library type.
   barcode_whitelist:
     type: [ "string", "null" ]
@@ -88,3 +88,9 @@ properties:
     type: boolean
     default: false
     description: Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
+  stlfr_barcodes:
+    type: ["string", "null"]
+    description: Path to stLFR barcodes
+  stlfr_adapter:
+    type: string
+    description: Adaptor sequence for stLFR constructs (from tagmentation)

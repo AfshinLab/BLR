@@ -13,6 +13,9 @@ TESTDATA_BLR_READ2 = Path("testdata/blr_reads.2.fastq.gz")
 TESTDATA_TENX_READ1 = Path("testdata/tenx_reads.1.fastq.gz")
 TESTDATA_TENX_READ2 = Path("testdata/tenx_reads.2.fastq.gz")
 TESTDATA_TENX_BARCODES = str(Path("testdata/tenx_barcode_whitelist.txt").absolute())
+TESTDATA_STLFR_READ1 = Path("testdata/stlfr_reads.1.fastq.gz")
+TESTDATA_STLFR_READ2 = Path("testdata/stlfr_reads.2.fastq.gz")
+TESTDATA_STLFR_BARCODES = str(Path("testdata/stlfr_barcodes.txt").absolute())
 DEFAULT_CONFIG = "blr.yaml"
 REFERENCE_GENOME = str(Path("testdata/chr1mini.fasta").absolute())
 REFERENCE_VARIANTS = str(Path("testdata/HG002_GRCh38_GIAB_highconf.chr1mini.vcf").absolute())
@@ -87,6 +90,19 @@ def test_trim_tenx(tmpdir):
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TENX_READ1, TESTDATA_TENX_READ2), trimmed):
         assert count_fastq_reads(raw) == count_fastq_reads(Path(workdir / trimmed))
+
+
+def test_trim_stlfr(tmpdir):
+    workdir = tmpdir / "analysis"
+    init(workdir, TESTDATA_STLFR_READ1, "stlfr")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES)]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed)
+    for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
+        assert count_fastq_reads(raw) >= count_fastq_reads(Path(workdir / trimmed))
 
 
 @pytest.mark.parametrize("read_mapper", ["bwa", "bowtie2", "minimap2", "ema"])

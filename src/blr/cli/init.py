@@ -31,7 +31,7 @@ def add_arguments(parser):
         "-l",
         "--library-type",
         required=True,
-        choices=["blr", "10x"],
+        choices=["blr", "10x", "stlfr"],
         help="Select library type from currently available technologies: %(choices)s."
     )
     parser.add_argument("directory", type=Path, help="New analysis directory to create")

@@ -12,13 +12,16 @@ if config["library_type"] == "blr":
     include: "rules/trim_blr.smk"
 elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
+elif config["library_type"] == "stlfr":
+    include: "rules/trim_stlfr.smk"
 
 # Import rules for phasing
 include: "rules/phasing.smk"
 
 # Create read group string to tag reads.
+platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
 readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
-                      platform="ILLUMINA")
+                      platform=platform)
 
 def get_final_targets(wildcards):
     """Define final file names based on configs."""
