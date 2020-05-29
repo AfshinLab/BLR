@@ -16,6 +16,9 @@ TESTDATA_TENX_BARCODES = str(Path("testdata/tenx_barcode_whitelist.txt").absolut
 TESTDATA_STLFR_READ1 = Path("testdata/stlfr_reads.1.fastq.gz")
 TESTDATA_STLFR_READ2 = Path("testdata/stlfr_reads.2.fastq.gz")
 TESTDATA_STLFR_BARCODES = str(Path("testdata/stlfr_barcodes.txt").absolute())
+TESTDATA_TELLSEQ_READ1 = Path("testdata/tellseq_reads.1.fastq.gz")
+TESTDATA_TELLSEQ_READ2 = Path("testdata/tellseq_reads.2.fastq.gz")
+TESTDATA_TELLSEQ_INDEX = str(Path("testdata/tellseq_index.fastq.gz"))
 DEFAULT_CONFIG = "blr.yaml"
 REFERENCE_GENOME = str(Path("testdata/chr1mini.fasta").absolute())
 REFERENCE_VARIANTS = str(Path("testdata/HG002_GRCh38_GIAB_highconf.chr1mini.vcf").absolute())
@@ -102,6 +105,19 @@ def test_trim_stlfr(tmpdir):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
+        assert count_fastq_reads(raw) >= count_fastq_reads(Path(workdir / trimmed))
+
+
+def test_trim_tellseq(tmpdir):
+    workdir = tmpdir / "analysis"
+    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("tellseq_index", TESTDATA_TELLSEQ_INDEX)]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed)
+    for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed):
         assert count_fastq_reads(raw) >= count_fastq_reads(Path(workdir / trimmed))
 
 
