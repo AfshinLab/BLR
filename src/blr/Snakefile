@@ -28,15 +28,11 @@ def get_final_targets(wildcards):
     input_files = [
         "reads.1.final.fastq.gz",
         "reads.2.final.fastq.gz",
-        "multiqc_report.html"
+        "multiqc_report.html",
+        "mapped.calling.bam",
     ]
     if config["reference_variants"] and config["phasing_ground_truth"]:
-        input_files.append("phasing_stats.txt")
-
-    if config["variant_caller"] == "gatk" and config["BQSR"]:
-        input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.phase.bam")
-    else:
-        input_files.append(f"mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam")
+        input_files.append("mapped.phasing_stats.txt")
 
     return input_files
 
@@ -69,9 +65,10 @@ def get_multiqc_input(wildcards):
         "figures/mapped",
     ]
     if config["reference_variants"] and config["phasing_ground_truth"]:
-        inputs.append("phasing_stats.tsv")
+        inputs.append("mapped.phasing_stats.tsv")
 
     return inputs
+
 
 rule multiqc_summarize:
     """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
@@ -296,12 +293,6 @@ rule bam_to_fastq:
         " -2 {output.r2_fastq} 2> {log}"
 
 
-rule symlink_reference_variants:
-    output: "variants.reference.vcf"
-    shell:
-        "ln -s {config[reference_variants]} {output}"
-
-
 rule recal_base_qual_scores:
     """Recalibrate base calling qualities"""
     output:
@@ -335,6 +326,23 @@ rule apply_recal:
         " 2> {log}"
 
 
+def get_input_calling_bam(wildcards):
+    basename = f"{wildcards.base}.sorted.tag.bcmerge.mkdup.mol.filt"
+    if config["variant_caller"] == "gatk" and config["BQSR"]:
+        basename += ".BQSR"
+    return f"{basename}.bam"
+
+
+rule symlink_calling_bam:
+    # The BAM file (with all preprocesing applied) used for calling variants
+    output:
+        bam = "{base}.calling.bam"
+    input:
+        bam = get_input_calling_bam
+    shell:
+        "ln -s {input.bam} {output.bam}"
+
+
 rule index_bam:
     output:
         bai = "{base}.bam.bai"
@@ -347,22 +355,14 @@ rule index_bam:
         " {output.bai}"
 
 
-def get_input_call_variants(wildcards):
-    basename = "mapped.sorted.tag.bcmerge.mkdup.mol.filt"
-    if config["variant_caller"] == "gatk" and config["BQSR"]:
-        basename += ".BQSR"
-
-    return {"bam": f"{basename}.bam",
-            "bai": f"{basename}.bam.bai"}
-
-
 rule call_variants:
     """Call variants using the selected variant caller from configs."""
     output:
-         vcf = "variants.called.vcf"
+        vcf = "{base}.variants.called.vcf"
     input:
-         unpack(get_input_call_variants)
-    log: "variants.called.vcf.log"
+        bam = "{base}.calling.bam",
+        bai = "{base}.calling.bam.bai",
+    log: "{base}.variants.called.vcf.log"
     threads: 2
     run:
         commands = {
@@ -409,7 +409,22 @@ rule call_variants:
                 }
 
         command = commands[config["variant_caller"]].format(**locals(), **globals())
-
         shell(
             "{command}"
         )
+
+
+def get_phase_input_vcf(wildcards):
+    if config["reference_variants"]:
+        return config["reference_variants"]
+    else:
+        return f"{wildcards.base}.variants.called.vcf"
+
+
+rule symlink_phase_input_vcf:
+    output:
+        vcf = "{base}.phaseinput.vcf"
+    input:
+        vcf = get_phase_input_vcf
+    shell:
+        "ln -s {input.vcf} {output.vcf}"
