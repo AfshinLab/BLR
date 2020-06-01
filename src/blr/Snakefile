@@ -173,7 +173,8 @@ rule map_sort_tag:
                 " -p 10x"
         }
         command = commands[config["read_mapper"]]
-        shell(command + " 2> {log.map} |"
+        shell(
+            command + " 2> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam} 2> {log.sort}"
@@ -351,6 +352,24 @@ rule index_bam:
         "samtools index"
         " {input.bam}"
         " {output.bai}"
+
+
+rule compress_vcf:
+    output:
+        vcf_gz = "{base}.vcf.gz",
+    input:
+        vcf = "{base}.vcf"
+    shell:
+        "bgzip -c {input.vcf} > {output.vcf_gz}"
+
+
+rule index_vcf:
+    output:
+        "{base}.vcf.gz.tbi"
+    input:
+        vcf = "{base}.vcf.gz"
+    shell:
+        "tabix -p vcf {input.vcf}"
 
 
 rule call_variants:

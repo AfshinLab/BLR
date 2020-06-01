@@ -41,7 +41,7 @@ rule hapcut2_phasing:
     """Phase heterozygous variants using HapCUT2. Output phased VCF"""
     output:
         phase = "{base}.calling.phase",
-        phased_vcf = "{base}.calling.phase.phased.VCF"
+        phased_vcf = "{base}.calling.phased.vcf"
     input:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",
@@ -54,7 +54,8 @@ rule hapcut2_phasing:
         " --out {output.phase}"
         " --error_analysis_mode 1"
         " --outvcf 1 2> {log}"
-
+        " && "
+        "mv {output.phase}.phased.VCF {output.phased_vcf}"
 
 
 rule symlink_reference_phased:
@@ -69,7 +70,7 @@ rule hapcut2_stats:
     output:
         stats = expand("{{base}}.phasing_stats.{ext}", ext=["txt", "tsv"])
     input:
-        vcf1 = "{base}.calling.phase.phased.VCF",
+        vcf1 = "{base}.calling.phased.vcf",
         vcf2 = "ground_truth.phased.vcf"
     params:
         stats_prefix = "{base}.phasing_stats"
@@ -80,19 +81,6 @@ rule hapcut2_stats:
         " -o {params.stats_prefix}"
 
 
-rule compress_and_index_phased_vcf:
-    "Compress and index VCF files."
-    output:
-        vcf = "{base}.calling.phase.phased.vcf.gz",
-        index = "{base}.calling.phase.phased.vcf.gz.tbi"
-    input:
-        vcf = "{base}.calling.phase.phased.VCF"
-    shell:
-        "bgzip -c {input.vcf} > {output.vcf}"
-        " && "
-        "tabix -p vcf {output.vcf}"
-
-
 def get_haplotag_input(wildcards):
     inputfiles = {"bam": f"{wildcards.base}.calling.bam"}
     if config["reference_variants"] or config["haplotag_tool"] == "blr":
@@ -101,8 +89,8 @@ def get_haplotag_input(wildcards):
         })
     elif config["haplotag_tool"] == "whatshap":
         inputfiles.update({
-            "vcf": f"{wildcards.base}.calling.phase.phased.vcf.gz",
-            "vcf_index": f"{wildcards.base}.calling.phase.phased.vcf.gz.tbi",
+            "vcf": f"{wildcards.base}.calling.phased.vcf.gz",
+            "vcf_index": f"{wildcards.base}.calling.phased.vcf.gz.tbi",
         })
     return inputfiles
 
@@ -113,7 +101,7 @@ rule haplotag:
     Adds HP tag with haplotype (0 or 1) and PS tag with phase set information.
     """
     output:
-        bam = "{base}.calling.phase.bam"
+        bam = "{base}.calling.phased.bam"
     input:
         unpack(get_haplotag_input)
     log: "{base}.haplotag.log"

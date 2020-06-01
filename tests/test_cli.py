@@ -190,7 +190,7 @@ def test_haplotag(tmpdir, haplotype_tool):
         [("genome_reference", REFERENCE_GENOME),
          ("reference_variants", "null")]
     )
-    target = "mapped.calling.phase.bam"
+    target = "mapped.calling.phased.bam"
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")  # Check that tag HP have been added
     assert bam_has_tag(workdir / target, "PS")  # Check that tag PS have been added
