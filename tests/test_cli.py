@@ -8,18 +8,20 @@ from blr.cli.run import run
 from blr.cli.config import change_config
 from blr.utils import get_bamtag
 
-TESTDATA_BLR_READ1 = Path("testdata/blr_reads.1.fastq.gz")
-TESTDATA_BLR_READ2 = Path("testdata/blr_reads.2.fastq.gz")
-TESTDATA_TENX_READ1 = Path("testdata/tenx_reads.1.fastq.gz")
-TESTDATA_TENX_READ2 = Path("testdata/tenx_reads.2.fastq.gz")
-TESTDATA_TENX_BARCODES = str(Path("testdata/tenx_barcode_whitelist.txt").absolute())
-TESTDATA_STLFR_READ1 = Path("testdata/stlfr_reads.1.fastq.gz")
-TESTDATA_STLFR_READ2 = Path("testdata/stlfr_reads.2.fastq.gz")
-TESTDATA_STLFR_BARCODES = str(Path("testdata/stlfr_barcodes.txt").absolute())
+TESTDATA = Path("blr-testdata")
+
+TESTDATA_BLR_READ1 = TESTDATA / "blr_reads.1.fastq.gz"
+TESTDATA_BLR_READ2 = TESTDATA / "blr_reads.2.fastq.gz"
+TESTDATA_TENX_READ1 = TESTDATA / "tenx_reads.1.fastq.gz"
+TESTDATA_TENX_READ2 = TESTDATA / "tenx_reads.2.fastq.gz"
+TESTDATA_TENX_BARCODES = str((TESTDATA / "tenx_barcode_whitelist.txt").absolute())
+TESTDATA_STLFR_READ1 = TESTDATA / "stlfr_reads.1.fastq.gz"
+TESTDATA_STLFR_READ2 = TESTDATA / "stlfr_reads.2.fastq.gz"
+TESTDATA_STLFR_BARCODES = str((TESTDATA / "stlfr_barcodes.txt").absolute())
 DEFAULT_CONFIG = "blr.yaml"
-REFERENCE_GENOME = str(Path("testdata/chr1mini.fasta").absolute())
-REFERENCE_VARIANTS = str(Path("testdata/HG002_GRCh38_GIAB_highconf.chr1mini.vcf").absolute())
-DB_SNP = str(Path("testdata/dbSNP.chr1mini.vcf.gz").absolute())
+REFERENCE_GENOME = str((TESTDATA / "chr1mini.fasta").absolute())
+REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.chr1mini.vcf").absolute())
+DB_SNP = str((TESTDATA / "dbSNP.chr1mini.vcf.gz").absolute())
 
 
 def count_bam_alignments(path):
