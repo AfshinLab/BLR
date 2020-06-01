@@ -18,26 +18,28 @@ else
   md5=md5sum
 fi
 
-( cd testdata && bwa index chr1mini.fasta )
-( cd testdata && bowtie2-build chr1mini.fasta chr1mini.fasta > /dev/null )
-( cd testdata && samtools faidx chr1mini.fasta )
-if test ! -f testdata/chr1mini.dict; then ( cd testdata && gatk CreateSequenceDictionary -R chr1mini.fasta ); fi
+pushd blr-testdata
+bwa index chr1mini.fasta
+bowtie2-build chr1mini.fasta chr1mini.fasta > /dev/null
+samtools faidx chr1mini.fasta
+test -f chr1mini.dict || gatk CreateSequenceDictionary -R chr1mini.fasta
+popd
 
 pytest -v tests/
 
 # Test full run on BLR library.
 rm -rf outdir-bowtie2
-blr init --r1=testdata/blr_reads.1.fastq.gz -l blr outdir-bowtie2
+blr init --r1=blr-testdata/blr_reads.1.fastq.gz -l blr outdir-bowtie2
 blr config \
     --file outdir-bowtie2/blr.yaml \
-    --set genome_reference ../testdata/chr1mini.fasta \
-    --set dbSNP ../testdata/dbSNP.chr1mini.vcf.gz \
-    --set reference_variants ../testdata/HG002_GRCh38_GIAB_highconf.chr1mini.vcf \
-    --set phasing_ground_truth ../testdata/HG002_GRCh38_GIAB_highconf_triophased.chr1mini.vcf \
+    --set genome_reference ../blr-testdata/chr1mini.fasta \
+    --set dbSNP ../blr-testdata/dbSNP.chr1mini.vcf.gz \
+    --set reference_variants ../blr-testdata/HG002_GRCh38_GIAB_highconf.chr1mini.vcf \
+    --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.chr1mini.vcf \
     --set max_molecules_per_bc 1 \
     --set heap_space 1
 
-pushd outdir-bowtie2
+cd outdir-bowtie2
 blr run
 m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | $md5 | cut -f1 -d" ")
 test $m == b7c6fc6489dc59dd72e985ef8522e2e1
