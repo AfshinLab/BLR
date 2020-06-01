@@ -72,12 +72,12 @@ rule hapcut2_stats:
         vcf1 = "{base}.calling.phase.phased.VCF",
         vcf2 = "ground_truth.phased.vcf"
     params:
-        base = "{base}"
+        stats_prefix = "{base}.phasing_stats"
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " -v2 {input.vcf2}"
-        " -o {params.base}.phasing_stats"
+        " -o {params.stats_prefix}"
 
 
 rule compress_and_index_phased_vcf:
@@ -135,5 +135,5 @@ rule haplotag:
                 " {input.hapcut2_phase_file}"
                 " -o {output.bam}"
         }
-        command = commands[config["haplotag_tool"]].format(**locals(), **globals())
-        shell("{command} 2> {log}")
+        command = commands[config["haplotag_tool"]]
+        shell(command + " 2> {log}")

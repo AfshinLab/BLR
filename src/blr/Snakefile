@@ -172,10 +172,8 @@ rule map_sort_tag:
                 " -t {threads}"
                 " -p 10x"
         }
-        command = commands[config["read_mapper"]].format(**locals(), **globals())
-
-        shell(
-            "{command} 2> {log.map} |"
+        command = commands[config["read_mapper"]]
+        shell(command + " 2> {log.map} |"
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam} 2> {log.sort}"
@@ -407,11 +405,7 @@ rule call_variants:
 	            " --reads={input.bam}"
 	            " --ref={config[genome_reference]}"
                 }
-
-        command = commands[config["variant_caller"]].format(**locals(), **globals())
-        shell(
-            "{command}"
-        )
+        shell(commands[config["variant_caller"]])
 
 
 def get_phase_input_vcf(wildcards):
