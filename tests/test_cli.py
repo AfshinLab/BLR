@@ -176,7 +176,7 @@ def test_plot_figures(tmpdir):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME)]
     )
-    target = "figures"
+    target = "figures/mapped"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_dir()
 

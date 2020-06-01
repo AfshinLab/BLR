@@ -66,7 +66,7 @@ def get_multiqc_input(wildcards):
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
         "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        "figures",
+        "figures/mapped",
     ]
     if config["reference_variants"] and config["phasing_ground_truth"]:
         inputs.append("phasing_stats.tsv")
@@ -92,16 +92,17 @@ rule multiqc_summarize:
 
 def plot_figures_input(wildcards):
     if config["library_type"] == "blr":
-        return "molecule_stats.tsv", "barcodes.clstr"
+        return "{wc.base}.molecule_stats.tsv".format(wc=wildcards), "barcodes.clstr"
     else:
-        return "molecule_stats.tsv"
+        return "{wc.base}.molecule_stats.tsv".format(wc=wildcards)
 
 
+# TODO individual molecule_stats.tsv files should be merged so that we get only one plot
 rule plot_figures:
     """Generate plots for final report."""
-    output: directory("figures")
+    output: directory("figures/{base}")
     input: plot_figures_input
-    log: "plot_figures.log"
+    log: "{base}.plot_figures.log"
     shell:
         "blr plot"
         " {input}"
@@ -133,8 +134,8 @@ rule map_sort_tag:
         r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
     threads: 20
     log:
-        map = "read_mapping.log",
-        sort = "sorting.log"
+        map = "mapped.sorted.bam.map.log",
+        sort = "mapped.sorted.bam.sort.log"
     run:
         commands = {
             "bwa":
@@ -186,11 +187,11 @@ rule map_sort_tag:
 
 rule tagbam:
     output:
-        bam = "mapped.sorted.tag.bam"
+        bam = "{base}.sorted.tag.bam"
     input:
-        bam = "mapped.sorted.bam"
+        bam = "{base}.sorted.bam"
     log:
-        "tagbam.log"
+        "{base}.sorted.tag.bam.log"
     shell:
         "blr tagbam {input.bam} -o {output.bam} 2> {log}"
 
@@ -198,11 +199,11 @@ rule tagbam:
 rule clusterrmdup:
     """Merge cluster duplicates defined as two separate cluster sharing """
     output:
-        bam = "mapped.sorted.tag.bcmerge.bam",
-        merges = "barcode-merges.csv"
+        bam = "{base}.sorted.tag.bcmerge.bam",
+        merges = "{base}.barcode-merges.csv"
     input:
-        bam = "mapped.sorted.tag.bam"
-    log: "clusterrmdup.log"
+        bam = "{base}.sorted.tag.bam"
+    log: "{base}.sorted.tag.bcmerge.bam.log"
     shell:
         "blr clusterrmdup"
         " {input.bam}"
@@ -214,11 +215,11 @@ rule clusterrmdup:
 rule mark_duplicates:
     """Mark duplicates within barcodes clusters."""
     output:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.bam",
-        metrics = "mapped.sorted.tag.bcmerge.mkdup_metrics.txt"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.bam",
+        metrics = "{base}.sorted.tag.bcmerge.mkdup_metrics.txt"
     input:
-        bam = "mapped.sorted.tag.bcmerge.bam"
-    log: "mark_duplicates.log"
+        bam = "{base}.sorted.tag.bcmerge.bam"
+    log: "{base}.sorted.tag.bcmerge.mkdup.bam.log"
     shell:
         "picard MarkDuplicates"
         " INPUT={input.bam}"
@@ -236,11 +237,11 @@ rule mark_duplicates:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.bam",
-        stats = "molecule_stats.tsv"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
+        stats = "{base}.molecule_stats.tsv"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.bam"
-    log: "buildmolecules.log"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
+    log: "{base}.buildmolecules.log"
     shell:
         "blr buildmolecules"
         " {input.bam}"
@@ -252,14 +253,18 @@ rule buildmolecules:
         " 2> {log}"
 
 
+# filterclusters creates a .bai file directly
+ruleorder: filterclusters > index_bam
+
+
 rule filterclusters:
     """Filter clusters based on number of molecules. Remove duplicates from BAM"""
     output:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        bai = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam.bai"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
+        bai = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.bai"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.bam"
-    log: "filterclusters.log"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam"
+    log: "{base}.filterclusters.log"
     shell:
         "blr filterclusters"
         " {input.bam}"
@@ -268,7 +273,8 @@ rule filterclusters:
         " -b {config[cluster_tag]}"
         " -M {config[max_molecules_per_bc]}"
         " 2> {log} |"
-        " tee {output.bam} |"
+        " tee {output.bam}"
+        " |"
         " samtools index  - {output.bai}"
 
 
@@ -299,10 +305,10 @@ rule symlink_reference_variants:
 rule recal_base_qual_scores:
     """Recalibrate base calling qualities"""
     output:
-        recal_table = "gatk_BQSR_table.txt"
+        recal_table = "{base}.gatk_BQSR_table.txt"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam"
-    log: "recal_base_qual_scores.log"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam"
+    log: "{base}.gatk_BQSR_table.txt.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g BaseRecalibrator"
         " -R {config[genome_reference]}"
@@ -315,25 +321,26 @@ rule recal_base_qual_scores:
 rule apply_recal:
     """Adjusts BAM with results from gatk base score recalibration"""
     output:
-        recal_bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
+        recal_bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        recal_table = "gatk_BQSR_table.txt"
-    log: "apply_recal.log"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
+        recal_table = "{base}.gatk_BQSR_table.txt"
+    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filter.BQSR.bam.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g ApplyBQSR"
         " --bqsr-recal-file {input.recal_table}"
         " -R {config[genome_reference]}"
         " -I {input.bam}"
-        " 2> {log}"
         " -O {output.recal_bam}"
+        " 2> {log}"
 
-rule index_bam_pre_variant_caller:
+
+rule index_bam:
     output:
-        bai = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam.bai"
+        bai = "{base}.bam.bai"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
-    log: "index_bam_pre_variant_caller.log"
+        bam = "{base}.bam"
+    log: "{base}.samtools_index.log"
     shell:
         "samtools index"
         " {input.bam}"
@@ -350,12 +357,12 @@ def get_input_call_variants(wildcards):
 
 
 rule call_variants:
-    """Call variants using the selected varinat caller from configs."""
+    """Call variants using the selected variant caller from configs."""
     output:
          vcf = "variants.called.vcf"
     input:
          unpack(get_input_call_variants)
-    log: "call_variants.log"
+    log: "variants.called.vcf.log"
     threads: 2
     run:
         commands = {

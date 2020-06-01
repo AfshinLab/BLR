@@ -44,7 +44,7 @@ rule hapcut2_linkfragments:
 
 
 rule hapcut2_phasing:
-    """Phase heterozygous varinats using HapCUT2. Output phased VCF"""
+    """Phase heterozygous variants using HapCUT2. Output phased VCF"""
     output:
         phase = bamfile_basename + ".phase",
         phased_vcf = bamfile_basename + ".phase.phased.VCF"
