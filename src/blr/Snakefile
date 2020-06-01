@@ -245,7 +245,7 @@ rule buildmolecules:
         "blr buildmolecules"
         " {input.bam}"
         " -o {output.bam}"
-        " --stats-files"
+        " --stats-tsv {output.stats}"
         " -m {config[molecule_tag]}"
         " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
