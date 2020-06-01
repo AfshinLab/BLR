@@ -1,0 +1,88 @@
+# This is actually GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+genome = "/proj/uppstore2018173/private/references/bowtie2/genome.fa"
+
+# This was used for test datasets up to 0.3 (the BAM file doesn’t exist anymore)
+# bam = "/proj/uppstore2018173/private/analysis/190423.HiSeq.emTn5.Next.reseq_3.XIII/XIII.reseq_3.R1.fastq.sort.tag.rmdup.x2.filt.bam"
+# fastq = "/proj/uppstore2018173/private/rawdata/190416.HiSeq.emTn5.Next.reseq_2-3.XII-XVII/XIII.reseq_3.R{nr}.fastq.gz"
+
+bam = "/proj/uppstore2018173/private/marcel/runs/hg002-01/mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam"
+fastq = "/proj/uppstore2018173/private/rawdata/191010.NovoSeq.emTn5.Next.Mus.Patient.Cont/P14314/P14314_1006/02-FASTQ/190926_A00621_0130_BHN5HWDSXX/P14314_1006_S6_L004_R{nr}_001.fastq.gz"
+
+
+rule all:
+  input:
+    "chr1mini.fasta",
+    "names.txt",
+    "blr_reads.1.fastq.gz",
+    "blr_reads.2.fastq.gz",
+    "HG002_GRCh38_GIAB_highconf.chr1mini.vcf",
+    "HG002_GRCh38_GIAB_highconf_triophased.chr1mini.vcf",
+
+rule:
+  output: "chr1mini.fasta"
+  shell:
+    "samtools faidx {genome} chr1:10000000-10100000 | sed -r 's/^>([^:]*):/>\1mini \1:/' > {output}"
+
+rule:
+  output:
+    bam="out.bam"
+  input: bam=bam
+  shell: "samtools view -b -o {output.bam} {input.bam} chr1:10000000-10100000"
+
+rule:
+  output:
+    txt="names.txt"
+  input: bam="out.bam"
+  shell:
+    "samtools view {input.bam} | cut -d_ -f1 | sed 's|$| |' > {output.txt}"
+
+rule reads:
+  output:
+    fastq_gz="blr_reads.{nr,(1|2)}.fastq.gz"
+  input:
+    names="names.txt",
+    fastq=fastq,
+  shell:
+    "pigz -dc {input.fastq} | grep -F -A 3 --no-group-separator -f {input.names} | gzip -9 > {output.fastq_gz}"
+
+rule download_giab_highconf:
+  output:
+    "HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_highconf.vcf.gz"
+  shell:
+    "wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/AshkenazimTrio/HG002_NA24385_son/NISTv3.3.2/GRCh38/supplementaryFiles/{output}"
+
+rule download_giab_highconf_triophased:
+  output:
+    "HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_highconf_triophased.vcf.gz"
+  shell:
+    "wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/AshkenazimTrio/HG002_NA24385_son/NISTv3.3.2/GRCh38/{output}"
+
+rule highconf:
+  output:
+    vcf="HG002_GRCh38_GIAB_{base,(highconf|highconf_triophased)}.chr1mini.vcf"
+  input:
+    vcf="HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_{base}.vcf.gz"
+  shell:
+    "vcftools"
+    " --gzvcf {input.vcf}"
+    " --chr chr1"
+    " --from-bp 10000000"
+    " --to-bp 10100000"
+    " --recode-INFO-all"
+    " --out {output.vcf}.tmp"
+    " --recode"
+    " && "
+    r"""awk -vFS="\t" -vOFS="\t" '
+      /^chr1\t/ {{
+        $2=$2-9999999;
+        $1="chr1mini"
+      }}
+      /^##contig=/ {{
+        if (!wrote_header) {{
+          print("##contig=<ID=chr1mini,length=100000>");
+          wrote_header = 1;
+        }}
+        next;
+      }}
+      1
+      ' {output.vcf}.tmp.recode.vcf > {output.vcf}"""
