@@ -10,7 +10,7 @@ rule hapcut2_extracthairs:
     input:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
-    log: "{base}.calling.unlinked.txt.extracthairs.log"
+    log: "{base}.hapcut2_extracthairs.log"
     shell:
         "extractHAIRS"
         " --10X 1"
@@ -28,7 +28,7 @@ rule hapcut2_linkfragments:
         bai = "{base}.calling.bam.bai",
         vcf = "{base}.phaseinput.vcf",
         unlinked = "{base}.calling.unlinked.txt"
-    log: "{base}.calling.linked.txt.linkfragments.log"
+    log: "{base}.hapcut2_linkfragments.log"
     shell:
         "LinkFragments.py"
         " --bam {input.bam}"
@@ -45,7 +45,7 @@ rule hapcut2_phasing:
     input:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",
-    log: "{base}.calling.phase.hapcut2.log"
+    log: "{base}.hapcut2_phasing.log"
     shell:
         "hapcut2"
         " --nf 1"
