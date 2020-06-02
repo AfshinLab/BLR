@@ -158,6 +158,15 @@ class Molecule:
         summary["Overlapping reads in molecule"] += 1
         return False
 
+    def to_dict(self):
+        return {
+            "MoleculeID": self.id,
+            "Barcode": self.barcode,
+            "Reads": self.number_of_reads,
+            "Length": self.length(),
+            "BpCovered": self.bp_covered
+            }
+
 
 class AllMolecules:
     """
@@ -185,7 +194,7 @@ class AllMolecules:
         self.molecule_cache = OrderedDict()
 
         # Dict for finding mols belonging to the same BC
-        self.bc_to_mol = defaultdict(set)
+        self.bc_to_mol = defaultdict(list)
 
         # Dict for finding mol ID when writing out
         self.header_to_mol = dict()
@@ -257,7 +266,7 @@ class AllMolecules:
         """
         molecule = self.molecule_cache[barcode]
         if molecule.number_of_reads >= self.min_reads:
-            self.bc_to_mol[barcode].add(molecule)
+            self.bc_to_mol[barcode].append(molecule.to_dict())
             self.header_to_mol.update(
                 {header: molecule.id for header in molecule.read_headers}
             )
@@ -270,32 +279,27 @@ class AllMolecules:
 
     def report_and_remove_all(self):
         """
-        Commit all .molecule_cache molecules to .bc_to_mol and empty .molecule_cache (provided they meet criterias by report
-        function).
+        Commit all .molecule_cache molecules to .bc_to_mol and empty .molecule_cache (provided they meet criterias by
+        report function).
         """
         for barcode in self.molecule_cache:
             self.report(barcode)
         self.molecule_cache.clear()
 
 
-def compute_molecule_stats_dataframe(molecule_dict):
+def compute_molecule_stats_dataframe(bc_to_mol_dict):
     """
     Writes stats file for molecules and barcode with information like how many reads, barcodes, molecules etc they
     have
     """
     molecule_data = list()
-    while molecule_dict:
-        barcode, molecules = molecule_dict.popitem()
+    while bc_to_mol_dict:
+        barcode, molecules = bc_to_mol_dict.popitem()
         nr_molecules = len(molecules)
         for molecule in molecules:
-            molecule_data.append({
-                "MoleculeID": molecule.id,
-                "Barcode": barcode,
-                "NrMolecules": nr_molecules,
-                "Reads": molecule.number_of_reads,
-                "Length": molecule.length(),
-                "BpCovered": molecule.bp_covered
-            })
+            molecule["NrMolecules"] = nr_molecules
+            molecule_data.append(molecule)
+
     return pd.DataFrame(molecule_data)
 
 
