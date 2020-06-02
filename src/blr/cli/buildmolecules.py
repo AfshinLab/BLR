@@ -7,7 +7,7 @@ a maximum distance of --window between any given reads.
 
 import pysam
 import logging
-from collections import Counter
+from collections import Counter, OrderedDict, defaultdict
 from tqdm import tqdm
 import pandas as pd
 import statistics
@@ -65,25 +65,17 @@ def main(args):
 
 def parse_reads(pysam_openfile, barcode_tag, summary):
     for read in tqdm(pysam_openfile.fetch(until_eof=True)):
-        is_good = True
         summary["Total reads"] += 1
-        if read.is_duplicate:
-            summary["Duplicates"] += 1
-            is_good = False
+        if read.is_duplicate or read.is_unmapped:
+            summary["Non analyced reads"] += 1
+            continue
 
         barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
         if not barcode:
-            summary["Reads without barcode"] += 1
-            is_good = False
-
-        if read.is_unmapped:
-            summary["Unmapped reads"] += 1
-            is_good = False
-
-        if is_good:
-            yield barcode, read
-        else:
             summary["Non analyced reads"] += 1
+            continue
+
+        yield barcode, read
 
 
 def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary):
@@ -99,11 +91,11 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary
     :return: dict[barcode][molecule] = moleculeInstance, dict[read_name] = mol_ID
     """
 
-    all_molecules = AllMolecules(min_reads=min_reads)
+    all_molecules = AllMolecules(min_reads=min_reads, window=window)
 
     prev_chrom = pysam_openfile.references[0]
     logger.info("Dividing barcodes into molecules")
-    for barcode, read in parse_reads(pysam_openfile, barcode_tag, summary):
+    for nr, (barcode, read) in enumerate(parse_reads(pysam_openfile, barcode_tag, summary)):
         read_start = read.reference_start
         read_stop = read.reference_end
 
@@ -122,12 +114,12 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary
                     if tn5 and 8 <= molecule.stop - read_start <= 10:
                         summary["Tn5-overlapping reads"] += 1
                         molecule.add_read(start=read_start, stop=read_stop, read_header=read.query_name)
-                        all_molecules.cache_dict[barcode] = molecule
+                        all_molecules.cache_dict.move_to_end(barcode)
                     else:
                         summary["Overlapping reads in molecule"] += 1
                 else:
                     molecule.add_read(start=read_start, stop=read_stop, read_header=read.query_name)
-                    all_molecules.cache_dict[barcode] = molecule
+                    all_molecules.cache_dict.move_to_end(barcode)
 
             # Read is not within window => report old and initiate new molecule for that barcode.
             else:
@@ -140,6 +132,9 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary
         else:
             molecule = Molecule(barcode=barcode, start=read_start, stop=read_stop, read_header=read.query_name)
             all_molecules.cache_dict[molecule.barcode] = molecule
+
+        if nr % 10000 == 0:
+            all_molecules.update_cache(read_start)
 
     all_molecules.report_and_remove_all()
 
@@ -191,40 +186,53 @@ class AllMolecules:
     reads in .cache_dict.
     """
 
-    def __init__(self, min_reads):
+    def __init__(self, min_reads, window):
         """
         :param min_reads: Minimum reads required to add molecule to .bc_to_mol from .cache_dict
+        :param window: Current window for detecting molecules.
         """
 
         # Min required reads for calling proximal reads a molecule
         self.min_reads = min_reads
 
+        # Window for calling molecule
+        self.window = window
+
         # Molecule tracking system
-        self.cache_dict = dict()
+        self.cache_dict = OrderedDict()
 
         # Dict for finding mols belonging to the same BC
-        self.bc_to_mol = dict()
+        self.bc_to_mol = defaultdict(set)
 
         # Dict for finding mol ID when writing out
         self.header_to_mol = dict()
+
+    def update_cache(self, current_start):
+        # Iterate over current molecules as long as they are in outside of the window.
+        barcode, molecule = self.cache_dict.popitem(last=False)
+        while molecule.stop + self.window < current_start:
+            # Report molecules to find if any are called.
+            self.report(molecule)
+            barcode, molecule = self.cache_dict.popitem(last=False)
+
+        # Add last molecule back to cache as it is still inside window.
+        self.cache_dict[barcode] = molecule
+        self.cache_dict.move_to_end(barcode, last=False)
 
     def report(self, molecule):
         """
         Commit molecule to .bc_to_mol, if molecule.reads >= min_reads
         """
-
         if molecule.number_of_reads >= self.min_reads:
-            if molecule.barcode not in self.bc_to_mol:
-                self.bc_to_mol[molecule.barcode] = set()
             self.bc_to_mol[molecule.barcode].add(molecule)
-            for header in molecule.read_headers:
-                self.header_to_mol[header] = molecule.id
+            self.header_to_mol.update(
+                {header: molecule.id for header in molecule.read_headers}
+            )
 
     def terminate(self, molecule):
         """
         Removes a specific molecule from .cache_dict
         """
-
         del self.cache_dict[molecule.barcode]
 
     def report_and_remove_all(self):
@@ -232,10 +240,9 @@ class AllMolecules:
         Commit all .cache_dict molecules to .bc_to_mol and empty .cache_dict (provided they meet criterias by report
         function).
         """
-
         for molecule in self.cache_dict.values():
             self.report(molecule=molecule)
-        self.cache_dict = dict()
+        self.cache_dict.clear()
 
 
 def compute_molecule_stats_dataframe(molecule_dict):
