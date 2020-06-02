@@ -90,6 +90,6 @@ rule split_nobc_reads:
     input:
         fastq = "temp_bins/ema-nobc"
     shell:
-        " paste - - - - - - - - < {input} |"
+        "paste - - - - - - - - < {input} |"
         " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"
         " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"

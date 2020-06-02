@@ -43,5 +43,5 @@ m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | $md5 | cut -f1 
 test $m == b7c6fc6489dc59dd72e985ef8522e2e1
 
 # Cut away columns 2 and 3 as these change order between linux and osx
-m2=$(cut -f1,4- mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase | $md5 | cut -f1 -d" ")
+m2=$(cut -f1,4- mapped.calling.phase | $md5 | cut -f1 -d" ")
 test $m2 == e6c512bfeb7cb1b230a9320f22c32937

@@ -138,7 +138,7 @@ def test_link_reference_variants(tmpdir):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME), ("reference_variants", REFERENCE_VARIANTS)]
     )
-    target = "variants.reference.vcf"
+    target = "mapped.phaseinput.vcf"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_symlink()
 
@@ -164,7 +164,7 @@ def test_call_variants(tmpdir, variant_caller):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME), ("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
-    target = "variants.called.vcf"
+    target = "mapped.variants.called.vcf"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_file()
 
@@ -176,7 +176,7 @@ def test_plot_figures(tmpdir):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME)]
     )
-    target = "figures"
+    target = "figures/mapped"
     run(workdir=workdir, targets=[target])
     assert Path(workdir / target).is_dir()
 
@@ -190,7 +190,7 @@ def test_haplotag(tmpdir, haplotype_tool):
         [("genome_reference", REFERENCE_GENOME),
          ("reference_variants", "null")]
     )
-    target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
+    target = "mapped.calling.phased.bam"
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")  # Check that tag HP have been added
     assert bam_has_tag(workdir / target, "PS")  # Check that tag PS have been added
