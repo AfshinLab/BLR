@@ -347,7 +347,6 @@ rule index_bam:
         bai = "{base}.bam.bai"
     input:
         bam = "{base}.bam"
-    log: "{base}.samtools_index.log"
     shell:
         "samtools index"
         " {input.bam}"
