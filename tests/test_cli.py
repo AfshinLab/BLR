@@ -71,10 +71,6 @@ def test_config(tmpdir):
 def test_trim_blr(tmpdir):
     workdir = tmpdir / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("library_type", "blr")]
-    )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     assert count_fastq_reads(trimmed[0]) <= count_fastq_reads(TESTDATA_BLR_READ1)
