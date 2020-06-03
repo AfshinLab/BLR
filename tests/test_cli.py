@@ -95,7 +95,7 @@ def test_config(tmp_path):
 
 def test_default_read_mapper(workdir):
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.bam")
+    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.bam")
 
 
 def test_trim_blr(workdir):
@@ -139,9 +139,9 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper)]
     )
-    run(workdir=workdir, targets=["mapped.sorted.tag.bam"])
+    run(workdir=workdir, targets=["mapped.sorted.bam"])
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.bam")
+    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.bam")
 
 
 def test_final_compressed_reads_exist(workdir):
