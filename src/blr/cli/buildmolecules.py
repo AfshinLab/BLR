@@ -164,8 +164,8 @@ class Molecule:
             "Barcode": self.barcode,
             "Reads": self.number_of_reads,
             "Length": self.length(),
-            "BpCovered": self.bp_covered
-            }
+            "BpCovered": self.bp_covered,
+        }
 
 
 class AllMolecules:
@@ -220,10 +220,7 @@ class AllMolecules:
         Check if overlap between current read and those in the molecule are acceptable.
         """
         molecule = self.molecule_cache[barcode]
-        if molecule.has_acceptable_overlap(read, self.tn5, summary):
-            return True
-        else:
-            return False
+        return molecule.has_acceptable_overlap(read, self.tn5, summary):
 
     def read_is_in_window(self, read, barcode):
         """
@@ -233,7 +230,7 @@ class AllMolecules:
 
     def add_read_to_molecule(self, read, barcode):
         """
-        Add read to esisting molecule
+        Add read to existing molecule
         """
         self.molecule_cache[barcode].add_read(read)
         self.molecule_cache.move_to_end(barcode)
