@@ -220,7 +220,7 @@ class AllMolecules:
         Check if overlap between current read and those in the molecule are acceptable.
         """
         molecule = self.molecule_cache[barcode]
-        return molecule.has_acceptable_overlap(read, self.tn5, summary):
+        return molecule.has_acceptable_overlap(read, self.tn5, summary)
 
     def read_is_in_window(self, read, barcode):
         """
