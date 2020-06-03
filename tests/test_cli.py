@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import pysam
 import pytest
 import dnaio
@@ -58,6 +59,30 @@ def bam_has_tag(path, tag):
     return False
 
 
+@pytest.fixture(scope="module")
+def _workdir(tmp_path_factory):
+    """
+    This runs the pipeline using default parameters up to the creation of
+    the BAM file ready for variant calling
+    """
+    path = tmp_path_factory.mktemp(basename="analysis-") / "analysis"
+    init(path, TESTDATA_BLR_READ1, "blr")
+    change_config(
+        path / DEFAULT_CONFIG,
+        [("genome_reference", REFERENCE_GENOME)]
+    )
+    run(workdir=path, targets=["mapped.calling.bam.bai"])
+    return path
+
+
+@pytest.fixture
+def workdir(_workdir, tmp_path):
+    """Make a fresh copy of the prepared analysis directory"""
+    path = tmp_path / "analysis"
+    shutil.copytree(_workdir, path)
+    return path
+
+
 def test_init(tmp_path):
     init(tmp_path / "analysis", TESTDATA_BLR_READ1, "blr")
 
@@ -68,9 +93,12 @@ def test_config(tmp_path):
     change_config(workdir / "blr.yaml", [("read_mapper", "bwa")])
 
 
-def test_trim_blr(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+def test_default_read_mapper(workdir):
+    n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
+    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.bam")
+
+
+def test_trim_blr(workdir):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     assert count_fastq_reads(trimmed[0]) <= count_fastq_reads(TESTDATA_BLR_READ1)
@@ -103,8 +131,8 @@ def test_trim_stlfr(tmp_path):
         assert count_fastq_reads(raw) >= count_fastq_reads(workdir / trimmed)
 
 
-@pytest.mark.parametrize("read_mapper", ["bwa", "bowtie2", "minimap2", "ema"])
-def test_mappers(tmp_path, read_mapper):
+@pytest.mark.parametrize("read_mapper", ["bwa", "minimap2", "ema"])
+def test_nondefault_read_mappers(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
@@ -116,37 +144,27 @@ def test_mappers(tmp_path, read_mapper):
     assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.bam")
 
 
-def test_final_compressed_reads_exist(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
-    )
+def test_final_compressed_reads_exist(workdir):
     targets = ("reads.1.final.fastq.gz", "reads.2.final.fastq.gz")
     run(workdir=workdir, targets=targets)
     for filename in targets:
         assert workdir.joinpath(filename).exists()
 
 
-def test_link_reference_variants(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+def test_link_reference_variants(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("reference_variants", REFERENCE_VARIANTS)]
+        [("reference_variants", REFERENCE_VARIANTS)]
     )
     target = "mapped.phaseinput.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_symlink()
 
 
-def test_BQSR(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+def test_BQSR(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
+        [("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
          ("variant_caller", "gatk")]
     )
     target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
@@ -155,38 +173,27 @@ def test_BQSR(tmp_path):
 
 
 @pytest.mark.parametrize("variant_caller", ["freebayes", "bcftools", "gatk"])
-def test_call_variants(tmp_path, variant_caller):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+def test_call_variants(workdir, variant_caller):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("reference_variants", "null"), ("variant_caller", variant_caller)]
+        [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
     target = "mapped.variants.called.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
 
-def test_plot_figures(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
-    )
+def test_plot_figures(workdir):
     target = "figures/mapped"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_dir()
 
 
 @pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
-def test_haplotag(tmp_path, haplotype_tool):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+def test_haplotag(workdir, haplotype_tool):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME),
-         ("reference_variants", "null")]
+        [("reference_variants", "null")]
     )
     target = "mapped.calling.phased.bam"
     run(workdir=workdir, targets=[target])
