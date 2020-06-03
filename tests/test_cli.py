@@ -58,18 +58,18 @@ def bam_has_tag(path, tag):
     return False
 
 
-def test_init(tmpdir):
-    init(tmpdir / "analysis", TESTDATA_BLR_READ1, "blr")
+def test_init(tmp_path):
+    init(tmp_path / "analysis", TESTDATA_BLR_READ1, "blr")
 
 
-def test_config(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_config(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(workdir / "blr.yaml", [("read_mapper", "bwa")])
 
 
-def test_trim_blr(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_trim_blr(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
@@ -77,8 +77,8 @@ def test_trim_blr(tmpdir):
     assert count_fastq_reads(trimmed[1]) <= count_fastq_reads(TESTDATA_BLR_READ2)
 
 
-def test_trim_tenx(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_trim_tenx(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TENX_READ1, "10x")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -87,11 +87,11 @@ def test_trim_tenx(tmpdir):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TENX_READ1, TESTDATA_TENX_READ2), trimmed):
-        assert count_fastq_reads(raw) == count_fastq_reads(Path(workdir / trimmed))
+        assert count_fastq_reads(raw) == count_fastq_reads(workdir / trimmed)
 
 
-def test_trim_stlfr(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_trim_stlfr(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_STLFR_READ1, "stlfr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -100,24 +100,24 @@ def test_trim_stlfr(tmpdir):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
-        assert count_fastq_reads(raw) >= count_fastq_reads(Path(workdir / trimmed))
+        assert count_fastq_reads(raw) >= count_fastq_reads(workdir / trimmed)
 
 
 @pytest.mark.parametrize("read_mapper", ["bwa", "bowtie2", "minimap2", "ema"])
-def test_mappers(tmpdir, read_mapper):
-    workdir = tmpdir / "analysis"
+def test_mappers(tmp_path, read_mapper):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper)]
     )
     run(workdir=workdir, targets=["mapped.sorted.tag.bam"])
-    n_input_fastq_reads = 2 * count_fastq_reads(Path(workdir / "trimmed_barcoded.1.fastq.gz"))
+    n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
     assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.tag.bam")
 
 
-def test_final_compressed_reads_exist(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_final_compressed_reads_exist(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -126,11 +126,11 @@ def test_final_compressed_reads_exist(tmpdir):
     targets = ("reads.1.final.fastq.gz", "reads.2.final.fastq.gz")
     run(workdir=workdir, targets=targets)
     for filename in targets:
-        assert Path(workdir / filename).exists()
+        assert workdir.joinpath(filename).exists()
 
 
-def test_link_reference_variants(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_link_reference_variants(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -138,11 +138,11 @@ def test_link_reference_variants(tmpdir):
     )
     target = "mapped.phaseinput.vcf"
     run(workdir=workdir, targets=[target])
-    assert Path(workdir / target).is_symlink()
+    assert workdir.joinpath(target).is_symlink()
 
 
-def test_BQSR(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_BQSR(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -151,12 +151,12 @@ def test_BQSR(tmpdir):
     )
     target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
     run(workdir=workdir, targets=[target])
-    assert Path(workdir / target).is_file()
+    assert workdir.joinpath(target).is_file()
 
 
 @pytest.mark.parametrize("variant_caller", ["freebayes", "bcftools", "gatk"])
-def test_call_variants(tmpdir, variant_caller):
-    workdir = tmpdir / "analysis"
+def test_call_variants(tmp_path, variant_caller):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -164,11 +164,11 @@ def test_call_variants(tmpdir, variant_caller):
     )
     target = "mapped.variants.called.vcf"
     run(workdir=workdir, targets=[target])
-    assert Path(workdir / target).is_file()
+    assert workdir.joinpath(target).is_file()
 
 
-def test_plot_figures(tmpdir):
-    workdir = tmpdir / "analysis"
+def test_plot_figures(tmp_path):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -176,12 +176,12 @@ def test_plot_figures(tmpdir):
     )
     target = "figures/mapped"
     run(workdir=workdir, targets=[target])
-    assert Path(workdir / target).is_dir()
+    assert workdir.joinpath(target).is_dir()
 
 
 @pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
-def test_haplotag(tmpdir, haplotype_tool):
-    workdir = tmpdir / "analysis"
+def test_haplotag(tmp_path, haplotype_tool):
+    workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
@@ -190,6 +190,6 @@ def test_haplotag(tmpdir, haplotype_tool):
     )
     target = "mapped.calling.phased.bam"
     run(workdir=workdir, targets=[target])
-    assert bam_has_tag(workdir / target, "HP")  # Check that tag HP have been added
-    assert bam_has_tag(workdir / target, "PS")  # Check that tag PS have been added
-    assert count_bam_tags((workdir / target), "PS") == count_bam_tags((workdir / target), "HP")  # Confirm same count.
+    assert bam_has_tag(workdir / target, "HP")
+    assert bam_has_tag(workdir / target, "PS")
+    assert count_bam_tags(workdir / target, "PS") == count_bam_tags(workdir / target, "HP")
