@@ -65,7 +65,7 @@ def print_stats(summary, name=None, value_width=15, print_to=sys.stderr):
     :param print_to: Where to direct output
     """
     # Get widths for formatting
-    max_name_width = max(map(len, summary.keys()))
+    max_name_width = max(map(len, summary.keys()), default=10)
     width = value_width + max_name_width + 1
 
     # Header
