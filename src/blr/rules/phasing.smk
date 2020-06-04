@@ -111,7 +111,6 @@ rule haplotag:
                 "whatshap haplotag"
                 " {input.vcf}"
                 " {input.bam}"
-                " -o {output.bam}"
                 " --linked-read-distance-cutoff 30000"
                 " --reference {config[genome_reference]}",
             "blr":
@@ -121,7 +120,40 @@ rule haplotag:
                 " --haplotype-tag {config[haplotype_tag]}"
                 " {input.bam}"
                 " {input.hapcut2_phase_file}"
-                " -o {output.bam}"
         }
         command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log}")
+        shell(command + " 2> {log} |"
+            " tee {output.bam}"
+            " |"
+            " samtools index  - {output.bai}")
+
+
+rule build_config
+    """
+    Builds a config file required for running NAIBR.
+    """
+    output:
+        config = "naibr.config"
+    log: "build_config.log"
+    shell:
+        "blr naibrconfig"
+        " -o naibr.config"
+        " 2> {log}"
+
+
+rule lsv_calling:
+    """
+    Runs NAIBR for LSV calling.
+    """
+    output:
+        results = "lsv_results"
+    input:
+        config = "naibr.config"
+        bam = "{base}.calling.phased.bam"
+        index = "{base}.calling.phased.bam.bai"
+    log: "{base}.lsv_calling.log"
+    shell:
+        "python"
+        " NAIBR.py"
+        " {input.config}"
+        " 2> {log}"
