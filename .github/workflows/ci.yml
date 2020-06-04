@@ -35,7 +35,7 @@ jobs:
         run: |
           wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
           tar xf blr-testdata-${testdata_version}.tar.gz
-          ln -s blr-testdata-${testdata_version} testdata
+          ln -s blr-testdata-${testdata_version} blr-testdata
       - name: Run tests
         run: |
           source $CONDA/etc/profile.d/conda.sh
