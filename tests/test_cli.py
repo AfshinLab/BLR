@@ -20,9 +20,9 @@ TESTDATA_STLFR_READ1 = TESTDATA / "stlfr_reads.1.fastq.gz"
 TESTDATA_STLFR_READ2 = TESTDATA / "stlfr_reads.2.fastq.gz"
 TESTDATA_STLFR_BARCODES = str((TESTDATA / "stlfr_barcodes.txt").absolute())
 DEFAULT_CONFIG = "blr.yaml"
-REFERENCE_GENOME = str((TESTDATA / "chr1mini.fasta").absolute())
-REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.chr1mini.vcf").absolute())
-DB_SNP = str((TESTDATA / "dbSNP.chr1mini.vcf.gz").absolute())
+REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
+REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf").absolute())
+DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
 
 
 def count_bam_alignments(path):
