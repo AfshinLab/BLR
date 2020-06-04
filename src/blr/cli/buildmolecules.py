@@ -55,7 +55,8 @@ def main(args):
         logger.info(f"Writing {args.stats_tsv}")
         df = compute_molecule_stats_dataframe(bc_to_mol_dict)
         df.to_csv(args.stats_tsv, sep="\t", index=False)
-        update_summary_from_molecule_stats(df, summary)
+        if not df.empty:
+            update_summary_from_molecule_stats(df, summary)
     print_stats(summary, name=__name__)
 
 
