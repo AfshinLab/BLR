@@ -136,8 +136,8 @@ rule build_config:
     output:
         config = "naibr.config"
     input:
-        bam = "{base}.calling.phased.bam",
-        index = "{base}.calling.phased.bam.bai"
+        bam = "{base}.phased.bam",
+        index = "{base}.phased.bam.bai"
     log: "build_config.log"
     shell:
         "blr naibrconfig"
