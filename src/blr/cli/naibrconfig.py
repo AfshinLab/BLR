@@ -1,4 +1,10 @@
 """
+Builds NAIBR config files.
+
+File format:
+ - comments: # my documentation
+ - blank rows allowed
+ - variable=value
 """
 import logging
 from pathlib import Path
@@ -17,14 +23,23 @@ def add_arguments(parser):
 
 
 def main(args):
-
-    new_value = {"bam_file": str(args.bamfile.resolve()), "outdir": str(args.naibr_out.resolve()), "threads": str(args.threads)}
+    new_value = {"bam_file": str(args.bamfile.resolve()), "outdir": str(args.naibr_out.resolve()),
+                 "threads": str(args.threads)}
     mod_keys = tuple(new_value.keys())
-    configuration = open_text("blr", CONFIGURATION_FILE_NAME)
-    with (args.analysis_folder / CONFIGURATION_FILE_NAME).open("w") as f:
+    copy_and_mod_config(args.analysis_folder, CONFIGURATION_FILE_NAME, new_value, mod_keys)
+
+
+def copy_and_mod_config(analysis_folder: Path, file_name: Path, new_value: dict, mod_keys: tuple):
+    configuration = open_text("blr", file_name)
+    with (analysis_folder / file_name).open("w") as f:
         for row in configuration:
             if row.startswith(mod_keys):
-                key = row.split("=", maxsplit=1)[0]
-                row = key + "=" + new_value[key] + "\n"
-                logger.info(f"Setting config value '{row.strip()}'")
+                row = change_row(row, new_value)
             f.write(row)
+
+
+def change_row(row, new_value):
+    key = row.split("=", maxsplit=1)[0]
+    row = key + "=" + new_value[key] + "\n"
+    logger.info(f"Setting config value '{row.strip()}'")
+    return row
