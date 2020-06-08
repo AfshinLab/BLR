@@ -21,12 +21,11 @@ def main(args):
     logging.info("Starting analysis")
     stats = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
 
-    with open(args.output + ".txt", "w") as file:
-        print(stats.to_txt(), file=file)
-
-    with open(args.output + ".tsv", "w") as file:
-        print(stats.to_tsv(), file=file)
-
+    if args.output:
+        with open(args.output, "w") as file:
+            print(stats.to_txt(), file=file)
+    else:
+        print(stats.to_txt())
     logging.info("Finished")
 
 
@@ -639,4 +638,4 @@ def add_arguments(parser):
                         help="A phased, single sample  VCF file to use as the 'ground truth' haplotype.")
     parser.add_argument('-i', '--indels', action="store_true",
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
-    parser.add_argument("-o", "--output", default="phasing_stats", help="Output file prefix. Default: %(default)s.")
+    parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")
