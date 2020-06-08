@@ -101,8 +101,7 @@ rule haplotag:
     Adds HP tag with haplotype (0 or 1) and PS tag with phase set information.
     """
     output:
-        bam = "{base}.calling.phased.bam",
-        bai = "{base}.calling.phased.bam.bai"
+        bam = "{base}.calling.phased.bam"
     input:
         unpack(get_haplotag_input)
     log: "{base}.haplotag.log"
@@ -123,10 +122,11 @@ rule haplotag:
                 " {input.hapcut2_phase_file}"
         }
         command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log} |"
-            " tee {output.bam}"
-            " |"
-            " samtools index  - {output.bai}")
+        shell(command + " 2> {log} > {output.bam}")
+
+
+import os
+analysis_folder = os.getcwd()
 
 
 rule build_config:
@@ -134,17 +134,18 @@ rule build_config:
     Builds a config file required for running NAIBR.
     """
     output:
-        config = "naibr.config"
+        config = "{base}.naibr.config"
     input:
-        bam = "{base}.phased.bam",
-        index = "{base}.phased.bam.bai"
-    log: "build_config.log"
+        bam = "{base}.calling.phased.bam",
+        index = "{base}.calling.phased.bam.bai"
+    log: "{base}.build_config.log"
     shell:
         "blr naibrconfig"
         " ."
         " {input.bam}"
         " lsv_calling"
-        " --threads {config[threads]}"
+        " --threads {threads}"
+        " -o {output.config}"
         " 2> {log}"
 
 
@@ -154,20 +155,20 @@ rule lsv_calling:
     env.
     """
     output:
-        results = directory("lsv-calling")
+        results = directory("{base}.lsv-calling")
     input:
-        config = "naibr.config"
-    log: "lsv_calling.log"
-    shell:
-        "conda activate {config[naibr_environment]}"
-        " &&"
-        " pushd {config[naibr_path]}"
+        config = "{base}.naibr.config"
+    log: "{base}.lsv_calling.log"
+    conda: "naibr-environment.yml"
+    run:
+        import os
+        path = os.getcwd()
+        shell(
+        "cd {config[naibr_path]}"
         " &&"
         " python"
         " NAIBR.py"
-        " {input.config}"
-        " 2> {log}"
+        " {analysis_folder}/{input.config}"
+        " 2> {analysis_folder}/{log}"
         " &&"
-        " pushd +1"
-        " &&"
-        " conda deactivate"
+        " cd -")
