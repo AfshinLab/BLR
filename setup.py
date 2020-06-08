@@ -24,7 +24,7 @@ setup(
     },
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml"]},
+    package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml", "naibr.config"]},
     entry_points={"console_scripts": ["blr = blr.__main__:main"]},
     classifiers=[
         "Development Status :: 4 - Beta",
