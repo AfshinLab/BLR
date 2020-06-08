@@ -143,7 +143,8 @@ rule build_config
 
 rule lsv_calling:
     """
-    Runs NAIBR for LSV calling.
+    Runs NAIBR for LSV calling. This involves activating a python2 env, changing wd, running and changing back wd and
+    env.
     """
     output:
         results = "lsv_results"
@@ -152,8 +153,18 @@ rule lsv_calling:
         bam = "{base}.calling.phased.bam"
         index = "{base}.calling.phased.bam.bai"
     log: "{base}.lsv_calling.log"
-    shell:
-        "python"
-        " NAIBR.py"
-        " {input.config}"
-        " 2> {log}"
+    run:
+        env = config["naibr_environment"]
+        naibr_path = config["naibr_path"]
+        shell("conda activate {env}"
+            " &&"
+            " pushd {naibr_path}"
+            " &&"
+            " python"
+            " NAIBR.py"
+            " {input.config}"
+            " 2> {log}"
+            " &&"
+            " pushd +1"
+            " &&"
+            " conda deactivate")
