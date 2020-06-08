@@ -101,7 +101,8 @@ rule haplotag:
     Adds HP tag with haplotype (0 or 1) and PS tag with phase set information.
     """
     output:
-        bam = "{base}.calling.phased.bam"
+        bam = "{base}.calling.phased.bam",
+        bai = "{base}.calling.phased.bam.bai"
     input:
         unpack(get_haplotag_input)
     log: "{base}.haplotag.log"
@@ -128,16 +129,22 @@ rule haplotag:
             " samtools index  - {output.bai}")
 
 
-rule build_config
+rule build_config:
     """
     Builds a config file required for running NAIBR.
     """
     output:
         config = "naibr.config"
+    input:
+        bam = "{base}.calling.phased.bam",
+        index = "{base}.calling.phased.bam.bai"
     log: "build_config.log"
     shell:
         "blr naibrconfig"
-        " -o naibr.config"
+        " ."
+        " {input.bam}"
+        " lsv_calling"
+        " --threads {config[threads]}"
         " 2> {log}"
 
 
@@ -147,24 +154,20 @@ rule lsv_calling:
     env.
     """
     output:
-        results = "lsv_results"
+        results = directory("lsv-calling")
     input:
         config = "naibr.config"
-        bam = "{base}.calling.phased.bam"
-        index = "{base}.calling.phased.bam.bai"
-    log: "{base}.lsv_calling.log"
-    run:
-        env = config["naibr_environment"]
-        naibr_path = config["naibr_path"]
-        shell("conda activate {env}"
-            " &&"
-            " pushd {naibr_path}"
-            " &&"
-            " python"
-            " NAIBR.py"
-            " {input.config}"
-            " 2> {log}"
-            " &&"
-            " pushd +1"
-            " &&"
-            " conda deactivate")
+    log: "lsv_calling.log"
+    shell:
+        "conda activate {config[naibr_environment]}"
+        " &&"
+        " pushd {config[naibr_path]}"
+        " &&"
+        " python"
+        " NAIBR.py"
+        " {input.config}"
+        " 2> {log}"
+        " &&"
+        " pushd +1"
+        " &&"
+        " conda deactivate"

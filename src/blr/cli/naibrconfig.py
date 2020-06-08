@@ -17,13 +17,13 @@ CONFIGURATION_FILE_NAME = "naibr.config"
 
 def add_arguments(parser):
     parser.add_argument("analysis_folder", type=Path, help="BLR analysis folder.")
-    parser.add_argument("naibr_out", type=Path, help="Config: NAIBR output folder.")
     parser.add_argument("bamfile", type=Path, help="Config: Bam file for which LSVs should be called.")
+    parser.add_argument("naibr_out", type=Path, help="Config: NAIBR output folder.")
     parser.add_argument("--threads", type=int, default=1, help="Config: Number of threads for which to run NAIBR.")
 
 
 def main(args):
-    new_value = {"bam_file": str(args.bamfile.resolve()), "outdir": str(args.naibr_out.resolve()),
+    new_value = {"bam_file": str(args.bamfile), "outdir": str(args.naibr_out),
                  "threads": str(args.threads)}
     mod_keys = tuple(new_value.keys())
     copy_and_mod_config(args.analysis_folder, CONFIGURATION_FILE_NAME, new_value, mod_keys)

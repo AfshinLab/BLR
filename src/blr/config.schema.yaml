@@ -94,3 +94,9 @@ properties:
   stlfr_adapter:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
+  naibr_environment:
+    type: ["string", "null"]
+    description: Name of python 2 conda environment for NAIBR
+  naibr_path:
+    type: ["string", "null"]
+    description: Path to NAIBR folder
