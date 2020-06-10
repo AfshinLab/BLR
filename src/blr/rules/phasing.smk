@@ -143,11 +143,13 @@ rule build_config:
         "blr naibrconfig"
         " ."
         " {input.bam}"
-        " lsv_calling"
+        " {wildcards.base}.lsv_calling"
         " --threads {threads}"
         " -o {output.config}"
         " 2> {log}"
 
+import os
+analysis_folder = os.getcwd()
 
 rule lsv_calling:
     """
@@ -155,15 +157,12 @@ rule lsv_calling:
     env.
     """
     output:
-        results = directory("{base}.lsv-calling")
+        results = directory("{base}.lsv_calling")
     input:
         config = "{base}.naibr.config"
     log: "{base}.lsv_calling.log"
-    conda: "naibr-environment.yml"
-    run:
-        import os
-        path = os.getcwd()
-        shell(
+    conda: "../naibr-environment.yml"
+    shell:
         "cd {config[naibr_path]}"
         " &&"
         " python"
@@ -171,4 +170,4 @@ rule lsv_calling:
         " {analysis_folder}/{input.config}"
         " 2> {analysis_folder}/{log}"
         " &&"
-        " cd -")
+        " cd -"
