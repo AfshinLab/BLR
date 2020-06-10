@@ -22,7 +22,7 @@ import logging
 import sys
 import dnaio
 from itertools import islice
-from tqdm import tqdm
+from blr.utils import tqdm
 
 logger = logging.getLogger(__name__)
 

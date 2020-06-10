@@ -3,10 +3,10 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 """
 
 import logging
-from tqdm import tqdm
 from collections import Counter
 from pathlib import Path
-from blr.utils import print_stats, PySAMIO, get_bamtag
+
+from blr.utils import print_stats, PySAMIO, get_bamtag, tqdm
 from blr.cli.config import load_yaml
 
 logger = logging.getLogger(__name__)
