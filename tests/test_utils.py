@@ -1,5 +1,7 @@
 from io import StringIO
-from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks
+from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath
+from pathlib import Path
+import os
 
 
 def test_parse_fai():
@@ -30,3 +32,15 @@ def test_chromosome_chunks_exact():
     b = FastaIndexRecord("B", 500)
     chunks = list(chromosome_chunks([a, b], size=1000))
     assert chunks == [[a, b]]
+
+
+def test_symlink_relpath(tmpdir):
+    path_a = Path(tmpdir / "folder" / "fileA.txt")
+    path_b = Path(tmpdir / "folder" / "fileB.txt")
+    path_a.parent.mkdir()
+    path_a.touch()
+    symlink_relpath(path_a, path_b)
+    assert path_b.exists()
+    assert path_b.is_symlink()
+    assert path_b.samefile(path_a)
+    assert os.readlink(path_b) == path_a.name

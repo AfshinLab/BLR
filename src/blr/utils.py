@@ -4,6 +4,7 @@ import sys
 import pysam
 from dataclasses import dataclass
 import numpy as np
+import os
 
 
 def is_1_2(s, t):
@@ -229,3 +230,12 @@ def chromosome_chunks(index_records, size=20_000_000):
         chunk_size += index_record.length
     if chunk:
         yield chunk
+
+
+def symlink_relpath(source, target):
+    """
+    Generate a symlink to source that is relative to the target location. Corresponds roughtly to 'ln -rs'.
+    """
+    commonpath = os.path.commonpath([source, target])
+    relpath_source = os.path.relpath(source, commonpath)
+    os.symlink(relpath_source, target)
