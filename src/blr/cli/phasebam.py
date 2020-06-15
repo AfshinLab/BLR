@@ -13,10 +13,9 @@ Outputs:
 
 import pysam
 import logging
-from tqdm import tqdm
 from collections import Counter, OrderedDict
 
-from blr.utils import print_stats, get_bamtag, PySAMIO
+from blr.utils import print_stats, get_bamtag, PySAMIO, tqdm
 
 logger = logging.getLogger(__name__)
 

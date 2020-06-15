@@ -4,6 +4,12 @@ import sys
 import pysam
 import numpy as np
 
+if sys.stderr.isatty():
+    from tqdm import tqdm
+else:
+    def tqdm(iterable, **kwargs):
+        return iterable
+
 
 def is_1_2(s, t):
     """
