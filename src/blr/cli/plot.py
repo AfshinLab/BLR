@@ -220,8 +220,8 @@ class Plot:
 def add_arguments(parser):
     parser.add_argument(
         "input", nargs="+", type=Path,
-        help=f"Path to data files from pipeline run accepted file are. Currently accepted files are: "
-        f"barcodes.clstr, *molecule_stats.tsv."
+        help="Path to data files from pipeline run accepted file are. Currently accepted files are: barcodes.clstr, "
+             "*molecule_stats.tsv."
     )
     parser.add_argument(
         "-o", "--output-dir", type=Path, default=Path(os.getcwd()),
