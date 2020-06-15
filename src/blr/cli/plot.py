@@ -4,47 +4,51 @@ Plot data from
 import logging
 import pandas as pd
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from pathlib import Path
 import os
 logger = logging.getLogger(__name__)
 
-
-ACCEPTED_FILES = [
-    "molecule_stats.tsv",   # Output data from 'buildmolecules' in tsv format.
-    "barcodes.clstr"        # Output file from starcode clustering of blr library barcodes.
-]
-
 SIZE_WIDE = (10, 6)
 
 
 def main(args):
     name_to_function = {
-        "molecule_stats.tsv": process_molecule_stats,
-        "barcodes.clstr": process_barcode_clstr
+        "molecule_stats": process_molecule_stats,   # Files ending in "molecule_stats.tsv"
+        "barcode_clstrs": process_barcode_clstr     # Files named "barcodes.clstr"
     }
     # Make output directory if not allready present.
     args.output_dir.mkdir(exist_ok=True)
 
-    # Loop over file to process
+    matched = defaultdict(list)
+    # Loop over file add assign to process.
     for filepath in args.input:
         filename = filepath.name
-        proc_func = name_to_function.get(filename)
+        if filename == "barcodes.clstr":
+            matched["barcode_clstrs"].append(filepath)
+            continue
 
-        if proc_func:
-            logger.info(f"Processing data from file '{filename}'")
-            proc_func(filepath, args.output_dir)
-        else:
-            logger.info(f"File '{filename}' does not match possible inputs. Skipping from analysis.")
+        if filename.endswith("molecule_stats.tsv"):
+            matched["molecule_stats"].append(filepath)
+            continue
+
+        logger.info(f"File '{filename}' does not match possible inputs. Skipping from analysis.")
+
+    for func_name, files in matched.items():
+        proc_func = name_to_function.get(func_name)
+        proc_func(files, args.output_dir)
 
 
-def process_barcode_clstr(file: Path, directory: Path):
-    data = pd.read_csv(file, sep="\t", names=["Canonical", "Reads", "Components"])
-    data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
-    data["SeqLen"] = data["Canonical"].apply(len)
-    plot_barcode_clstr(data, directory)
+def process_barcode_clstr(files, directory: Path):
+    if len(files) == 1:
+        data = pd.read_csv(files[0], sep="\t", names=["Canonical", "Reads", "Components"])
+        data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
+        data["SeqLen"] = data["Canonical"].apply(len)
+        plot_barcode_clstr(data, directory)
+    else:
+        logger.warning("Cannot handle multiple 'barcode.clstr' files.")
 
 
 def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
@@ -79,9 +83,25 @@ def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
         ax.set_xlabel("Canonical fragment length (bp)")
 
 
-def process_molecule_stats(file: Path, directory: Path):
-    data = pd.read_csv(file, sep="\t")
+def process_multiple(files, func):
+    d = list()
+    for nr, file in enumerate(files):
+        d.append(func(file, nr=nr))
+    return pd.concat(d)
+
+
+def process_molecule_stats(files, directory: Path):
+    if len(files) == 1:
+        data = process_molecule_stats_file(files[0])
+    else:
+        data = process_multiple(files, process_molecule_stats_file)
     plot_molecule_stats(data, directory)
+
+
+def process_molecule_stats_file(file, nr=None):
+    data = pd.read_csv(file, sep="\t")
+    data["ChunkID"] = nr
+    return data
 
 
 def plot_molecule_stats(data: pd.DataFrame, directory: Path):
@@ -201,7 +221,7 @@ def add_arguments(parser):
     parser.add_argument(
         "input", nargs="+", type=Path,
         help=f"Path to data files from pipeline run accepted file are. Currently accepted files are: "
-        f"{', '.join(ACCEPTED_FILES)}"
+        f"barcodes.clstr, *molecule_stats.tsv."
     )
     parser.add_argument(
         "-o", "--output-dir", type=Path, default=Path(os.getcwd()),

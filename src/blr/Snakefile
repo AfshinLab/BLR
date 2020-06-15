@@ -269,16 +269,6 @@ rule mark_duplicates:
         " &> {log}"
 
 
-def get_chunk_index(wildcards):
-    """Generate chunk index to prepend to MoleculeID in buildmolecules stats output.
-    """
-    name = wildcards.base.split("/")[-1]
-    for nr, chunk in enumerate(chunks, start=100):
-        if chunk[0].name == name:
-            return nr
-    return 100
-
-
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
@@ -287,8 +277,6 @@ rule buildmolecules:
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
     log: "{base}.buildmolecules.log"
-    params:
-        chunk_index = get_chunk_index
     shell:
         "blr buildmolecules"
         " {input.bam}"
@@ -297,7 +285,6 @@ rule buildmolecules:
         " -m {config[molecule_tag]}"
         " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
-        " --chunk-index {params.chunk_index}"
         " 2> {log}"
 
 
@@ -535,8 +522,11 @@ rule concat_molecule_stats:
     input:
         tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks)
     run:
-        df = pd.DataFrame()
-        for file in input.tsv:
-            df = pd.concat([df, pd.read_csv(file, sep="\t")])
+        dfs = list()
+        for nr, file in enumerate(input.tsv):
+            df =  pd.read_csv(file, sep="\t")
+            df["ChunkID"] = nr
+            dfs.append(df)
 
-        df.to_csv(output.tsv, sep="\t")
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t")

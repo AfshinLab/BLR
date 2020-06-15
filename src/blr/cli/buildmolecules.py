@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 def main(args):
     summary = Counter()
 
-    # Set molecules id prefix that will be common for all molecule ids
-    Molecule.id_prefix = args.chunk_index
-
     # Build molecules from BCs and reads
     with pysam.AlignmentFile(args.input, "rb") as infile:
         library_type = infile.header.to_dict()["RG"][0]["LB"]
@@ -116,7 +113,6 @@ class Molecule:
     A Splitting of barcode read groups into several molecules based on mapping proximity. Equivalent to several
     molecules being barcoded simultaneously in the same emulsion droplet (meaning with the same barcode).
     """
-    id_prefix = 100
     molecule_counter = int()
 
     def __init__(self, read, barcode):
@@ -132,7 +128,7 @@ class Molecule:
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
-        self.id = int(str(Molecule.id_prefix) + str(Molecule.molecule_counter))
+        self.id = Molecule.molecule_counter
 
     def length(self):
         return self.stop - self.start
@@ -335,5 +331,3 @@ def add_arguments(parser):
                              "Default: %(default)s")
     parser.add_argument("-n", "--number-tag", default="MN",
                         help="SAM tag for storing molecule count for a particular barcode. Default: %(default)s")
-    parser.add_argument("--chunk-index", default=0, type=int,
-                        help="Index of chunk used to prepend to molecule index.")
