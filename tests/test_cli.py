@@ -184,7 +184,7 @@ def test_call_variants(workdir, variant_caller):
 
 
 def test_plot_figures(workdir):
-    target = "figures/mapped"
+    target = "figures"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_dir()
 
