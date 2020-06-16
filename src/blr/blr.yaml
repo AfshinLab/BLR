@@ -48,4 +48,4 @@ heap_space: 90 # GATK: Maximum heap space (~memory) to run java script with, as 
 barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
 barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
-naibr_path: # Pathc to NAIBR folder.
+naibr_path: # Path to NAIBR folder.
