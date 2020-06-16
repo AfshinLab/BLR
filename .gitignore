@@ -13,3 +13,4 @@ __pycache__/
 /src/blr.egg-info/
 
 .idea/
+/src/blr/_version.py
