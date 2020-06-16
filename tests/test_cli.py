@@ -24,6 +24,8 @@ REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
 REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf").absolute())
 DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
 
+NAIBR_PATH = str(Path("NAIBR").absolute())
+
 
 def count_bam_alignments(path):
     with pysam.AlignmentFile(path) as af:
@@ -200,3 +202,13 @@ def test_haplotag(workdir, haplotype_tool):
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
     assert count_bam_tags(workdir / target, "PS") == count_bam_tags(workdir / target, "HP")
+
+
+def test_lsv_calling(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+         [("reference_variants", "null"), ("naibr_path", NAIBR_PATH)]
+    )
+    target = "mapped.lsv_calling"
+    run(workdir=workdir, targets=[target])
+    assert workdir.joinpath(target).is_dir()

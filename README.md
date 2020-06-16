@@ -72,6 +72,12 @@ install it to you `$HOME` folder and enable the bioconda channel.
     source $HOME/miniconda/etc/profile.d/conda.sh
     conda config --add channels bioconda
 
+#### 1.1
+
+Clone NAIBR github. 
+
+    git clone https://github.com/raphael-group/NAIBR
+
 ### 2. Install
 
 Clone the git repository.

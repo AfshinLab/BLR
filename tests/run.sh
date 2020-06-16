@@ -37,7 +37,8 @@ blr config \
     --set reference_variants ../blr-testdata/HG002_GRCh38_GIAB_highconf.vcf \
     --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.vcf \
     --set max_molecules_per_bc 1 \
-    --set heap_space 1
+    --set heap_space 1 \
+    --set naibr_path ../NAIBR
 
 cd outdir-bowtie2
 blr run
