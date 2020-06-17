@@ -5,9 +5,8 @@ which had more than -M molecules in one and the same droplet).
 
 import logging
 from collections import Counter
-from tqdm import tqdm
 
-from blr.utils import get_bamtag, PySAMIO, print_stats
+from blr.utils import get_bamtag, PySAMIO, print_stats, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,6 @@ def main(args):
     removed_tags = {tag: set() for tag in tags_to_remove}
     summary = Counter()
     logger.info("Starting")
-
     # Writes filtered out
     with PySAMIO(args.input, args.output, __name__) as (openin, openout):
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):

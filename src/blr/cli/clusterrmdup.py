@@ -11,10 +11,9 @@ sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 
 import pysam
 import logging
-from tqdm import tqdm
 from collections import Counter, deque, OrderedDict
 
-from blr.utils import PySAMIO, get_bamtag, print_stats
+from blr.utils import PySAMIO, get_bamtag, print_stats, tqdm
 
 logger = logging.getLogger(__name__)
 

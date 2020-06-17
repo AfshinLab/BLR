@@ -8,11 +8,10 @@ a maximum distance of --window between any given reads.
 import pysam
 import logging
 from collections import Counter, OrderedDict, defaultdict
-from tqdm import tqdm
 import pandas as pd
 import statistics
 
-from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50
+from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50, tqdm
 
 logger = logging.getLogger(__name__)
 
