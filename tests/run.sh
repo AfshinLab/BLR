@@ -43,8 +43,8 @@ blr config \
 cd outdir-bowtie2
 blr run
 m=$(samtools view final.bam | $md5 | cut -f1 -d" ")
-test $m == 501497f45caae773f36d075f02f30282
+test $m == 99609caabdebbdbe33753ea552ecbac5
 
 # Cut away columns 2 and 3 as these change order between linux and osx
 m2=$(grep -v "^##" final.phased.vcf | $md5 | cut -f1 -d" ")
-test $m2 == 050eb16266ba633ec81beb19fe7b0dea
+test $m2 == 4948c00636f686bde2f646c3c7efca72
