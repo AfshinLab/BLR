@@ -1,0 +1,2 @@
+Sample	total_reads	unmapped_reads	non_analyced_reads	duplicates
+example	20088.0	1321.0	4010.0	2561.0

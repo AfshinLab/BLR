@@ -1,0 +1,2 @@
+Sample	switch rate	mismatch rate	flat rate	phased count	AN50	N50	num snps max blk
+example	0.005454353320743	0.003643633246098	0.003262235322342	34390.0	0.34289030033619733	0.664244	5144.0
