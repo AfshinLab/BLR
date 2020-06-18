@@ -177,7 +177,8 @@ rule map_sort_tag:
             command + " 2> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
-            " -o {output.bam} 2> {log.sort}"
+            " -o {output.bam}"
+            " -t {config[tmpdir]} 2> {log.sort}"
         )
 
 
