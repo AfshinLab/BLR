@@ -45,4 +45,4 @@ def test_hapcut2(tmpdir):
     assert phaseblock_lens.exists()
 
     comp_files_linewise(phasing_stats, REF_HAPCUT2_PHASING_STATS)
-    comp_files_linewise(phasing_stats, REF_HAPCUT2_PHASEBLOCK_LEN)
+    comp_files_linewise(phaseblock_lens, REF_HAPCUT2_PHASEBLOCK_LEN)
