@@ -19,6 +19,24 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
+    run_clusterrmdup(
+        input=args.input,
+        output=args.output,
+        merge_log=args.merge_log,
+        barcode_tag=args.barcode_tag,
+        buffer_size=args.buffer_size,
+        window=args.window,
+    )
+
+
+def run_clusterrmdup(
+    input: str,
+    output: str,
+    merge_log: str,
+    barcode_tag: str,
+    buffer_size: int,
+    window: int,
+):
     logger.info("Starting Analysis")
     summary = Counter()
     positions = OrderedDict()
@@ -26,8 +44,8 @@ def main(args):
     pos_prev = 0
     merge_dict = dict()
     buffer_dup_pos = deque()
-    for read, mate in tqdm(paired_reads(args.input, summary), desc="Reading pairs"):
-        barcode = get_bamtag(read, args.barcode_tag)
+    for read, mate in tqdm(paired_reads(input, summary), desc="Reading pairs"):
+        barcode = get_bamtag(read, barcode_tag)
         if not barcode:
             summary["Non tagged reads"] += 2
             continue
@@ -47,8 +65,8 @@ def main(args):
         # https://sourceforge.net/p/samtools/mailman/message/25062576/
         current_position = (mate.reference_start, read.reference_end, orientation)
 
-        if abs(pos_new - pos_prev) > args.buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
+        if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
+            find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
 
             if chrom_new != chrom_prev:
                 positions.clear()
@@ -60,7 +78,7 @@ def main(args):
         add_current_position(positions, current_position, barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
+    find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
 
     # Remove several step redundancy (5 -> 3, 3 -> 1) => (5 -> 1, 3 -> 1)
     reduce_several_step_redundancy(merge_dict)
@@ -68,17 +86,17 @@ def main(args):
 
     # Write outputs
     barcodes_written = set()
-    with PySAMIO(args.input, args.output, __name__) as (infile, out), \
-            open(args.merge_log, "w") as bc_merge_file:
+    with PySAMIO(input, output, __name__) as (infile, out), \
+            open(merge_log, "w") as bc_merge_file:
         print("Previous_barcode,New_barcode", file=bc_merge_file)
         for read in tqdm(infile, desc="Writing output", total=summary["Total reads"]):
 
             # If read barcode in merge dict, change tag and header to compensate.
-            previous_barcode = get_bamtag(pysam_read=read, tag=args.barcode_tag)
+            previous_barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
             if previous_barcode in merge_dict:
                 summary["Reads with new barcode"] += 1
                 new_barcode = str(merge_dict[previous_barcode])
-                read.set_tag(args.barcode_tag, new_barcode, value_type="Z")
+                read.set_tag(barcode_tag, new_barcode, value_type="Z")
 
                 # Merge file writing
                 if previous_barcode not in barcodes_written:
