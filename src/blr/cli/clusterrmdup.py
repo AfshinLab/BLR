@@ -98,7 +98,7 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
     :return: read, mate: both as pysam AlignedSegment objects.
     """
     cache = dict()
-    with pysam.AlignmentFile(file, "rb") as openin:
+    with pysam.AlignmentFile(file) as openin:
         for read in openin:
             summary["Total reads"] += 1
             # Requirements: read mapped, mate mapped and read has barcode tag
