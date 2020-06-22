@@ -9,7 +9,7 @@ at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(d
 apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 """
 
-import pysam
+from pysam import AlignmentFile, AlignedSegment
 import logging
 from collections import Counter, deque, OrderedDict
 
@@ -109,16 +109,16 @@ def run_clusterrmdup(
     print_stats(summary, name=__name__)
 
 
-def paired_reads(file, summary):
+def paired_reads(path: str, summary):
     """
     Yield (forward_read, reverse_read) pairs for all properly paired read pairs in the input file.
 
-    :param file: str, path to SAM file
+    :param path: str, path to SAM file
     :param summary: dict
     :return: read, mate: both as pysam AlignedSegment objects.
     """
     cache = dict()
-    with pysam.AlignmentFile(file) as openin:
+    with AlignmentFile(path) as openin:
         for read in openin:
             summary["Total reads"] += 1
             # Requirements: read mapped, mate mapped and read has barcode tag
@@ -133,7 +133,7 @@ def paired_reads(file, summary):
                 yield read, mate
 
 
-def pair_is_mapped_and_proper(read, summary):
+def pair_is_mapped_and_proper(read: AlignedSegment, summary) -> bool:
     """
     Checks so read pair meets requirements before being used in analysis.
     :param read: pysam read
@@ -154,7 +154,7 @@ def pair_is_mapped_and_proper(read, summary):
     return True
 
 
-def pair_orientation_is_fr(read, mate, summary):
+def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) -> bool:
     # Proper layout of read pair.
     # PAIR      |       mate            read
     # ALIGNMENTS|    ---------->      <--------
@@ -172,20 +172,19 @@ def add_current_position(positions, current_position, barcode: str):
     :param current_position: tuple: Position information
     :param barcode: str: Barcode string.
     """
-
     if current_position not in positions:
         positions[current_position] = PositionTracker(current_position)
     positions[current_position].add_barcode(barcode)
 
 
-def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary):
+def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, summary):
     """
     Parse position to check if they are valid duplicate positions. If so start looking for barcode
     duplicates.
     :param positions: list: Position to check for duplicates
     :param merge_dict: dict: Tracks which barcodes shuold be merged .
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
-    :param window: int: Max distance allowed between postions to call barcode duplicate.
+    :param window: int: Max distance allowed between positions to call barcode duplicate.
     :param summary: dict
     """
     positions_to_remove = list()
@@ -223,19 +222,19 @@ class PositionTracker:
         self.checked = False
         self.updated_since_validation = False
 
-    def add_barcode(self, barcode):
+    def add_barcode(self, barcode: str):
         self.updated_since_validation = True
         self.reads += 2
         self.barcodes.add(barcode)
 
-    def valid_duplicate_position(self):
+    def valid_duplicate_position(self) -> bool:
         # TODO this method should not change the object’s state
         check = len(self.barcodes) >= 2 and self.updated_since_validation
         self.updated_since_validation = False
         return check
 
 
-def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window):
+def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window: int):
     """
     Builds up a merge dictionary for which any keys should be overwritten by their value. Also
     keeps all previous positions saved in a list in which all reads which still are withing the
