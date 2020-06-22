@@ -58,7 +58,7 @@ def main(args):
             pos_prev = pos_new
 
         # Add current position
-        update_positions(positions, current_position, read, mate, barcode)
+        update_positions(positions, current_position, barcode)
 
     # Process last chunk
     find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
@@ -148,13 +148,11 @@ def pair_orientation_is_fr(read, mate, summary):
     return False
 
 
-def update_positions(positions, current_position, read, mate, barcode):
+def update_positions(positions, current_position, barcode):
     """
     Update positions list with current positions and read pair information.
     :param positions: list: Postions buffer.
     :param current_position: tuple: Position information
-    :param read: pysam.AlignedSegment
-    :param mate: pysam.AlignedSeqment
     :param barcode: str: Barcode string.
     """
 
