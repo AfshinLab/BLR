@@ -5,8 +5,8 @@ same tagmented long molecule) by merging barcode sequences for reads sharing dup
 Condition to call barcode duplicate:
 
 Two positions (positions defined as a unique set of read_start, read_stop, mate_start, mate_stop))
-at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(downstream_pos)) bp apart
-sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
+at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(downstream_pos)) bp
+apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 """
 
 import pysam
@@ -39,8 +39,9 @@ def main(args):
         chrom_new = read.reference_name
         pos_new = read.reference_start
 
-        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') with is used to group duplicates.
-        # Based on picard MarkDuplicates definition, see: https://sourceforge.net/p/samtools/mailman/message/25062576/
+        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') with is used to group
+        # duplicates. Based on picard MarkDuplicates definition, see
+        # https://sourceforge.net/p/samtools/mailman/message/25062576/
         current_position = (mate.reference_start, read.reference_end, orientation)
 
         if abs(pos_new - pos_prev) > args.buffer_size or chrom_new != chrom_prev:
@@ -170,7 +171,8 @@ def update_positions(positions, current_position, read, mate, barcode):
 
 def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary):
     """
-    Parse position to check if they are valid duplicate positions. If so start looking for barcode duplicates.
+    Parse position to check if they are valid duplicate positions. If so start looking for barcode
+    duplicates.
     :param positions: list: Position to check for duplicates
     :param merge_dict: dict: Tracks which barcodes shuold be merged .
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
@@ -201,8 +203,8 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summa
 
 class PositionTracker:
     """
-    Stores read pairs information relatec to a position and keeps track if reads/mates are marked as duplicate
-    for that set of reads.
+    Stores read pairs information relatec to a position and keeps track if reads/mates are marked
+    as duplicate for that set of reads.
     """
 
     def __init__(self, position, read, mate, barcode):
@@ -229,9 +231,9 @@ class PositionTracker:
 
 def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window):
     """
-    Builds up a merge dictionary for which any keys should be overwritten by their value. Also keeps all previous
-    positions saved in a list in which all reads which still are withing the window
-    size are saved.
+    Builds up a merge dictionary for which any keys should be overwritten by their value. Also
+    keeps all previous positions saved in a list in which all reads which still are withing the
+    window size are saved.
     :param merge_dict: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
@@ -240,8 +242,8 @@ def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, win
     """
 
     pos_start_new = position[0]
-    # Loop over list to get the positions closest to the analyzed position first. When position are out of the window
-    # size of the remaining buffer is removed.
+    # Loop over list to get the positions closest to the analyzed position first. When position
+    # are out of the window size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
 
         # Skip comparison against self.
@@ -290,9 +292,9 @@ def update_merge_dict(merge_dict, barcodes):
 
 def find_min_barcode(barcode, merge_dict):
     """
-    Goes through merge dict and finds the alphabetically top string for a chain of key-value entries. E.g if
-    merge_dict has TAGA => GGAT, GGAT => CTGA, CTGA => ACGA it will return ACGA if any of the values CTGA, GGAT,
-    TAGA or ACGA are given.
+    Goes through merge dict and finds the alphabetically top string for a chain of key-value
+    entries. E.g if merge_dict has TAGA => GGAT, GGAT => CTGA, CTGA => ACGA it will return ACGA if
+    any of the values CTGA, GGAT, TAGA or ACGA are given.
     :param: bc_minimum: str: Barcode
     :param: merge_dict: dict: Barcode pairs directing merges
     :return: str: alphabetically top barcode string
@@ -316,18 +318,17 @@ def reduce_several_step_redundancy(merge_dict):
 
 def add_arguments(parser):
     parser.add_argument("input",
-                        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
+        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
     parser.add_argument("merge_log",
-                        help="CSV log file containing all merges done. File is in format: "
-                             "{old barcode id},{new barcode id}")
-
+        help="CSV log file containing all merges done. File is in format: "
+        "{old barcode id},{new barcode id}")
     parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
+        help="Write output BAM to file rather then stdout.")
     parser.add_argument("-b", "--barcode-tag", default="BX",
-                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
     parser.add_argument("-w", "--window", type=int, default=100000,
-                        help="Window size. Duplicate positions within this distance will be used to find cluster "
-                             "duplicates. Default: %(default)s")
+        help="Window size. Duplicate positions within this distance will be used to find cluster "
+        "duplicates. Default: %(default)s")
     parser.add_argument("--buffer-size", type=int, default=200,
-                        help="Buffer size for collecting duplicates. Should be around read length. "
-                             "Default: %(default)s")
+        help="Buffer size for collecting duplicates. Should be around read length. "
+        "Default: %(default)s")
