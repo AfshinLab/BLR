@@ -69,7 +69,7 @@ def main(args):
     with PySAMIO(args.input, args.output, __name__) as (infile, out), \
             open(args.merge_log, "w") as bc_merge_file:
         print("Previous_barcode,New_barcode", file=bc_merge_file)
-        for read in tqdm(infile.fetch(until_eof=True), desc="Writing output", total=summary["Total reads"]):
+        for read in tqdm(infile, desc="Writing output", total=summary["Total reads"]):
 
             # If read barcode in merge dict, change tag and header to compensate.
             previous_barcode = get_bamtag(pysam_read=read, tag=args.barcode_tag)
@@ -99,7 +99,7 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
     """
     cache = dict()
     with pysam.AlignmentFile(file, "rb") as openin:
-        for read in openin.fetch(until_eof=True):
+        for read in openin:
             summary["Total reads"] += 1
             # Requirements: read mapped, mate mapped and read has barcode tag
             # Cache read if matches requirements, continue with pair.
