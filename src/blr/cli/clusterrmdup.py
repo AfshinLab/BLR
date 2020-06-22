@@ -1,6 +1,6 @@
 """
-Removes barcode duplicates (two different barcode sequences origin to the same droplet, tagging the same tagmented long
-molecule) by merging barcode sequences for reads sharing duplicates.
+Remove barcode duplicates (two different barcode sequences origin to the same droplet, tagging the
+same tagmented long molecule) by merging barcode sequences for reads sharing duplicates.
 
 Condition to call barcode duplicate:
 
@@ -34,7 +34,7 @@ def main(args):
         else:
             orientation = "R"
 
-        summary["Reads analyced"] += 2
+        summary["Reads analyzed"] += 2
 
         chrom_new = read.reference_name
         pos_new = read.reference_start
@@ -235,12 +235,12 @@ def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, win
     :param merge_dict: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
-    :param position_barcodes: seq: Barcodes at analyced position
+    :param position_barcodes: seq: Barcodes at analyzed position
     :param window: int: Max distance allowed between postions to call barcode duplicate.
     """
 
     pos_start_new = position[0]
-    # Loop over list to get the positions closest to the analyced position first. When position are out of the window
+    # Loop over list to get the positions closest to the analyzed position first. When position are out of the window
     # size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
 
