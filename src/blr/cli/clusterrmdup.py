@@ -110,13 +110,12 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
                     cache[read.query_name] = read
                 continue
 
-            # Get barcode and confirm that its not None
             barcode = get_bamtag(read, barcode_tag)
             if not barcode:
                 summary["Non tagged reads"] += 2
                 continue
 
-            if valid_pair_orientation(read, mate, summary):
+            if pair_orientation_is_fr(read, mate, summary):
                 yield barcode, read, mate
 
 
@@ -141,7 +140,7 @@ def pair_is_mapped_and_proper(read, summary):
     return True
 
 
-def valid_pair_orientation(read, mate, summary):
+def pair_orientation_is_fr(read, mate, summary):
     # Proper layout of read pair.
     # PAIR      |       mate            read
     # ALIGNMENTS|    ---------->      <--------
