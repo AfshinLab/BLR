@@ -57,8 +57,7 @@ def main(args):
 
             pos_prev = pos_new
 
-        # Add current position
-        update_positions(positions, current_position, barcode)
+        add_current_position(positions, current_position, barcode)
 
     # Process last chunk
     find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
@@ -148,7 +147,7 @@ def pair_orientation_is_fr(read, mate, summary):
     return False
 
 
-def update_positions(positions, current_position, barcode):
+def add_current_position(positions, current_position, barcode: str):
     """
     Update positions list with current positions and read pair information.
     :param positions: list: Postions buffer.
