@@ -105,7 +105,7 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
             if read.query_name in cache:
                 mate = cache.pop(read.query_name)
             else:
-                if meet_requirements(read, summary):
+                if pair_is_mapped_and_proper(read, summary):
                     cache[read.query_name] = read
                 continue
 
@@ -119,7 +119,7 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
                 yield barcode, read, mate
 
 
-def meet_requirements(read, summary):
+def pair_is_mapped_and_proper(read, summary):
     """
     Checks so read pair meets requirements before being used in analysis.
     :param read: pysam read
