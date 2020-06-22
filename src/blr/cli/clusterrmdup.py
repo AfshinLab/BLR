@@ -75,7 +75,9 @@ def run_clusterrmdup(
 
             pos_prev = pos_new
 
-        add_current_position(positions, current_position, barcode)
+        if current_position not in positions:
+            positions[current_position] = PositionTracker(current_position)
+        positions[current_position].add_barcode(barcode)
 
     # Process last chunk
     find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
@@ -163,18 +165,6 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
         return True
     summary["Reads with wrong orientation"] += 2
     return False
-
-
-def add_current_position(positions, current_position, barcode: str):
-    """
-    Update positions list with current positions and read pair information.
-    :param positions: list: Postions buffer.
-    :param current_position: tuple: Position information
-    :param barcode: str: Barcode string.
-    """
-    if current_position not in positions:
-        positions[current_position] = PositionTracker(current_position)
-    positions[current_position].add_barcode(barcode)
 
 
 def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, summary):
