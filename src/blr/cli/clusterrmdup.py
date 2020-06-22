@@ -26,9 +26,12 @@ def main(args):
     pos_prev = 0
     merge_dict = dict()
     buffer_dup_pos = deque()
-    for barcode, read, mate in tqdm(parse_and_filter_pairs(args.input, args.barcode_tag, summary),
-                                    desc="Reading pairs"):
-        # Get orientation of read pair
+    for read, mate in tqdm(paired_reads(args.input, summary), desc="Reading pairs"):
+        barcode = get_bamtag(read, args.barcode_tag)
+        if not barcode:
+            summary["Non tagged reads"] += 2
+            continue
+
         if mate.is_read1 and read.is_read2:
             orientation = "F"
         else:
@@ -54,7 +57,7 @@ def main(args):
 
             pos_prev = pos_new
 
-        # Add current possition
+        # Add current position
         update_positions(positions, current_position, read, mate, barcode)
 
     # Process last chunk
@@ -89,11 +92,11 @@ def main(args):
     print_stats(summary, name=__name__)
 
 
-def parse_and_filter_pairs(file, barcode_tag, summary):
+def paired_reads(file, summary):
     """
-    Iterator that yield filtered read pairs.
+    Yield (forward_read, reverse_read) pairs for all properly paired read pairs in the input file.
+
     :param file: str, path to SAM file
-    :param barcode_tag: str, SAM tag for barcode.
     :param summary: dict
     :return: read, mate: both as pysam AlignedSegment objects.
     """
@@ -109,14 +112,8 @@ def parse_and_filter_pairs(file, barcode_tag, summary):
                 if pair_is_mapped_and_proper(read, summary):
                     cache[read.query_name] = read
                 continue
-
-            barcode = get_bamtag(read, barcode_tag)
-            if not barcode:
-                summary["Non tagged reads"] += 2
-                continue
-
             if pair_orientation_is_fr(read, mate, summary):
-                yield barcode, read, mate
+                yield read, mate
 
 
 def pair_is_mapped_and_proper(read, summary):
