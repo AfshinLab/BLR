@@ -50,7 +50,7 @@ def main(args):
         if abs(pos_new - pos_prev) > args.buffer_size or chrom_new != chrom_prev:
             find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
 
-            if not chrom_new == chrom_prev:
+            if chrom_new != chrom_prev:
                 positions.clear()
                 buffer_dup_pos.clear()
                 chrom_prev = chrom_new
@@ -158,11 +158,9 @@ def update_positions(positions, current_position, read, mate, barcode):
     :param barcode: str: Barcode string.
     """
 
-    if current_position in positions:
-        positions[current_position].add_read_pair_and_barcode(read=read, mate=mate, barcode=barcode)
-    else:
-        positions[current_position] = PositionTracker(position=current_position, read=read,
-                                                      mate=mate, barcode=barcode)
+    if current_position not in positions:
+        positions[current_position] = PositionTracker(current_position)
+    positions[current_position].add_barcode(barcode)
 
 
 def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary):
@@ -203,23 +201,20 @@ class PositionTracker:
     as duplicate for that set of reads.
     """
 
-    def __init__(self, position, read, mate, barcode):
+    def __init__(self, position):
         self.position = position
-        self.reads = int()
+        self.reads = 0
         self.barcodes = set()
         self.checked = False
-        self.updated_since_validation = bool()
-        self.read_pos_has_duplicates = bool()
-        self.mate_pos_has_duplciates = bool()
+        self.updated_since_validation = False
 
-        self.add_read_pair_and_barcode(read=read, mate=mate, barcode=barcode)
-
-    def add_read_pair_and_barcode(self, read, mate, barcode):
+    def add_barcode(self, barcode):
         self.updated_since_validation = True
         self.reads += 2
         self.barcodes.add(barcode)
 
     def valid_duplicate_position(self):
+        # TODO this method should not change the object’s state
         check = len(self.barcodes) >= 2 and self.updated_since_validation
         self.updated_since_validation = False
         return check
