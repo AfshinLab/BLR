@@ -176,7 +176,7 @@ rule map_sort_tag:
         command = commands[config["read_mapper"]]
 
         # Use temporary directory for intermediate file if set in environment.
-        tmpdir = " -t $TMPDIR" if "TMPDIR" in os.environ else ""
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
 
         shell(
             command + " 2> {log.map} | "
