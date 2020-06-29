@@ -94,7 +94,3 @@ properties:
   stlfr_adapter:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
-  tmpdir:
-    type: string
-    description: Directory for temporary files creates during sorting.
-    default: /tmp

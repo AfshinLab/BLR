@@ -12,7 +12,6 @@ dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
 read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2 or ema
 library_type: # Library type. Chose blr, 10x or stlfr
-tmpdir: /tmp # Temporary directory used for sorting. On Uppmax use $TMPDIR or $SNIC_TMP.
 
 #################
 # Trim settings #
