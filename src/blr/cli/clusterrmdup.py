@@ -180,20 +180,19 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, 
     positions_to_remove = list()
     for position in positions.keys():
         tracked_position = positions[position]
-        if tracked_position.valid_duplicate_position():
-            if not tracked_position.checked:
-                summary["Reads at duplicate position"] += tracked_position.reads
-            seed_duplicates(
-                merge_dict=merge_dict,
-                buffer_dup_pos=buffer_dup_pos,
-                position=tracked_position.position,
-                position_barcodes=tracked_position.barcodes,
-                window=window
-            )
-        elif tracked_position.checked:
-            positions_to_remove.append(position)
+        # Check if position is updated i.e. new reads added, else remove it.
+        if tracked_position.is_updated:
+            if tracked_position.is_duplicate():
+                seed_duplicates(
+                    merge_dict=merge_dict,
+                    buffer_dup_pos=buffer_dup_pos,
+                    position=tracked_position.position,
+                    position_barcodes=tracked_position.barcodes,
+                    window=window
+                )
+            tracked_position.is_updated = False
         else:
-            tracked_position.checked = True
+            positions_to_remove.append(position)
 
     for position in positions_to_remove:
         del positions[position]
@@ -209,19 +208,15 @@ class PositionTracker:
         self.position = position
         self.reads = 0
         self.barcodes = set()
-        self.checked = False
-        self.updated_since_validation = False
+        self.is_updated = False
 
     def add_barcode(self, barcode: str):
-        self.updated_since_validation = True
+        self.is_updated = True
         self.reads += 2
         self.barcodes.add(barcode)
 
-    def valid_duplicate_position(self) -> bool:
-        # TODO this method should not change the object’s state
-        check = len(self.barcodes) >= 2 and self.updated_since_validation
-        self.updated_since_validation = False
-        return check
+    def is_duplicate(self) -> bool:
+        return len(self.barcodes) >= 2
 
 
 def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window: int):
