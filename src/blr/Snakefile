@@ -1,5 +1,6 @@
 from snakemake.utils import validate
 from blr.utils import ReadGroup
+import os
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -173,11 +174,17 @@ rule map_sort_tag:
                 " -p 10x"
         }
         command = commands[config["read_mapper"]]
+
+        # Use temporary directory for intermediate file if TMPDIR set in environment.
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
+
         shell(
             command + " 2> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
-            " -o {output.bam} 2> {log.sort}"
+            " -o {output.bam}" +
+            tmpdir +
+            " 2> {log.sort}"
         )
 
 
