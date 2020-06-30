@@ -307,18 +307,24 @@ def reduce_several_step_redundancy(merge_dict):
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
+    parser.add_argument(
+        "input",
         help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
-    parser.add_argument("merge_log",
+    parser.add_argument(
+        "merge_log",
         help="CSV log file containing all merges done. File is in format: "
         "{old barcode id},{new barcode id}")
-    parser.add_argument("-o", "--output", default="-",
+    parser.add_argument(
+        "-o", "--output", default="-",
         help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-b", "--barcode-tag", default="BX",
+    parser.add_argument(
+        "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s")
-    parser.add_argument("-w", "--window", type=int, default=100000,
+    parser.add_argument(
+        "-w", "--window", type=int, default=100000,
         help="Window size. Duplicate positions within this distance will be used to find cluster "
         "duplicates. Default: %(default)s")
-    parser.add_argument("--buffer-size", type=int, default=200,
+    parser.add_argument(
+        "--buffer-size", type=int, default=200,
         help="Buffer size for collecting duplicates. Should be around read length. "
         "Default: %(default)s")
