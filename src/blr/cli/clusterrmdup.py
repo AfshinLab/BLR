@@ -169,10 +169,9 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
 
 def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, summary):
     """
-    Parse position to check if they are valid duplicate positions. If so start looking for barcode
-    duplicates.
+    Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
     :param positions: list: Position to check for duplicates
-    :param merge_dict: dict: Tracks which barcodes shuold be merged .
+    :param merge_dict: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param window: int: Max distance allowed between positions to call barcode duplicate.
     :param summary: dict
@@ -180,8 +179,7 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, 
     positions_to_remove = list()
     for position in positions.keys():
         tracked_position = positions[position]
-        # Check if position is updated i.e. new reads added, else remove it.
-        if tracked_position.is_updated:
+        if tracked_position.has_updated_barcodes:
             if tracked_position.is_duplicate():
                 seed_duplicates(
                     merge_dict=merge_dict,
@@ -190,7 +188,7 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, 
                     position_barcodes=tracked_position.barcodes,
                     window=window
                 )
-            tracked_position.is_updated = False
+            tracked_position.has_updated_barcodes = False
         else:
             positions_to_remove.append(position)
 
@@ -200,23 +198,21 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, 
 
 class PositionTracker:
     """
-    Stores read pairs information relatec to a position and keeps track if reads/mates are marked
-    as duplicate for that set of reads.
+    Stores barcodes related to a position. The position is considered duplicate if more than one barcode is present.
     """
-
     def __init__(self, position):
         self.position = position
         self.reads = 0
         self.barcodes = set()
-        self.is_updated = False
+        self.has_updated_barcodes = False
 
     def add_barcode(self, barcode: str):
-        self.is_updated = True
+        self.has_updated_barcodes = True
         self.reads += 2
         self.barcodes.add(barcode)
 
     def is_duplicate(self) -> bool:
-        return len(self.barcodes) >= 2
+        return len(self.barcodes) > 1
 
 
 def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window: int):
