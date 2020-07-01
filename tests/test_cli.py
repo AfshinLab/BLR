@@ -4,6 +4,7 @@ import pysam
 import pytest
 import dnaio
 
+from blr.__main__ import main as blr_main
 from blr.cli.init import init
 from blr.cli.run import run
 from blr.cli.config import change_config
@@ -202,3 +203,9 @@ def test_haplotag(workdir, haplotype_tool):
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
     assert count_bam_tags(workdir / target, "PS") == count_bam_tags(workdir / target, "HP")
+
+
+def test_version_exit_code_zero():
+    with pytest.raises(SystemExit) as e:
+        blr_main(["--version"])
+    assert e.value.code == 0

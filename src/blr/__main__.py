@@ -8,15 +8,15 @@ import importlib
 from argparse import ArgumentParser
 
 import blr.cli as cli_package
-
+from blr import __version__
 
 logger = logging.getLogger(__name__)
 
 
-def main() -> int:
+def main(commandline_arguments=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(module)s - %(levelname)s: %(message)s")
     parser = ArgumentParser(description=__doc__, prog="blr")
-    parser.add_argument("--version", action="version", version="%(prog)s 0.1")
+    parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers()
 
     # Import each module that implements a subcommand and add a subparser for it.
@@ -30,7 +30,7 @@ def main() -> int:
         subparser.set_defaults(module=module)
         module.add_arguments(subparser)
 
-    args = parser.parse_args()
+    args = parser.parse_args(commandline_arguments)
     if not hasattr(args, "module"):
         parser.error("Please provide the name of a subcommand to run")
     else:
