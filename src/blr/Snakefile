@@ -219,6 +219,16 @@ rule split_into_chunks:
         "samtools view -M -L {input.bed} -o {output.bam} {input.bam}"
 
 
+rule get_unmapped_reads:
+    output:
+        bam = "unmapped.bam"
+    input:
+        bam = "initialmapping.bam"
+    log: "unmapped.log"
+    shell:
+        "samtools view -hf 4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+
+
 # TODO The input BAMs for tagbam could be created on-the-fly (in a pipe)
 rule tagbam:
     output:
@@ -493,9 +503,10 @@ rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks)
+        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks),
+        bam_unmapped = "unmapped.bam"
     shell:
-        "samtools cat -o {output.bam} {input.bam}"
+        "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
 
 
 rule concat_phased_vcfs:
