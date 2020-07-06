@@ -1,0 +1,63 @@
+BLOCK: offset: 3 len: 20 phased: 16 SPAN: 61441 fragments 70
+********
+BLOCK: offset: 38 len: 26 phased: 7 SPAN: 23426 fragments 15
+********
+BLOCK: offset: 45 len: 16 phased: 5 SPAN: 7476 fragments 7
+********
+BLOCK: offset: 64 len: 49 phased: 47 SPAN: 27636 fragments 72
+********
+BLOCK: offset: 119 len: 113 phased: 75 SPAN: 160915 fragments 191
+********
+BLOCK: offset: 307 len: 1211 phased: 768 SPAN: 1096287 fragments 1868
+********
+BLOCK: offset: 1522 len: 2006 phased: 1329 SPAN: 1365660 fragments 2767
+********
+BLOCK: offset: 2799 len: 2 phased: 2 SPAN: 8 fragments 1
+********
+BLOCK: offset: 3531 len: 2 phased: 2 SPAN: 28 fragments 11
+********
+BLOCK: offset: 3541 len: 415 phased: 265 SPAN: 299250 fragments 691
+********
+BLOCK: offset: 3672 len: 2 phased: 2 SPAN: 34 fragments 1
+********
+BLOCK: offset: 3952 len: 14 phased: 6 SPAN: 85790 fragments 6
+********
+BLOCK: offset: 3971 len: 407 phased: 147 SPAN: 329350 fragments 274
+********
+BLOCK: offset: 4378 len: 18 phased: 9 SPAN: 13816 fragments 20
+********
+BLOCK: offset: 4396 len: 1115 phased: 698 SPAN: 784076 fragments 1587
+********
+BLOCK: offset: 5557 len: 371 phased: 240 SPAN: 332815 fragments 464
+********
+BLOCK: offset: 5938 len: 74 phased: 46 SPAN: 87724 fragments 119
+********
+BLOCK: offset: 6017 len: 530 phased: 376 SPAN: 388173 fragments 828
+********
+BLOCK: offset: 6699 len: 118 phased: 44 SPAN: 102981 fragments 113
+********
+BLOCK: offset: 6817 len: 904 phased: 436 SPAN: 536136 fragments 1073
+********
+BLOCK: offset: 7733 len: 622 phased: 416 SPAN: 341209 fragments 950
+********
+BLOCK: offset: 8367 len: 47 phased: 6 SPAN: 104260 fragments 5
+********
+BLOCK: offset: 8389 len: 3764 phased: 2144 SPAN: 2245777 fragments 4849
+********
+BLOCK: offset: 9158 len: 2 phased: 2 SPAN: 70 fragments 2
+********
+BLOCK: offset: 12029 len: 2 phased: 2 SPAN: 1 fragments 3
+********
+BLOCK: offset: 12117 len: 10 phased: 2 SPAN: 8714 fragments 1
+********
+BLOCK: offset: 12181 len: 77 phased: 4 SPAN: 141543 fragments 3
+********
+BLOCK: offset: 12206 len: 6 phased: 3 SPAN: 4331 fragments 4
+********
+BLOCK: offset: 12253 len: 29 phased: 6 SPAN: 66132 fragments 6
+********
+BLOCK: offset: 12327 len: 2137 phased: 1315 SPAN: 1849438 fragments 3034
+********
+BLOCK: offset: 41033 len: 2 phased: 2 SPAN: 1 fragments 2
+********
+BLOCK: offset: 41139 len: 45 phased: 34 SPAN: 45618 fragments 65

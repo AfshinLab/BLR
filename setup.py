@@ -18,6 +18,7 @@ setup(
         "tqdm",
         "snakemake",
         "importlib_resources; python_version<'3.7'",
+        "multiqc"
     ],
     extras_require={
         "dev": ["flake8"],
@@ -25,7 +26,21 @@ setup(
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
     package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml"]},
-    entry_points={"console_scripts": ["blr = blr.__main__:main"]},
+    entry_points={
+        "console_scripts": [
+            "blr = blr.__main__:main"
+        ],
+        "multiqc.modules.v1": [
+            "stats = multiqc_blr.modules.stats:MultiqcModule",
+            "hapcut2 = multiqc_blr.modules.hapcut2:MultiqcModule",
+        ],
+        "multiqc.cli_options.v1": [
+            "disable_plugin = multiqc_blr.cli:disable_plugin"
+        ],
+        "multiqc.hooks.v1": [
+            "execution_start = multiqc_blr.multiqc_blr:execution_start"
+        ]
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",

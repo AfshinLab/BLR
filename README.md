@@ -91,7 +91,21 @@ Install blr into the environment in "editable install" mode.
 This will install blr in such a way that you can still modify the source code
 and get any changes immediately without re-installing.
 
-#### 2.1 Linux users (not macOS)
+#### 2.1 MultiQC plugin
+
+There is a MultiQC plugin included in the BLR pipeline called 
+MultiQC_BLR. If you which to run MultiQC without this plugin include 
+`--disable-blr-plugin` in your multiqc command. 
+
+The plugin allows for comparision between different runs. In this case go to 
+the directory containing the folders for the runs you wish to compare. Then run:
+
+    multiqc -d .
+    
+The `-d` option prepends the directory name to each sample allowing differentiation 
+between the runs. 
+
+#### 2.2 Linux users (not macOS)
 
 To enable DeepVariant, install it separately to your environment.
 
