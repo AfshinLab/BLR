@@ -1,5 +1,7 @@
+import sys
+import pandas as pd
 from snakemake.utils import validate
-from blr.utils import ReadGroup
+from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath
 import os
 
 configfile: "blr.yaml"
@@ -24,16 +26,32 @@ platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
 readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
                       platform=platform)
 
+
+# For parallelization, we split the initial mapped BAM file into non-overlapping "chunks",
+# which are computed from the FASTA index file
+if config["genome_reference"] is not None:
+    try:
+        with open(config["genome_reference"] + ".fai") as f:
+            chunks = list(chromosome_chunks(parse_fai(f), size=config["chunk_size"]))
+    except FileNotFoundError as e:
+        sys.exit(
+            f"The genome index file {config['genome_reference']} is missing. "
+            "Please create it with 'samtools faidx'"
+        )
+else:
+    chunks = []
+
+
 def get_final_targets(wildcards):
     """Define final file names based on configs."""
     input_files = [
         "reads.1.final.fastq.gz",
         "reads.2.final.fastq.gz",
         "multiqc_report.html",
-        "mapped.calling.bam",
+        "final.bam",
     ]
     if config["phasing_ground_truth"]:
-        input_files.append("mapped.phasing_stats.txt")
+        input_files.append("final.phasing_stats.txt")
 
     return input_files
 
@@ -62,12 +80,11 @@ def get_multiqc_input(wildcards):
     inputs = [
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
-        "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        "figures/mapped",
+        "final.bam",
+        "figures",
     ]
     if config["phasing_ground_truth"]:
-        inputs.append("mapped.phasing_stats.txt")
-
+        inputs.append("final.phasing_stats.txt")
     return inputs
 
 
@@ -90,17 +107,16 @@ rule multiqc_summarize:
 
 def plot_figures_input(wildcards):
     if config["library_type"] == "blr":
-        return "{wc.base}.molecule_stats.tsv".format(wc=wildcards), "barcodes.clstr"
+        return "final.molecule_stats.tsv", "barcodes.clstr"
     else:
-        return "{wc.base}.molecule_stats.tsv".format(wc=wildcards)
+        return "final.molecule_stats.tsv"
 
 
-# TODO individual molecule_stats.tsv files should be merged so that we get only one plot
 rule plot_figures:
     """Generate plots for final report."""
-    output: directory("figures/{base}")
+    output: directory("figures")
     input: plot_figures_input
-    log: "{base}.plot_figures.log"
+    log: "final.plot_figures.log"
     shell:
         "blr plot"
         " {input}"
@@ -126,7 +142,7 @@ rule barcode_sort_fastq:
 rule map_sort_tag:
     """Map reads using the aligner specified in configs. Output is sorted and tagged with barcode."""
     output:
-        bam = "mapped.sorted.bam"
+        bam = "initialmapping.bam"
     input:
         r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "ema" else "sorted.1.fastq.gz",
         r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
@@ -188,6 +204,38 @@ rule map_sort_tag:
         )
 
 
+rule make_chunk_beds:
+    output:
+        expand("chunks/{chunk[0].name}.bed", chunk=chunks)
+    run:
+        for chunk in chunks:
+            with open(f"chunks/{chunk[0].name}.bed", "w") as f:
+                for chromosome in chunk:
+                    print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
+
+
+rule split_into_chunks:
+    output:
+        bam = "chunks/{chunk}.sorted.bam"
+    input:
+        bam = "initialmapping.bam",
+        bai = "initialmapping.bam.bai",
+        bed = "chunks/{chunk}.bed",
+    shell:
+        "samtools view -M -L {input.bed} -o {output.bam} {input.bam}"
+
+
+rule get_unmapped_reads:
+    output:
+        bam = "unmapped.bam"
+    input:
+        bam = "initialmapping.bam"
+    log: "unmapped.log"
+    shell:
+        "samtools view -hf 4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+
+
+# TODO The input BAMs for tagbam could be created on-the-fly (in a pipe)
 rule tagbam:
     output:
         bam = "{base}.sorted.tag.bam"
@@ -287,7 +335,7 @@ rule bam_to_fastq:
         r1_fastq = "reads.1.final.fastq.gz",
         r2_fastq = "reads.2.final.fastq.gz"
     input:
-        bam = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam"
+        bam = "final.bam"
     log: "samtools-fastq.log"
     threads: 20
     shell:
@@ -345,8 +393,8 @@ rule symlink_calling_bam:
         bam = "{base}.calling.bam"
     input:
         bam = get_input_calling_bam
-    shell:
-        "ln -s {input.bam} {output.bam}"
+    run:
+        symlink_relpath(input.bam, output.bam)
 
 
 rule index_bam:
@@ -435,15 +483,67 @@ rule call_variants:
 
 def get_phase_input_vcf(wildcards):
     if config["reference_variants"]:
-        return config["reference_variants"]
+        return {
+            "vcf": config["reference_variants"],
+            "bed": f"chunks/{wildcards.chunk}.bed",
+        }
     else:
-        return f"{wildcards.base}.variants.called.vcf"
+        return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
 
 
-rule symlink_phase_input_vcf:
+rule split_or_symlink_phase_input_vcf:
     output:
-        vcf = "{base}.phaseinput.vcf"
+        vcf = "chunks/{chunk}.phaseinput.vcf"
     input:
-        vcf = get_phase_input_vcf
+        unpack(get_phase_input_vcf)
+    run:
+        if config["reference_variants"]:
+            # TODO
+            # bcftools view -T is possibly a bit inefficient (use an indexed VCF instead)
+            shell("bcftools view -o {output.vcf} -T {input.bed} {input.vcf}")
+        else:
+            symlink_relpath(input.vcf, output.vcf)
+
+
+rule merge_bams:
+    output:
+        bam = "final.{phased,(phased.|)}bam"
+    input:
+        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks),
+        bam_unmapped = "unmapped.bam"
     shell:
-        "ln -s {input.vcf} {output.vcf}"
+        "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
+
+
+rule concat_phased_vcfs:
+    output:
+        vcf = "final.phased.vcf"
+    input:
+        vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf", chunk=chunks)
+    shell:
+        "bcftools concat -o {output.vcf} {input.vcf}"
+
+
+rule concat_called_vcfs:
+    output:
+        vcf = "called.vcf"
+    input:
+        vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
+    shell:
+        "bcftools concat -o {output.vcf} {input.vcf}"
+
+
+rule concat_molecule_stats:
+    output:
+        tsv = "final.molecule_stats.tsv"
+    input:
+        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks)
+    run:
+        dfs = list()
+        for nr, file in enumerate(input.tsv):
+            df =  pd.read_csv(file, sep="\t")
+            df["ChunkID"] = nr
+            dfs.append(df)
+
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t")

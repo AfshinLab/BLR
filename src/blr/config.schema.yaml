@@ -94,3 +94,7 @@ properties:
   stlfr_adapter:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
+  chunk_size:
+    type: integer
+    default: 20000000
+    description: Chunk size for parallelization

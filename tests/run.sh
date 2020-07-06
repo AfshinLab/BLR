@@ -37,13 +37,14 @@ blr config \
     --set reference_variants ../blr-testdata/HG002_GRCh38_GIAB_highconf.vcf \
     --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.vcf \
     --set max_molecules_per_bc 1 \
-    --set heap_space 1
+    --set heap_space 1 \
+    --set chunk_size 10000
 
 cd outdir-bowtie2
 blr run
-m=$(samtools view mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam | $md5 | cut -f1 -d" ")
-test $m == 96f8a86cdcf6f8a808fd66b9353f779e
+m=$(samtools view final.bam | $md5 | cut -f1 -d" ")
+test $m == 26a5649edcc722c9fd762829282fe767
 
 # Cut away columns 2 and 3 as these change order between linux and osx
-m2=$(cut -f1,4- mapped.calling.phase | $md5 | cut -f1 -d" ")
-test $m2 == d41d8cd98f00b204e9800998ecf8427e
+m2=$(grep -v "^##" final.phased.vcf | $md5 | cut -f1 -d" ")
+test $m2 == 4948c00636f686bde2f646c3c7efca72

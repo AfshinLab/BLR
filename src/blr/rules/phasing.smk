@@ -68,9 +68,9 @@ rule hapcut2_stats:
     """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
     for details. """
     output:
-        stats = "{base}.phasing_stats.txt"
+        stats = "final.phasing_stats.txt"
     input:
-        vcf1 = "{base}.calling.phased.vcf",
+        vcf1 = "final.phased.vcf",
         vcf2 = "ground_truth.phased.vcf"
     shell:
         "blr calculate_haplotype_statistics"

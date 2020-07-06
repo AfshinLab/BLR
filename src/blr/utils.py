@@ -2,7 +2,9 @@ import re
 from pathlib import Path
 import sys
 import pysam
+from dataclasses import dataclass
 import numpy as np
+import os
 
 if sys.stderr.isatty():
     from tqdm import tqdm
@@ -196,3 +198,50 @@ class ReadGroup:
     def __str__(self):
         # Repr for '\t' not to be translated
         return repr("\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL]))
+
+
+@dataclass
+class FastaIndexRecord:
+    name: str
+    length: int
+
+
+def parse_fai(file):
+    """Parse a FASTA index file (.fai) and return a list of FastaIndexRecords"""
+    chromosomes = []
+    for line in file:
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        name = fields[0]
+        length = int(fields[1])
+        chromosomes.append(FastaIndexRecord(name, length))
+    return chromosomes
+
+
+def chromosome_chunks(index_records, size=20_000_000):
+    """
+    Given a list of chromosomes (as FastaIndexRecords), split into chunks such that each
+    chunk has at least one chromosome and then as many additional chromosomes as possible
+    without exceeding the chunksize.
+    """
+    chunk = []
+    chunk_size = 0
+    for index_record in index_records:
+        if chunk and chunk_size + index_record.length > size:
+            yield chunk
+            chunk = []
+            chunk_size = 0
+        chunk.append(index_record)
+        chunk_size += index_record.length
+    if chunk:
+        yield chunk
+
+
+def symlink_relpath(source, target):
+    """
+    Generate a symlink to source that is relative to the target location. Corresponds roughtly to 'ln -rs'.
+    """
+    commonpath = os.path.commonpath([source, target])
+    relpath_source = os.path.relpath(source, commonpath)
+    os.symlink(relpath_source, target)

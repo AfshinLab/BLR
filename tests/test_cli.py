@@ -69,10 +69,13 @@ def _workdir(tmp_path_factory):
     path = tmp_path_factory.mktemp(basename="analysis-") / "analysis"
     init(path, TESTDATA_BLR_READ1, "blr")
     change_config(
-        path / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME)]
+        path / DEFAULT_CONFIG, [
+            ("genome_reference", REFERENCE_GENOME),
+            ("chunk_size", "50000")
+        ]
     )
-    run(workdir=path, targets=["mapped.calling.bam.bai"])
+    # chromosomes B, C and D end up in the same chunk
+    run(workdir=path, targets=[f"chunks/chr{c}.calling.bam.bai" for c in "AB"])
     return path
 
 
@@ -96,7 +99,7 @@ def test_config(tmp_path):
 
 def test_default_read_mapper(workdir):
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.bam")
+    assert n_input_fastq_reads <= count_bam_alignments(workdir / "initialmapping.bam")
 
 
 def test_trim_blr(workdir):
@@ -140,9 +143,9 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper)]
     )
-    run(workdir=workdir, targets=["mapped.sorted.bam"])
+    run(workdir=workdir, targets=["initialmapping.bam"])
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "mapped.sorted.bam")
+    assert n_input_fastq_reads <= count_bam_alignments(workdir / "initialmapping.bam")
 
 
 def test_final_compressed_reads_exist(workdir):
@@ -152,25 +155,22 @@ def test_final_compressed_reads_exist(workdir):
         assert workdir.joinpath(filename).exists()
 
 
-def test_link_reference_variants(workdir):
-    change_config(
-        workdir / DEFAULT_CONFIG,
-        [("reference_variants", REFERENCE_VARIANTS)]
-    )
-    target = "mapped.phaseinput.vcf"
-    run(workdir=workdir, targets=[target])
-    assert workdir.joinpath(target).is_symlink()
-
-
 def test_BQSR(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
          ("variant_caller", "gatk")]
     )
-    target = "mapped.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
+    # Since the workdir fixture creates the calling.bam files already, we need to
+    # ensure they are re-created with BQSR applied
+    for calling_bam in workdir.joinpath("chunks").glob("*.calling.bam"):
+        calling_bam.unlink()
+    target = "final.bam"
     run(workdir=workdir, targets=[target])
-    assert workdir.joinpath(target).is_file()
+    with pysam.AlignmentFile(workdir / target) as af:
+        # Ensure that ApplyBQSR was run on the file by inspecting the @PG lines in the header
+        bqsr_header_entries = [entry for entry in af.header["PG"] if entry["ID"] == "GATK ApplyBQSR"]
+        assert bqsr_header_entries
 
 
 @pytest.mark.parametrize("variant_caller", ["freebayes", "bcftools", "gatk"])
@@ -179,15 +179,17 @@ def test_call_variants(workdir, variant_caller):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
-    target = "mapped.variants.called.vcf"
+    target = "called.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
 
 def test_plot_figures(workdir):
-    target = "figures/mapped"
+    target = "figures"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_dir()
+    # Check that folder contains 11 PNG images for multiqc.
+    assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 11
 
 
 @pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
@@ -196,7 +198,7 @@ def test_haplotag(workdir, haplotype_tool):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
     )
-    target = "mapped.calling.phased.bam"
+    target = "final.phased.bam"
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")

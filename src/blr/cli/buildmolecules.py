@@ -112,7 +112,6 @@ class Molecule:
     A Splitting of barcode read groups into several molecules based on mapping proximity. Equivalent to several
     molecules being barcoded simultaneously in the same emulsion droplet (meaning with the same barcode).
     """
-
     molecule_counter = int()
 
     def __init__(self, read, barcode):
