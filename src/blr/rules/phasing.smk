@@ -68,17 +68,15 @@ rule hapcut2_stats:
     """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
     for details. """
     output:
-        stats = expand("final.phasing_stats.{ext}", ext=["txt", "tsv"])
+        stats = "final.phasing_stats.txt"
     input:
         vcf1 = "final.phased.vcf",
         vcf2 = "ground_truth.phased.vcf"
-    params:
-        stats_prefix = "final.phasing_stats"
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " -v2 {input.vcf2}"
-        " -o {params.stats_prefix}"
+        " -o {output.stats}"
 
 
 def get_haplotag_input(wildcards):

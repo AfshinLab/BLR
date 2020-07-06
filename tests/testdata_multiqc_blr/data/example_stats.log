@@ -1,0 +1,15 @@
+SETTINGS FOR: example
+ input: in.bam
+ output: out.bam
+
+example - INFO: Starting analysis
+example - INFO: Writing output bam file
+example - INFO: Analysis complete
+===================================================
+STATS SUMMARY - blr.cli.example
+---------------------------------------------------
+Total reads                                  20,088
+Unmapped reads                                1,321
+Non analyced reads                            4,010
+Duplicates                                    2,561
+===================================================
