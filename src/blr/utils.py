@@ -4,6 +4,8 @@ import sys
 import pysam
 import numpy as np
 
+from blr import __version__
+
 if sys.stderr.isatty():
     from tqdm import tqdm
 else:
@@ -146,11 +148,11 @@ class PySAMIO:
         # Make sure id_name is unique by adding numbers at end if needed.
         id_name = make_unique(id_name, pg_entries)
 
-        # TODO add version information (VN tag).
         pg_entries.append({
             "ID": id_name,       # Program record identifier. Must be unique
             "PN": program_name,  # Program name
-            "CL": cmd_line       # Command line arguments string.
+            "CL": cmd_line,      # Command line arguments string.
+            "VN": __version__    # Version information
         })
         header["PG"] = pg_entries
 
