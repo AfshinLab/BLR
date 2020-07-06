@@ -1,15 +1,15 @@
 """
-Removes barcode duplicates (two different barcode sequences origin to the same droplet, tagging the same tagmented long
-molecule) by merging barcode sequences for reads sharing duplicates.
+Remove barcode duplicates (two different barcode sequences origin to the same droplet, tagging the
+same tagmented long molecule) by merging barcode sequences for reads sharing duplicates.
 
 Condition to call barcode duplicate:
 
 Two positions (positions defined as a unique set of read_start, read_stop, mate_start, mate_stop))
-at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(downstream_pos)) bp apart
-sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
+at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(downstream_pos)) bp
+apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 """
 
-import pysam
+from pysam import AlignmentFile, AlignedSegment
 import logging
 from collections import Counter, deque, OrderedDict
 
@@ -19,6 +19,24 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
+    run_clusterrmdup(
+        input=args.input,
+        output=args.output,
+        merge_log=args.merge_log,
+        barcode_tag=args.barcode_tag,
+        buffer_size=args.buffer_size,
+        window=args.window,
+    )
+
+
+def run_clusterrmdup(
+    input: str,
+    output: str,
+    merge_log: str,
+    barcode_tag: str,
+    buffer_size: int,
+    window: int,
+):
     logger.info("Starting Analysis")
     summary = Counter()
     positions = OrderedDict()
@@ -26,38 +44,43 @@ def main(args):
     pos_prev = 0
     merge_dict = dict()
     buffer_dup_pos = deque()
-    for barcode, read, mate in tqdm(parse_and_filter_pairs(args.input, args.barcode_tag, summary),
-                                    desc="Reading pairs"):
-        # Get orientation of read pair
+    for read, mate in tqdm(paired_reads(input, summary), desc="Reading pairs"):
+        barcode = get_bamtag(read, barcode_tag)
+        if not barcode:
+            summary["Non tagged reads"] += 2
+            continue
+
         if mate.is_read1 and read.is_read2:
             orientation = "F"
         else:
             orientation = "R"
 
-        summary["Reads analyced"] += 2
+        summary["Reads analyzed"] += 2
 
         chrom_new = read.reference_name
         pos_new = read.reference_start
 
-        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') with is used to group duplicates.
-        # Based on picard MarkDuplicates definition, see: https://sourceforge.net/p/samtools/mailman/message/25062576/
+        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') with is used to group
+        # duplicates. Based on picard MarkDuplicates definition, see
+        # https://sourceforge.net/p/samtools/mailman/message/25062576/
         current_position = (mate.reference_start, read.reference_end, orientation)
 
-        if abs(pos_new - pos_prev) > args.buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
+        if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
+            find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
 
-            if not chrom_new == chrom_prev:
+            if chrom_new != chrom_prev:
                 positions.clear()
                 buffer_dup_pos.clear()
                 chrom_prev = chrom_new
 
             pos_prev = pos_new
 
-        # Add current possition
-        update_positions(positions, current_position, read, mate, barcode)
+        if current_position not in positions:
+            positions[current_position] = PositionTracker(current_position)
+        positions[current_position].add_barcode(barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, args.window, summary)
+    find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
 
     # Remove several step redundancy (5 -> 3, 3 -> 1) => (5 -> 1, 3 -> 1)
     reduce_several_step_redundancy(merge_dict)
@@ -65,17 +88,17 @@ def main(args):
 
     # Write outputs
     barcodes_written = set()
-    with PySAMIO(args.input, args.output, __name__) as (infile, out), \
-            open(args.merge_log, "w") as bc_merge_file:
+    with PySAMIO(input, output, __name__) as (infile, out), \
+            open(merge_log, "w") as bc_merge_file:
         print("Previous_barcode,New_barcode", file=bc_merge_file)
-        for read in tqdm(infile.fetch(until_eof=True), desc="Writing output", total=summary["Total reads"]):
+        for read in tqdm(infile, desc="Writing output", total=summary["Total reads"]):
 
             # If read barcode in merge dict, change tag and header to compensate.
-            previous_barcode = get_bamtag(pysam_read=read, tag=args.barcode_tag)
+            previous_barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
             if previous_barcode in merge_dict:
                 summary["Reads with new barcode"] += 1
                 new_barcode = str(merge_dict[previous_barcode])
-                read.set_tag(args.barcode_tag, new_barcode, value_type="Z")
+                read.set_tag(barcode_tag, new_barcode, value_type="Z")
 
                 # Merge file writing
                 if previous_barcode not in barcodes_written:
@@ -88,38 +111,31 @@ def main(args):
     print_stats(summary, name=__name__)
 
 
-def parse_and_filter_pairs(file, barcode_tag, summary):
+def paired_reads(path: str, summary):
     """
-    Iterator that yield filtered read pairs.
-    :param file: str, path to SAM file
-    :param barcode_tag: str, SAM tag for barcode.
+    Yield (forward_read, reverse_read) pairs for all properly paired read pairs in the input file.
+
+    :param path: str, path to SAM file
     :param summary: dict
     :return: read, mate: both as pysam AlignedSegment objects.
     """
     cache = dict()
-    with pysam.AlignmentFile(file, "rb") as openin:
-        for read in openin.fetch(until_eof=True):
+    with AlignmentFile(path) as openin:
+        for read in openin:
             summary["Total reads"] += 1
             # Requirements: read mapped, mate mapped and read has barcode tag
             # Cache read if matches requirements, continue with pair.
             if read.query_name in cache:
                 mate = cache.pop(read.query_name)
             else:
-                if meet_requirements(read, summary):
+                if pair_is_mapped_and_proper(read, summary):
                     cache[read.query_name] = read
                 continue
-
-            # Get barcode and confirm that its not None
-            barcode = get_bamtag(read, barcode_tag)
-            if not barcode:
-                summary["Non tagged reads"] += 2
-                continue
-
-            if valid_pair_orientation(read, mate, summary):
-                yield barcode, read, mate
+            if pair_orientation_is_fr(read, mate, summary):
+                yield read, mate
 
 
-def meet_requirements(read, summary):
+def pair_is_mapped_and_proper(read: AlignedSegment, summary) -> bool:
     """
     Checks so read pair meets requirements before being used in analysis.
     :param read: pysam read
@@ -140,7 +156,7 @@ def meet_requirements(read, summary):
     return True
 
 
-def valid_pair_orientation(read, mate, summary):
+def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) -> bool:
     # Proper layout of read pair.
     # PAIR      |       mate            read
     # ALIGNMENTS|    ---------->      <--------
@@ -151,49 +167,30 @@ def valid_pair_orientation(read, mate, summary):
     return False
 
 
-def update_positions(positions, current_position, read, mate, barcode):
+def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, summary):
     """
-    Update positions list with current positions and read pair information.
-    :param positions: list: Postions buffer.
-    :param current_position: tuple: Position information
-    :param read: pysam.AlignedSegment
-    :param mate: pysam.AlignedSeqment
-    :param barcode: str: Barcode string.
-    """
-
-    if current_position in positions:
-        positions[current_position].add_read_pair_and_barcode(read=read, mate=mate, barcode=barcode)
-    else:
-        positions[current_position] = PositionTracker(position=current_position, read=read,
-                                                      mate=mate, barcode=barcode)
-
-
-def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary):
-    """
-    Parse position to check if they are valid duplicate positions. If so start looking for barcode duplicates.
+    Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
     :param positions: list: Position to check for duplicates
-    :param merge_dict: dict: Tracks which barcodes shuold be merged .
+    :param merge_dict: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
-    :param window: int: Max distance allowed between postions to call barcode duplicate.
+    :param window: int: Max distance allowed between positions to call barcode duplicate.
     :param summary: dict
     """
     positions_to_remove = list()
     for position in positions.keys():
         tracked_position = positions[position]
-        if tracked_position.valid_duplicate_position():
-            if not tracked_position.checked:
-                summary["Reads at duplicate position"] += tracked_position.reads
-            seed_duplicates(
-                merge_dict=merge_dict,
-                buffer_dup_pos=buffer_dup_pos,
-                position=tracked_position.position,
-                position_barcodes=tracked_position.barcodes,
-                window=window
-            )
-        elif tracked_position.checked:
-            positions_to_remove.append(position)
+        if tracked_position.has_updated_barcodes:
+            if tracked_position.is_duplicate():
+                seed_duplicates(
+                    merge_dict=merge_dict,
+                    buffer_dup_pos=buffer_dup_pos,
+                    position=tracked_position.position,
+                    position_barcodes=tracked_position.barcodes,
+                    window=window
+                )
+            tracked_position.has_updated_barcodes = False
         else:
-            tracked_position.checked = True
+            positions_to_remove.append(position)
 
     for position in positions_to_remove:
         del positions[position]
@@ -201,47 +198,38 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summa
 
 class PositionTracker:
     """
-    Stores read pairs information relatec to a position and keeps track if reads/mates are marked as duplicate
-    for that set of reads.
+    Stores barcodes related to a position. The position is considered duplicate if more than one barcode is present.
     """
-
-    def __init__(self, position, read, mate, barcode):
+    def __init__(self, position):
         self.position = position
-        self.reads = int()
+        self.reads = 0
         self.barcodes = set()
-        self.checked = False
-        self.updated_since_validation = bool()
-        self.read_pos_has_duplicates = bool()
-        self.mate_pos_has_duplciates = bool()
+        self.has_updated_barcodes = False
 
-        self.add_read_pair_and_barcode(read=read, mate=mate, barcode=barcode)
-
-    def add_read_pair_and_barcode(self, read, mate, barcode):
-        self.updated_since_validation = True
+    def add_barcode(self, barcode: str):
+        self.has_updated_barcodes = True
         self.reads += 2
         self.barcodes.add(barcode)
 
-    def valid_duplicate_position(self):
-        check = len(self.barcodes) >= 2 and self.updated_since_validation
-        self.updated_since_validation = False
-        return check
+    def is_duplicate(self) -> bool:
+        return len(self.barcodes) > 1
 
 
-def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window):
+def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window: int):
     """
-    Builds up a merge dictionary for which any keys should be overwritten by their value. Also keeps all previous
-    positions saved in a list in which all reads which still are withing the window
-    size are saved.
+    Builds up a merge dictionary for which any keys should be overwritten by their value. Also
+    keeps all previous positions saved in a list in which all reads which still are withing the
+    window size are saved.
     :param merge_dict: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
-    :param position_barcodes: seq: Barcodes at analyced position
+    :param position_barcodes: seq: Barcodes at analyzed position
     :param window: int: Max distance allowed between postions to call barcode duplicate.
     """
 
     pos_start_new = position[0]
-    # Loop over list to get the positions closest to the analyced position first. When position are out of the window
-    # size of the remaining buffer is removed.
+    # Loop over list to get the positions closest to the analyzed position first. When position
+    # are out of the window size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
 
         # Skip comparison against self.
@@ -290,9 +278,9 @@ def update_merge_dict(merge_dict, barcodes):
 
 def find_min_barcode(barcode, merge_dict):
     """
-    Goes through merge dict and finds the alphabetically top string for a chain of key-value entries. E.g if
-    merge_dict has TAGA => GGAT, GGAT => CTGA, CTGA => ACGA it will return ACGA if any of the values CTGA, GGAT,
-    TAGA or ACGA are given.
+    Goes through merge dict and finds the alphabetically top string for a chain of key-value
+    entries. E.g if merge_dict has TAGA => GGAT, GGAT => CTGA, CTGA => ACGA it will return ACGA if
+    any of the values CTGA, GGAT, TAGA or ACGA are given.
     :param: bc_minimum: str: Barcode
     :param: merge_dict: dict: Barcode pairs directing merges
     :return: str: alphabetically top barcode string
@@ -315,19 +303,24 @@ def reduce_several_step_redundancy(merge_dict):
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
-                        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
-    parser.add_argument("merge_log",
-                        help="CSV log file containing all merges done. File is in format: "
-                             "{old barcode id},{new barcode id}")
-
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-b", "--barcode-tag", default="BX",
-                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
-    parser.add_argument("-w", "--window", type=int, default=100000,
-                        help="Window size. Duplicate positions within this distance will be used to find cluster "
-                             "duplicates. Default: %(default)s")
-    parser.add_argument("--buffer-size", type=int, default=200,
-                        help="Buffer size for collecting duplicates. Should be around read length. "
-                             "Default: %(default)s")
+    parser.add_argument(
+        "input",
+        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
+    parser.add_argument(
+        "merge_log",
+        help="CSV log file containing all merges done. File is in format: "
+        "{old barcode id},{new barcode id}")
+    parser.add_argument(
+        "-o", "--output", default="-",
+        help="Write output BAM to file rather then stdout.")
+    parser.add_argument(
+        "-b", "--barcode-tag", default="BX",
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+    parser.add_argument(
+        "-w", "--window", type=int, default=100000,
+        help="Window size. Duplicate positions within this distance will be used to find cluster "
+        "duplicates. Default: %(default)s")
+    parser.add_argument(
+        "--buffer-size", type=int, default=200,
+        help="Buffer size for collecting duplicates. Should be around read length. "
+        "Default: %(default)s")
