@@ -34,5 +34,4 @@ where that information is defined.
     "BX", "-b, --barcode-tag", "SAM tag for storing the error corrected barcode."
     "MI", "-m, --molecule-tag", "SAM tag for storing molecule index specifying a identified molecule
     for each barcode."
-    "MN", "-n, --number-tag", "SAM tag for storing molecule count for a particular barcode."
     "RX", "-s, --sequence-tag", "SAM tag for storing the uncorrected barcode sequence."

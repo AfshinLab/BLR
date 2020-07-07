@@ -298,7 +298,6 @@ rule buildmolecules:
         " -o {output.bam}"
         " --stats-tsv {output.stats}"
         " -m {config[molecule_tag]}"
-        " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
         " --window {config[window_size]}"
         " 2> {log}"
@@ -314,15 +313,16 @@ rule filterclusters:
         bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
         bai = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.bai"
     input:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam"
+        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
+        barcodes = "final.barcodes_filtered_out.txt"
     log: "{base}.filterclusters.log"
     shell:
         "blr filterclusters"
         " {input.bam}"
+        " {input.barcodes}"
         " -m {config[molecule_tag]}"
-        " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
-        " -M {config[max_molecules_per_bc]}"
+        " -s {config[sequence_tag]}"
         " 2> {log} |"
         " tee {output.bam}"
         " |"
@@ -546,4 +546,16 @@ rule concat_molecule_stats:
             dfs.append(df)
 
         concat = pd.concat(dfs, ignore_index=True)
-        concat.to_csv(output.tsv, sep="\t")
+        concat.to_csv(output.tsv, sep="\t", index=False)
+
+rule get_barcodes_to_filter:
+    output:
+         txt = "final.barcodes_filtered_out.txt"
+    input:
+         tsv = "final.molecule_stats.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
+        barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
+        with open(output.txt, "w") as file:
+            print("\n".join(barcodes_to_filter), file=file)

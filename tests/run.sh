@@ -47,4 +47,4 @@ test $m == 84e10c451785a2eded1ffd785db5c1cc
 
 # Cut away columns 2 and 3 as these change order between linux and osx
 m2=$(grep -v "^##" final.phased.vcf | $md5 | cut -f1 -d" ")
-test $m2 == 4948c00636f686bde2f646c3c7efca72
+test $m2 == a4cbdf9f4832fb6e7ea29690450a0dae
