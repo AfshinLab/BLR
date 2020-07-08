@@ -21,7 +21,7 @@ def main(args):
         input=args.input,
         output=args.output,
         threshold=args.threshold,
-        window=args.threshold,
+        window=args.window,
         barcode_tag=args.barcode_tag,
         stats_tsv=args.stats_tsv,
         molecule_tag=args.molecule_tag
