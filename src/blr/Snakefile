@@ -232,7 +232,7 @@ rule get_unmapped_reads:
         bam = "initialmapping.bam"
     log: "unmapped.log"
     shell:
-        "samtools view -hf 4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view -hf 13 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
 
 
 # TODO The input BAMs for tagbam could be created on-the-fly (in a pipe)
