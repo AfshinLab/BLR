@@ -216,7 +216,7 @@ rule make_chunk_beds:
 
 rule split_into_chunks:
     output:
-        bam = "chunks/{chunk}.sorted.bam"
+        bam = pipe("chunks/{chunk}.sorted.bam")
     input:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai",
@@ -235,7 +235,6 @@ rule get_unmapped_reads:
         "samtools view -hf 4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
 
 
-# TODO The input BAMs for tagbam could be created on-the-fly (in a pipe)
 rule tagbam:
     output:
         bam = "{base}.sorted.tag.bam"
