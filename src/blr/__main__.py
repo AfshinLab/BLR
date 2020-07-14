@@ -38,7 +38,7 @@ def main(commandline_arguments=None) -> int:
         del args.module
 
         # Print settings for module
-        sys.stderr.write(f"SETTINGS FOR: {module.__name__.split('.')[-1]}\n")
+        sys.stderr.write(f"SETTINGS FOR: {module.__name__.split('.')[-1]} (version: {__version__})\n")
         for object_variable, value in vars(args).items():
             sys.stderr.write(f" {object_variable}: {value}\n")
 
