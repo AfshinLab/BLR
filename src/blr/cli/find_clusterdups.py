@@ -74,7 +74,7 @@ def run_find_clusterdups(
         current_position = (mate.reference_start, read.reference_end, orientation)
 
         if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, summary)
+            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window)
 
             if chrom_new != chrom_prev:
                 positions.clear()
@@ -88,7 +88,11 @@ def run_find_clusterdups(
         positions[current_position].add_barcode(barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, summary)
+    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window)
+
+    # Remove several step redundancy (5 -> 3, 3 -> 1) => (5 -> 1, 3 -> 1)
+    reduce_several_step_redundancy(merge_dict)
+    summary["Barcodes removed"] = len(merge_dict)
 
     # Write outputs
     if output_pickle:
@@ -169,18 +173,16 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
     return False
 
 
-def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int, summary):
+def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int):
     """
     Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
     :param positions: list: Position to check for duplicates
     :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param window: int: Max distance allowed between positions to call barcode duplicate.
-    :param summary: dict
     """
     positions_to_remove = list()
-    for position in positions.keys():
-        tracked_position = positions[position]
+    for position, tracked_position in positions.items():
         if tracked_position.has_updated_barcodes:
             if tracked_position.is_duplicate():
                 seed_duplicates(
@@ -229,17 +231,16 @@ def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, 
     :param window: int: Max distance allowed between postions to call barcode duplicate.
     """
 
-    pos_start_new = position[0]
     # Loop over list to get the positions closest to the analyzed position first. When position
     # are out of the window size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
+        distance = position[0] - compared_position[1]
 
-        # Skip comparison against self.
-        if position == compared_position:
+        # Skip comparison against overlapping reads unless they are from Tn5 tagmentation.
+        if distance < 0 and distance not in {-8, -9, -10}:
             continue
 
-        compared_position_stop = compared_position[1]
-        if compared_position_stop + window >= pos_start_new:
+        if distance <= window:
             barcode_intersect = position_barcodes & compared_barcodes
 
             # If two or more unique barcodes are found, update merge dict
