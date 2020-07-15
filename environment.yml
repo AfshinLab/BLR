@@ -9,14 +9,14 @@ dependencies:
   - nomkl
   - python=3.6
   - dataclasses  # remove when minimum Python version is raised to 3.7
-  - bowtie2
+  - bowtie2<2.4  # Version >=2.4 causes Picard to crash, wait until https://github.com/BenLangmead/bowtie2/pull/302 merges
   - bwa
   - minimap2
   - pysam
   - cutadapt=2.5
   - hapcut2=1.2
   - samtools
-  - snakemake-minimal
+  - snakemake-minimal<5.19.0  # Limit until https://github.com/snakemake/snakemake/issues/413 is solved
   - starcode
   - tqdm
   - importlib_resources
@@ -31,3 +31,4 @@ dependencies:
   - pandas
   - picard-slim
   - whatshap
+  - mosdepth

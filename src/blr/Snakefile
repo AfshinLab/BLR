@@ -82,6 +82,13 @@ def get_multiqc_input(wildcards):
         "trimmed.barcoded.2_fastqc.html",
         "final.bam",
         "figures",
+        "final.mosdepth.global.dist.txt",
+        "final.mosdepth.region.dist.txt",
+        "final.mosdepth.summary.txt",
+        "final.per-base.bed.gz",
+        "final.per-base.bed.gz.csi",
+        "final.regions.bed.gz",
+        "final.regions.bed.gz.csi"
     ]
     if config["phasing_ground_truth"]:
         inputs.append("final.phasing_stats.txt")
@@ -547,3 +554,27 @@ rule concat_molecule_stats:
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t")
+
+rule mosdepth:
+    """Calculate depth stats"""
+    output:
+        "final.mosdepth.global.dist.txt",
+        "final.mosdepth.region.dist.txt",
+        "final.mosdepth.summary.txt",
+        "final.per-base.bed.gz",
+        "final.per-base.bed.gz.csi",
+        "final.regions.bed.gz",
+        "final.regions.bed.gz.csi"
+    input:
+        bam = "final.bam",
+        bai = "final.bam.bai"
+    params:
+        prefix = "final",
+        bin_size = config["coverage_window_size"]
+    threads: 20
+    shell:
+        "mosdepth"
+        " --threads {threads}"
+        " --by {params.bin_size}"
+        " {params.prefix}"
+        " {input.bam}"
