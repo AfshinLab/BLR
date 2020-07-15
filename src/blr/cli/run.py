@@ -7,6 +7,7 @@ import sys
 import logging
 from importlib_resources import path as resource_path
 from snakemake import snakemake
+from snakemake.utils import available_cpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +20,9 @@ def add_arguments(parser):
     arg = parser.add_argument
     arg('--dryrun', '-n', default=False, action='store_true',
         help='Do not execute anything')
-    # TODO
-    # Change the default for --cores (use available_cpu_count() perhaps)
-    arg('--cores', '--jobs', '-j', metavar='N', type=int, default=4,
+    arg('--cores', '--jobs', '-j', metavar='N', type=int, default=available_cpu_count(),
         help='Run on at most N CPU cores in parallel. '
-        'Default: %(default)s')
+        'Default: %(default)s (all available cores)')
     arg('--keepgoing', '-k', default=False, action='store_true',
         help='If one job fails, finish the others.')
     arg('--unlock', default=False, action='store_true',
