@@ -34,7 +34,8 @@ rule hapcut2_linkfragments:
         " --bam {input.bam}"
         " -v {input.vcf}"
         " --fragments {input.unlinked}"
-        " --out {output.linked} &> {log}"
+        " --out {output.linked}"
+        " --distance {config[window_size]} &> {log}"
 
 
 rule hapcut2_phasing:
@@ -110,7 +111,7 @@ rule haplotag:
                 " {input.vcf}"
                 " {input.bam}"
                 " -o {output.bam}"
-                " --linked-read-distance-cutoff 30000"
+                " --linked-read-distance-cutoff {config[window_size]}"
                 " --reference {config[genome_reference]}",
             "blr":
                 "blr phasebam"

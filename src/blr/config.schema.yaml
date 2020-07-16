@@ -98,3 +98,7 @@ properties:
     type: integer
     default: 20000000
     description: Chunk size for parallelization
+  window_size:
+    type: integer
+    default: 30000
+    description: Window size used for linking reads by barcodes.

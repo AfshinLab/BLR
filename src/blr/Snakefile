@@ -301,6 +301,7 @@ rule buildmolecules:
         " -m {config[molecule_tag]}"
         " -n {config[num_mol_tag]}"
         " -b {config[cluster_tag]}"
+        " --window {config[window_size]}"
         " 2> {log}"
 
 
