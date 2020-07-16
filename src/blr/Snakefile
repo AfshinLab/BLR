@@ -303,6 +303,35 @@ rule buildmolecules:
         " 2> {log}"
 
 
+rule concat_molecule_stats:
+    output:
+        tsv = "final.molecule_stats.tsv"
+    input:
+        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks)
+    run:
+        dfs = list()
+        for nr, file in enumerate(input.tsv):
+            df =  pd.read_csv(file, sep="\t")
+            df["ChunkID"] = nr
+            dfs.append(df)
+
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t", index=False)
+
+
+rule get_barcodes_to_filter:
+    output:
+         txt = "final.barcodes_filtered_out.txt"
+    input:
+         tsv = "final.molecule_stats.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
+        barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
+        with open(output.txt, "w") as file:
+            print("\n".join(barcodes_to_filter), file=file)
+
+
 # filterclusters creates a .bai file directly
 ruleorder: filterclusters > index_bam
 
@@ -531,31 +560,3 @@ rule concat_called_vcfs:
         vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
-
-
-rule concat_molecule_stats:
-    output:
-        tsv = "final.molecule_stats.tsv"
-    input:
-        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks)
-    run:
-        dfs = list()
-        for nr, file in enumerate(input.tsv):
-            df =  pd.read_csv(file, sep="\t")
-            df["ChunkID"] = nr
-            dfs.append(df)
-
-        concat = pd.concat(dfs, ignore_index=True)
-        concat.to_csv(output.tsv, sep="\t", index=False)
-
-rule get_barcodes_to_filter:
-    output:
-         txt = "final.barcodes_filtered_out.txt"
-    input:
-         tsv = "final.molecule_stats.tsv"
-    run:
-        molecules = pd.read_csv(input.tsv, sep="\t")
-        molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
-        barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
-        with open(output.txt, "w") as file:
-            print("\n".join(barcodes_to_filter), file=file)
