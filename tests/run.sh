@@ -43,4 +43,4 @@ blr config \
 cd outdir-bowtie2
 blr run
 m=$(samtools view final.bam | $md5 | cut -f1 -d" ")
-test $m == b0cc24611e68dfd68b7fc3998e613f47
+test $m == 52b3f22c7e7c5987faa532914b23daee
