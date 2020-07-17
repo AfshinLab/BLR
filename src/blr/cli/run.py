@@ -59,7 +59,7 @@ def main(args):
             force_run=args.force_run,
             printdag=args.dag,
             printfilegraph=args.filegraph,
-            targets=args.targets)
+            targets=targets)
     except SnakemakeError:
         sys.exit(1)
     sys.exit(0)
