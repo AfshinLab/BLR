@@ -267,12 +267,18 @@ class BarcodeGraph:
             self.graph[barcode].update(barcodes - set(barcode))
 
     def _update_component(self, nodes, component):
-        """Depth-first search of nodes"""
+        """Breadth-first search of nodes"""
+        new_nodes = set()
         for n in nodes:
             if n not in self._seen:
                 self._seen.add(n)
                 component.add(n)
-                self._update_component(self.graph[n], component)
+                new_nodes |= self.graph[n]
+
+        new_nodes = new_nodes.difference(component)
+
+        if new_nodes:
+            self._update_component(new_nodes, component)
 
     def components(self):
         """Generate all connected components of graph"""
