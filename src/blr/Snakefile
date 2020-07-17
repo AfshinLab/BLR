@@ -1,8 +1,11 @@
 import sys
 import pandas as pd
 from snakemake.utils import validate
-from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+import pickle
 import os
+
+from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+from blr.cli.find_clusterdups import BarcodeGraph
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -262,18 +265,51 @@ rule tagbam:
         " {input.bam}  2> {log}"
 
 
-rule clusterrmdup:
+rule find_clusterdups:
+    """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
+    output:
+        pickle = "{base}.sorted.tag.clusterdups.pickle"
+    input:
+        bam = "{base}.sorted.tag.bam"
+    log: "{base}.find_clusterdups.log"
+    shell:
+        "blr find_clusterdups"
+        " {input.bam}"
+        " --output-pickle {output.pickle}"
+        " -b {config[cluster_tag]} 2> {log}"
+
+
+rule get_barcode_merges:
+    """Merge graphs of connected barcodes from all chunks to get CSV of barcodes to merge."""
+    output:
+        merges = "final.barcode-merges.csv"
+    input:
+        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks)
+    run:
+        graph = BarcodeGraph()
+        for filepath in input.pickle:
+            with open(filepath, "rb") as file:
+                filegraph = BarcodeGraph.from_graph(pickle.load(file))
+                graph.merge(filegraph)
+
+        merge_dict = graph.get_merges()
+        with open(output.merges, 'w') as file:
+            for old_barcode, new_barcode in merge_dict.items():
+                print(old_barcode, new_barcode, sep=",", file=file)
+
+
+rule merge_clusterdups:
     """Merge cluster duplicates defined as two separate cluster sharing """
     output:
         bam = temp("{base}.sorted.tag.bcmerge.bam"),
-        merges = "{base}.barcode-merges.csv"
     input:
-        bam = "{base}.sorted.tag.bam"
-    log: "{base}.clusterrmdup.log"
+        bam = "{base}.sorted.tag.bam",
+        merges = "final.barcode-merges.csv"
+    log: "{base}.merge_clusterdups.log"
     shell:
-        "blr clusterrmdup"
+        "blr merge_clusterdups"
         " {input.bam}"
-        " {output.merges}"
+        " {input.merges}"
         " -o {output.bam}"
         " --min-mapq {config[min_mapq]}"
         " -b {config[cluster_tag]} 2> {log}"
