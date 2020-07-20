@@ -122,6 +122,22 @@ class MultiqcModule(BaseMultiqcModule):
                 plot=table_html
             )
 
+            # Add N50 to general stats table
+            general_stats_data = {
+                sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
+            }
+
+            general_stats_header = OrderedDict({
+                "N50_phaseblock": {
+                    'title': 'N50 phaseblock',
+                    'description': 'N50 statistic for phaseblock lengths',
+                    'scale': 'Blues',
+                    'suffix': 'Mbp',
+                    'format': '{:,.3f}'
+                }})
+
+            self.general_stats_addcols(general_stats_data, general_stats_header)
+
         return len(phasing_data)
 
     def gather_phaseblocks(self):
