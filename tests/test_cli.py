@@ -119,7 +119,7 @@ def test_trim_tenx(tmp_path):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TENX_READ1, TESTDATA_TENX_READ2), trimmed):
-        assert count_fastq_reads(raw) == count_fastq_reads(workdir / trimmed)
+        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9  # More than 90% kept
 
 
 def test_trim_stlfr(tmp_path):
