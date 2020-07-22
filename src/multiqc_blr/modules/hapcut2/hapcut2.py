@@ -9,7 +9,7 @@ from multiqc import config
 from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 
-from multiqc_blr.utils import update_sample_name, bin_sum
+from multiqc_blr.utils import bin_sum
 
 # Initialise the main MultiQC logger
 log = logging.getLogger('multiqc')
@@ -94,7 +94,7 @@ class MultiqcModule(BaseMultiqcModule):
         # Find and load any input files for this module
         phasing_data = dict()
         for f in self.find_log_files('hapcut2/phasing_stats', filehandles=True):
-            sample_name = update_sample_name(f["s_name"])
+            sample_name = self.clean_s_name(f["fn"], f["root"])
             phasing_data[sample_name] = dict()
 
             for parameter, value in self.parse_phasing_stats(f["f"]):
@@ -144,7 +144,7 @@ class MultiqcModule(BaseMultiqcModule):
         # Collect rawdata of lengths from file
         rawdata = dict()
         for f in self.find_log_files('hapcut2/phaseblocks', filehandles=True):
-            sample_name = update_sample_name(f["s_name"])
+            sample_name = self.clean_s_name(f["fn"], f["root"])
             rawdata[sample_name] = list()
             for phaseblock in self.parse_phaseblocks(f["f"]):
                 rawdata[sample_name].append(phaseblock["phaseblock_length"])

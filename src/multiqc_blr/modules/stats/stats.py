@@ -9,7 +9,6 @@ from multiqc import config
 from multiqc.plots import table
 from multiqc.modules.base_module import BaseMultiqcModule
 
-from multiqc_blr.utils import update_sample_name
 
 # Initialise the main MultiQC logger
 log = logging.getLogger('multiqc')
@@ -45,7 +44,7 @@ class MultiqcModule(BaseMultiqcModule):
                 self.stats_data[tool_name] = dict()
                 self.headers[tool_name] = OrderedDict()
 
-            sample_name = update_sample_name(f["s_name"])
+            sample_name = self.clean_s_name(f["fn"], f["root"])
 
             log.debug(f"Found report for tool {tool_name} with sample {sample_name}")
 
