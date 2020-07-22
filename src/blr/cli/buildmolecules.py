@@ -17,43 +17,57 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
+    run_buildmolecules(
+        input=args.input,
+        output=args.output,
+        threshold=args.threshold,
+        window=args.window,
+        barcode_tag=args.barcode_tag,
+        stats_tsv=args.stats_tsv,
+        molecule_tag=args.molecule_tag
+    )
+
+
+def run_buildmolecules(
+    input: str,
+    output: str,
+    threshold: int,
+    window: int,
+    barcode_tag: str,
+    stats_tsv: str,
+    molecule_tag: str
+):
     summary = Counter()
 
     # Build molecules from BCs and reads
-    with pysam.AlignmentFile(args.input, "rb") as infile:
+    with pysam.AlignmentFile(input, "rb") as infile:
         library_type = infile.header.to_dict()["RG"][0]["LB"]
         bc_to_mol_dict, header_to_mol_dict = build_molecules(pysam_openfile=infile,
-                                                             barcode_tag=args.barcode_tag,
-                                                             window=args.window,
-                                                             min_reads=args.threshold,
+                                                             barcode_tag=barcode_tag,
+                                                             window=window,
+                                                             min_reads=threshold,
                                                              tn5=library_type == "blr",
                                                              summary=summary)
     # Writes filtered out
-    with PySAMIO(args.input, args.output, __name__) as (openin, openout):
+    with PySAMIO(input, output, __name__) as (openin, openout):
         logger.info("Writing filtered bam file")
         for read in tqdm(openin.fetch(until_eof=True)):
             name = read.query_name
-            barcode = get_bamtag(pysam_read=read, tag=args.barcode_tag)
-
-            # If barcode is not in bc_to_mol_dict the barcode does not have enough proximal reads to make a single
-            # molecule.
-            bc_num_molecules = len(bc_to_mol_dict.get(barcode, {}))
-            read.set_tag(args.number_tag, bc_num_molecules)
 
             # If the read name is in header_to_mol_dict then it is associated to a specific molecule.
             # For reads not associated to a specific molecule the molecule id is set to -1.
             molecule_id = header_to_mol_dict.get(name, -1)
-            read.set_tag(args.molecule_tag, molecule_id)
+            read.set_tag(molecule_tag, molecule_id)
 
             openout.write(read)
 
     header_to_mol_dict.clear()
 
     # Write molecule/barcode file stats
-    if args.stats_tsv:
-        logger.info(f"Writing {args.stats_tsv}")
+    if stats_tsv:
+        logger.info(f"Writing {stats_tsv}")
         df = compute_molecule_stats_dataframe(bc_to_mol_dict)
-        df.to_csv(args.stats_tsv, sep="\t", index=False)
+        df.to_csv(stats_tsv, sep="\t", index=False)
         if not df.empty:
             update_summary_from_molecule_stats(df, summary)
     print_stats(summary, name=__name__)
@@ -291,10 +305,7 @@ def compute_molecule_stats_dataframe(bc_to_mol_dict):
     molecule_data = list()
     while bc_to_mol_dict:
         barcode, molecules = bc_to_mol_dict.popitem()
-        nr_molecules = len(molecules)
-        for molecule in molecules:
-            molecule["NrMolecules"] = nr_molecules
-            molecule_data.append(molecule)
+        molecule_data.extend(molecules)
 
     return pd.DataFrame(molecule_data)
 
@@ -309,24 +320,35 @@ def update_summary_from_molecule_stats(df, summary):
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
-                        help="Sorted SAM/BAM file tagged with barcode in the same tag as specified in "
-                             "-b/--barcode-tag.")
-
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-t", "--threshold", type=int, default=4,
-                        help="Threshold for how many reads are required for including given molecule in statistics "
-                             "(except_reads_per_molecule). Default: %(default)s")
-    parser.add_argument("-w", "--window", type=int, default=30000,
-                        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: "
-                             "%(default)s")
-    parser.add_argument("-b", "--barcode-tag", default="BX",
-                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
-    parser.add_argument("-s", "--stats-tsv", metavar="FILE",
-                        help="Write molecule stats in TSV format to FILE")
-    parser.add_argument("-m", "--molecule-tag", default="MI",
-                        help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-                             "Default: %(default)s")
-    parser.add_argument("-n", "--number-tag", default="MN",
-                        help="SAM tag for storing molecule count for a particular barcode. Default: %(default)s")
+    parser.add_argument(
+        "input",
+        help="Sorted SAM/BAM file tagged with barcode in the same tag as specified in "
+             "-b/--barcode-tag."
+    )
+    parser.add_argument(
+        "-o", "--output", default="-",
+        help="Write output BAM to file rather then stdout."
+    )
+    parser.add_argument(
+        "-t", "--threshold", type=int, default=4,
+        help="Threshold for how many reads are required for including given molecule in statistics "
+             "(except_reads_per_molecule). Default: %(default)s"
+    )
+    parser.add_argument(
+        "-w", "--window", type=int, default=30000,
+        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: "
+             "%(default)s"
+    )
+    parser.add_argument(
+        "-b", "--barcode-tag", default="BX",
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+    )
+    parser.add_argument(
+        "-s", "--stats-tsv", metavar="FILE",
+        help="Write molecule stats in TSV format to FILE"
+    )
+    parser.add_argument(
+        "-m", "--molecule-tag", default="MI",
+        help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
+             "Default: %(default)s"
+    )

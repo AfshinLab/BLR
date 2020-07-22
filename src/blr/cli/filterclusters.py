@@ -1,6 +1,5 @@
 """
-Removes barcode tags present at more than -M loci (corresponding to removing barcode tags from reads origin to droplets
-which had more than -M molecules in one and the same droplet).
+Removes barcode and molecule tags from reads which barcode matches the input set of barcodes.
 """
 
 import logging
@@ -12,12 +11,37 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    tags_to_remove = [args.barcode_tag, args.molecule_tag, args.number_tag]
+    run_filterclusters(
+        input=args.input,
+        barcodes=args.barcodes,
+        output=args.output,
+        barcode_tag=args.barcode_tag,
+        sequence_tag=args.sequence_tag,
+        molecule_tag=args.molecule_tag
+    )
+
+
+def run_filterclusters(
+    input: str,
+    barcodes: str,
+    output: str,
+    barcode_tag: str,
+    sequence_tag: str,
+    molecule_tag: str
+):
+    tags_to_remove = [barcode_tag, sequence_tag, molecule_tag]
     removed_tags = {tag: set() for tag in tags_to_remove}
     summary = Counter()
     logger.info("Starting")
-    # Writes filtered out
-    with PySAMIO(args.input, args.output, __name__) as (openin, openout):
+
+    logger.info("Read list of barcodes to filter")
+    with open(barcodes, "r") as file:
+        barcodes_to_filter = set(file.read().split())
+
+    summary["Barcodes to filter"] = len(barcodes_to_filter)
+
+    logger.info("Filtering BAM")
+    with PySAMIO(input, output, __name__) as (openin, openout):
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):
             summary["Total reads"] += 1
 
@@ -25,11 +49,9 @@ def main(args):
                 summary["Duplicate reads removed"] += 1
                 continue
 
-            no_mols = get_bamtag(pysam_read=read, tag=args.number_tag)
+            barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
 
-            # If barcode is not in all_molecules the barcode does not have enough proximal reads to make a single
-            # molecule. If the barcode has more than <max_molecules> molecules, remove it from the read.
-            if no_mols and no_mols > args.max_molecules:
+            if barcode in barcodes_to_filter:
                 # Stats
                 summary["Removed tags"] += len(tags_to_remove)
                 summary["Reads with removed tags"] += 1
@@ -62,19 +84,30 @@ def strip_barcode(pysam_read, tags_to_be_removed, removed_tags):
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
-                        help="SAM/BAM file tagged with barcodes information under the tag specified at "
-                             "-b/--barcode-tag. The file needs to be indexed, sorted & have duplicates removed. "
-                             "To read from stdin use '-'.")
-
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-b", "--barcode-tag", default="BX",
-                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
-    parser.add_argument("-M", "--max_molecules", type=int, default=500,
-                        help="Maximum number of molecules allowed to keep barcode. Default: %(default)s")
-    parser.add_argument("-m", "--molecule-tag", default="MI",
-                        help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-                             "Default: %(default)s")
-    parser.add_argument("-n", "--number_tag", default="MN",
-                        help="SAM tag for storing molecule count for a particular barcode. Default: %(default)s")
+    parser.add_argument(
+        "input",
+        help="SAM/BAM file tagged with barcodes information under the tag specified at "
+             "-b/--barcode-tag. The file needs to be indexed, sorted & have duplicates marked. "
+             "To read from stdin use '-'."
+    )
+    parser.add_argument(
+        "barcodes",
+        help="TXT with barcodes to filter out on separate lines."
+    )
+    parser.add_argument(
+        "-o", "--output", default="-",
+        help="Write output BAM to file rather then stdout."
+    )
+    parser.add_argument(
+        "-b", "--barcode-tag", default="BX",
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+    )
+    parser.add_argument(
+        "-s", "--sequence-tag", default="RX",
+        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s"
+    )
+    parser.add_argument(
+        "-m", "--molecule-tag", default="MI",
+        help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
+             "Default: %(default)s"
+    )

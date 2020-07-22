@@ -170,7 +170,7 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     # Molecules per barcode
     # - x = molecules per barcode
     # - y = log frequency
-    barcode_mols = data.groupby("Barcode")["NrMolecules"].count()
+    barcode_mols = data.groupby("Barcode")["Barcode"].count()
     with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
         barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+1), kind="hist")
         ax.set_xlabel("Molecules per barcode")
