@@ -48,3 +48,4 @@ barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cl
 barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
+coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.

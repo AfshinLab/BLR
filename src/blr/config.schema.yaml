@@ -98,3 +98,7 @@ properties:
     type: integer
     default: 30000
     description: Window size used for linking reads by barcodes.
+  coverage_window_size:
+    type: integer
+    default: 1000
+    description: mosdepth window size in bp to calculate coverage statistics.

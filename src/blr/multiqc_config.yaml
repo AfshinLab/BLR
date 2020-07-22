@@ -2,5 +2,9 @@ title: "BLR run report"
 intro_text: "This is a collection of results from the BLR pipeline. Go to our
 <a href=https://github.com/FrickTobias/BLR>github page</a> for more information."
 
+table_columns_visible:
+    mosdepth:
+        30_x_pc: False
+
 extra_fn_clean_trim:
   '.phasing_stats'

@@ -11,6 +11,7 @@ snakemake --version
 blr --version
 picard MarkDuplicates --version || true
 ema
+mosdepth --version
 
 if [[ $(uname) == Darwin ]]; then
   md5="md5 -r"
