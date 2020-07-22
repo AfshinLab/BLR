@@ -321,7 +321,7 @@ rule concat_molecule_stats:
 
 rule get_barcodes_to_filter:
     output:
-         txt = "final.barcodes_filtered_out.txt"
+         txt = "final.barcodes_filtered_out.tsv"
     input:
          tsv = "final.molecule_stats.tsv"
     run:
@@ -343,7 +343,7 @@ rule filterclusters:
         bai = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.bai"
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
-        barcodes = "final.barcodes_filtered_out.txt"
+        barcodes = "final.barcodes_filtered_out.tsv"
     log: "{base}.filterclusters.log"
     shell:
         "blr filterclusters"
