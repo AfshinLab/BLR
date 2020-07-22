@@ -328,14 +328,14 @@ rule concat_molecule_stats:
 
 rule get_barcodes_to_filter:
     output:
-         txt = "final.barcodes_filtered_out.tsv"
+         tsv = "final.barcodes_filtered_out.tsv"
     input:
          tsv = "final.molecule_stats.tsv"
     run:
         molecules = pd.read_csv(input.tsv, sep="\t")
         molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
         barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
-        with open(output.txt, "w") as file:
+        with open(output.tsv, "w") as file:
             print("\n".join(barcodes_to_filter), file=file)
 
 
