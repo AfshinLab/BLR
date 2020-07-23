@@ -145,7 +145,7 @@ class MultiqcModule(BaseMultiqcModule):
         sample_data = defaultdict(list)
         totals_data = defaultdict(list)
         for f in self.find_log_files('hapcut2/phaseblocks', filehandles=True):
-            sample_name = self.clean_s_name(f["fn"], f["root"])
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(" chunks |", "")
             for phaseblock in self.parse_phaseblocks(f["f"]):
                 sample_data[sample_name].append(phaseblock["phaseblock_length"])
 
