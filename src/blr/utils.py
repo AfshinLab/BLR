@@ -5,6 +5,7 @@ import pysam
 from dataclasses import dataclass
 import numpy as np
 import os
+from collections import namedtuple
 
 from blr import __version__
 
@@ -247,3 +248,28 @@ def symlink_relpath(source, target):
     commonpath = os.path.commonpath([source, target])
     relpath_source = os.path.relpath(source, commonpath)
     os.symlink(relpath_source, target)
+
+
+def parse_phaseblocks(file):
+    """
+    Format  description from https://github.com/vibansal/HapCUT2/blob/master/outputformat.md
+
+    Example entry.
+    ```
+    BLOCK: offset: 6 len: 4 phased: 2 SPAN: 23514 fragments 1
+    ```
+
+    offset: <SNV offset>
+    len: <SNV span of block>
+    phased: <# SNVs phased>
+    SPAN: <base pair span of block>
+    fragments <# of fragments in block>
+
+    """
+    Phaseblock = namedtuple("Phaseblock", ["snv_span", "phased_snvs", "length", "fragments"])
+    for line in file:
+        if line.startswith("BLOCK:"):
+            contents = line.split()
+            yield Phaseblock(int(contents[4]), int(contents[6]), int(contents[8]), int(contents[10]))
+        else:
+            continue

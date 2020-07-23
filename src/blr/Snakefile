@@ -1,7 +1,7 @@
 import sys
 import pandas as pd
 from snakemake.utils import validate
-from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath
+from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
 import os
 
 configfile: "blr.yaml"
@@ -89,6 +89,7 @@ def get_multiqc_input(wildcards):
         "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi"
+        "final.phaseblock_data.tsv"
     ]
     if config["phasing_ground_truth"]:
         inputs.append("final.phasing_stats.txt")
@@ -592,3 +593,18 @@ rule mosdepth:
         " --by {params.bin_size}"
         " {params.prefix}"
         " {input.bam}"
+
+
+rule aggregate_phaseblock_data:
+    output:
+        tsv = "final.phaseblock_data.tsv"
+    input:
+        phase = expand("chunks/{chunk[0].name}.calling.phase", chunk=chunks)
+    run:
+        data = list()
+        with open(output.tsv, "w") as output_tsv:
+            print("Variants spanned", "Variants phased", "Length", "Fragments", sep="\t", file=output_tsv)
+            for input_file in input.phase:
+                with open(input_file) as file:
+                    for p in parse_phaseblocks(file):
+                        print(p.snv_span, p.phased_snvs, p.length, p.fragments, sep="\t", file=output_tsv)

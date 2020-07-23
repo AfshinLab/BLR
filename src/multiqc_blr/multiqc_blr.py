@@ -46,16 +46,13 @@ def execution_start():
                                       'contents_re': '^SETTINGS FOR:*',
                                       'num_lines': 1}})
 
+    if 'stats/phaseblock_data' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/phaseblock_data': {'fn': '*.phaseblock_data.tsv'}})
+
     if 'hapcut2/phasing_stats' not in config.sp:
         # Current looking for file containing the string "switch rate:" on the first line.
         config.update_dict(config.sp,
                            {'hapcut2/phasing_stats': {'fn': '*.txt',
                                                       'contents_re': '^switch rate:*',
                                                       'num_lines': 1}})
-    if 'hapcut2/phaseblocks' not in config.sp:
-        # Currently looking for file containing the string "switch rate:" on the first line.
-        config.update_dict(config.sp,
-                           {'hapcut2/phaseblocks': {
-                               'fn': '*.phase',
-                               'contents_re': "^BLOCK:*",
-                               'num_lines': 1}})

@@ -4,10 +4,13 @@
 from __future__ import print_function
 from collections import OrderedDict
 import logging
+import pandas as pd
 
 from multiqc import config
-from multiqc.plots import table
+from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
+
+from multiqc_blr.utils import bin_sum
 
 
 # Initialise the main MultiQC logger
@@ -31,6 +34,10 @@ class MultiqcModule(BaseMultiqcModule):
         )
 
         self.gather_stats_logs()
+
+        n_phaseblock_reports = self.gather_phaseblock_data()
+        if n_phaseblock_reports > 0:
+            log.info("Found {} phaseblock reports".format(n_phaseblock_reports))
 
     def gather_stats_logs(self):
         # Find and load any input files for this module
@@ -66,8 +73,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Nothing found - raise a UserWarning to tell MultiQC
         if len(stats_data) == 0:
-            log.debug("Could not find any reports in {}".format(config.analysis_dir))
-            raise UserWarning
+            log.debug("Could not find any stats logs in {}".format(config.analysis_dir))
 
         log.info(f"Found {len(stats_data)} tools (Report per tool: "
                  f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in stats_data.items()])})")
@@ -102,6 +108,68 @@ class MultiqcModule(BaseMultiqcModule):
                 ''',
                 plot=table_html
             )
+
+    def gather_phaseblock_data(self):
+        data_lengths = dict()
+        for f in self.find_log_files('stats/phaseblock_data', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phaseblock_data", "")
+            sample_data = pd.read_csv(f["f"], sep="\t")
+            data_lengths[sample_name] = sample_data["Length"].to_list()
+
+        if len(data_lengths) == 0:
+            log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
+
+        data_lengths_binned = dict()
+        binsize = 50000
+        max_length = max([max(v) for v in data_lengths.values()])
+        bins = range(0, max_length + binsize, binsize)
+        for sample, values in data_lengths.items():
+            _, weights = bin_sum(values, binsize=binsize, normalize=True)
+            data_lengths_binned[sample] = {
+                int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
+            }
+
+        # Add longest phaseblock to general stats table
+        general_stats_data = {
+            name: {"longest_phaseblock": max(data) / 1_000_000} for name, data in data_lengths.items()  # Length in Mbp
+        }
+        general_stats_header = OrderedDict({
+            "longest_phaseblock": {
+                'title': 'Longest phaseblock',
+                'description': 'Longest phaseblock created',
+                'scale': 'Blues',
+                'suffix': ' Mbp',
+                'format': '{:,.3f}'
+            }})
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        pconfig = {
+            'id': 'phasingblock_lengths',
+            'title': "Phaseblock lengths",
+            'xlab': "Phaseblock length (kbp)",
+            'ylab': 'Total DNA density',
+            'yCeiling': 1,
+            'tt_label': '{point.x} kbp: {point.y:.4f}',
+        }
+        plot_html = linegraph.plot(data_lengths_binned, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Phaseblock lengths",
+            description="Phaseblock lengths",
+            plot=plot_html
+        )
+
+        # Make new dict with keys as strings for writable output.
+        lengths_writable = dict()
+        for sample, data in data_lengths_binned.items():
+            lengths_writable[sample] = {str(k): v for k, v in data.items()}
+
+        # Write parsed report data to a file
+        self.write_data_file(lengths_writable, "stats_phaseblock_lengths")
+
+        return len(data_lengths)
 
     @staticmethod
     def get_tool_name(file):
