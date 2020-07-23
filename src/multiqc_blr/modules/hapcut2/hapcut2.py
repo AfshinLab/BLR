@@ -153,6 +153,10 @@ class MultiqcModule(BaseMultiqcModule):
             total_name = " | ".join(sample_name.replace(" ", "").split("|")[:-1] + ["Total"])
             totals_data[total_name].extend(sample_data[sample_name])
 
+        # Skip if no data found
+        if not sample_data:
+            return 0
+
         # Generate bins relative to max phaseblock length and sum for each bin and sample to get plot data
         all_data = []
         for data in [totals_data, sample_data]:
