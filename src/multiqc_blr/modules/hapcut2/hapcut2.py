@@ -2,7 +2,7 @@
 """ BLR MultiQC plugin module for general stats"""
 
 from __future__ import print_function
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import logging
 
 from multiqc import config
@@ -142,10 +142,9 @@ class MultiqcModule(BaseMultiqcModule):
 
     def gather_phaseblocks(self):
         # Collect rawdata of lengths from file
-        rawdata = dict()
+        rawdata = defaultdict(list)
         for f in self.find_log_files('hapcut2/phaseblocks', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"])
-            rawdata[sample_name] = list()
             for phaseblock in self.parse_phaseblocks(f["f"]):
                 rawdata[sample_name].append(phaseblock["phaseblock_length"])
 
