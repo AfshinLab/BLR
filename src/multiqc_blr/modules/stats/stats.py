@@ -30,9 +30,12 @@ class MultiqcModule(BaseMultiqcModule):
             info=" is collection of statistics from the different BLR commandline tools."
         )
 
+        self.gather_stats_logs()
+
+    def gather_stats_logs(self):
         # Find and load any input files for this module
-        self.headers = dict()
-        self.stats_data = dict()
+        headers = dict()
+        stats_data = dict()
         for f in self.find_log_files('stats', filehandles=True):
             tool_name = self.get_tool_name(f["f"])
 
@@ -40,37 +43,37 @@ class MultiqcModule(BaseMultiqcModule):
             if not tool_name:
                 continue
 
-            if tool_name not in self.stats_data:
-                self.stats_data[tool_name] = dict()
-                self.headers[tool_name] = OrderedDict()
+            if tool_name not in stats_data:
+                stats_data[tool_name] = dict()
+                headers[tool_name] = OrderedDict()
 
             sample_name = self.clean_s_name(f["fn"], f["root"])
 
             log.debug(f"Found report for tool {tool_name} with sample {sample_name}")
 
-            if sample_name in self.stats_data[tool_name]:
+            if sample_name in stats_data[tool_name]:
                 log.debug(f"Duplicate sample name found for tool {tool_name}! Overwriting: {sample_name}")
 
-            self.stats_data[tool_name][sample_name] = dict()
+            stats_data[tool_name][sample_name] = dict()
 
             for parameter, value in self.parse(f["f"]):
                 header_name = parameter.lower().replace(" ", "_")
-                self.stats_data[tool_name][sample_name][header_name] = value
+                stats_data[tool_name][sample_name][header_name] = value
 
-                self.headers[tool_name][header_name] = {
+                headers[tool_name][header_name] = {
                     'title': parameter
                 }
 
         # Nothing found - raise a UserWarning to tell MultiQC
-        if len(self.stats_data) == 0:
+        if len(stats_data) == 0:
             log.debug("Could not find any reports in {}".format(config.analysis_dir))
             raise UserWarning
 
-        log.info(f"Found {len(self.stats_data)} tools (Report per tool: "
-                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in self.stats_data.items()])})")
+        log.info(f"Found {len(stats_data)} tools (Report per tool: "
+                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in stats_data.items()])})")
 
         # For each tool generat a separat statistics table for all found samples.
-        for tool_name, data in self.stats_data.items():
+        for tool_name, data in stats_data.items():
             tool_name_title = tool_name.capitalize()
 
             # Write parsed report data to a file
@@ -80,7 +83,7 @@ class MultiqcModule(BaseMultiqcModule):
                 'id': 'blr_stats_table',
                 'title': f"{tool_name_title} stats",
             }
-            table_html = table.plot(data, self.headers[tool_name], pconfig)
+            table_html = table.plot(data, headers[tool_name], pconfig)
 
             # Add a report section with table
             self.add_section(
