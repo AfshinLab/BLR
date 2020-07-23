@@ -21,7 +21,7 @@ def comp_files_linewise(file1: Path, file2: Path):
 def test_stats(tmpdir):
     copyfile(TESTDATA_STATS, tmpdir / "example.log")
 
-    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir])
+    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
     assert Path(tmpdir / "multiqc_data" / "example_stats.txt").exists()
@@ -45,7 +45,7 @@ def test_stats_phaseblock_data(tmpdir):
 def test_hapcut2(tmpdir):
     copyfile(TESTDATA_HAPCUT2_PHASING_STATS, tmpdir / "example.txt")
 
-    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir])
+    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "hapcut2"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
     assert Path(tmpdir / "multiqc_data" / "hapcut2_phasing_stats.txt").exists()
