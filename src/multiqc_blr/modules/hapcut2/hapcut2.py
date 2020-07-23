@@ -142,25 +142,33 @@ class MultiqcModule(BaseMultiqcModule):
 
     def gather_phaseblocks(self):
         # Collect rawdata of lengths from file
-        rawdata = defaultdict(list)
+        sample_data = defaultdict(list)
+        totals_data = defaultdict(list)
         for f in self.find_log_files('hapcut2/phaseblocks', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"])
             for phaseblock in self.parse_phaseblocks(f["f"]):
-                rawdata[sample_name].append(phaseblock["phaseblock_length"])
+                sample_data[sample_name].append(phaseblock["phaseblock_length"])
+
+            # Aggregate values sharing same root to get the total
+            total_name = " | ".join(sample_name.replace(" ", "").split("|")[:-1] + ["Total"])
+            totals_data[total_name].extend(sample_data[sample_name])
 
         # Generate bins relative to max phaseblock length and sum for each bin and sample to get plot data
-        phaseblock_lengths = dict()
-        if rawdata:
-            binsize = 50000
-            max_length = max([max(v) for v in rawdata.values()])
-            bins = range(0, max_length + binsize, binsize)
-            for sample, data in rawdata.items():
-                _, weights = bin_sum(data, binsize=binsize, normalize=True)
-                phaseblock_lengths[sample] = {
-                    int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
-                }
+        all_data = []
+        for data in [totals_data, sample_data]:
+            phaseblock_lengths = dict()
+            if data:
+                binsize = 50000
+                max_length = max([max(v) for v in data.values()])
+                bins = range(0, max_length + binsize, binsize)
+                for sample, values in data.items():
+                    _, weights = bin_sum(values, binsize=binsize, normalize=True)
+                    phaseblock_lengths[sample] = {
+                        int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
+                    }
+                all_data.append(phaseblock_lengths)
 
-        if phaseblock_lengths:
+        if all_data:
             pconfig = {
                 'id': 'hapcut2_phasingblock_lengths',
                 'title': "HapCUT2 phaseblock lengths",
@@ -168,9 +176,12 @@ class MultiqcModule(BaseMultiqcModule):
                 'ylab': 'Total DNA density',
                 'yCeiling': 1,
                 'tt_label': '{point.x} kbp: {point.y:.4f}',
+                'data_labels': [
+                    {'name': 'Totals', 'ylab': 'Total DNA density'},
+                    {'name': 'Per Chunk', 'ylab': 'Total DNA density'},
+                ]
             }
-
-            plot_html = linegraph.plot(phaseblock_lengths, pconfig)
+            plot_html = linegraph.plot(all_data, pconfig)
 
             # Add a report section with plot
             self.add_section(
@@ -181,13 +192,13 @@ class MultiqcModule(BaseMultiqcModule):
 
             # Make new dict with keys as strings for writable output.
             phaseblock_lengths_writable = dict()
-            for sample, data in phaseblock_lengths.items():
+            for sample, data in all_data[1].items():
                 phaseblock_lengths_writable[sample] = {str(k): v for k, v in data.items()}
 
             # Write parsed report data to a file
             self.write_data_file(phaseblock_lengths_writable, "hapcut2_phaseblock_lengths")
 
-        return len(phaseblock_lengths)
+        return len(all_data[1])
 
     @staticmethod
     def parse_phasing_stats(file):
