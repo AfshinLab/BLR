@@ -100,43 +100,46 @@ class MultiqcModule(BaseMultiqcModule):
             for parameter, value in self.parse_phasing_stats(f["f"]):
                 phasing_data[sample_name][parameter] = value
 
-        if len(phasing_data) > 0:
-            # Write parsed report data to a file
-            self.write_data_file(phasing_data, "hapcut2_phasing_stats")
+        # Skip if no data
+        if not phasing_data:
+            return 0
 
-            pconfig = {
-                'id': 'hapcut2_phasing_stats_table',
-                'title': "HapCUT2 phasing stats",
-                'scale': False,
-                'share_key': False
-            }
-            table_html = table.plot(phasing_data, headers, pconfig)
+        # Write parsed report data to a file
+        self.write_data_file(phasing_data, "hapcut2_phasing_stats")
 
-            # Add a report section with table
-            self.add_section(
-                name="HapCUT2 phasing stats",
-                description="Statistics table",
-                helptext='''
-                Description of statistics (taken from https://github.com/vibansal/HapCUT2/tree/master/utilities):
-                ''',
-                plot=table_html
-            )
+        pconfig = {
+            'id': 'hapcut2_phasing_stats_table',
+            'title': "HapCUT2 phasing stats",
+            'scale': False,
+            'share_key': False
+        }
+        table_html = table.plot(phasing_data, headers, pconfig)
 
-            # Add N50 to general stats table
-            general_stats_data = {
-                sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
-            }
+        # Add a report section with table
+        self.add_section(
+            name="HapCUT2 phasing stats",
+            description="Statistics table",
+            helptext='''
+            Description of statistics (taken from https://github.com/vibansal/HapCUT2/tree/master/utilities):
+            ''',
+            plot=table_html
+        )
 
-            general_stats_header = OrderedDict({
-                "N50_phaseblock": {
-                    'title': 'N50 phaseblock',
-                    'description': 'N50 statistic for phaseblock lengths',
-                    'scale': 'Blues',
-                    'suffix': ' Mbp',
-                    'format': '{:,.3f}'
-                }})
+        # Add N50 to general stats table
+        general_stats_data = {
+            sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
+        }
 
-            self.general_stats_addcols(general_stats_data, general_stats_header)
+        general_stats_header = OrderedDict({
+            "N50_phaseblock": {
+                'title': 'N50 phaseblock',
+                'description': 'N50 statistic for phaseblock lengths',
+                'scale': 'Blues',
+                'suffix': ' Mbp',
+                'format': '{:,.3f}'
+            }})
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
 
         return len(phasing_data)
 
@@ -161,16 +164,15 @@ class MultiqcModule(BaseMultiqcModule):
         all_data = []
         for data in [totals_data, sample_data]:
             phaseblock_lengths = dict()
-            if data:
-                binsize = 50000
-                max_length = max([max(v) for v in data.values()])
-                bins = range(0, max_length + binsize, binsize)
-                for sample, values in data.items():
-                    _, weights = bin_sum(values, binsize=binsize, normalize=True)
-                    phaseblock_lengths[sample] = {
-                        int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
-                    }
-                all_data.append(phaseblock_lengths)
+            binsize = 50000
+            max_length = max([max(v) for v in data.values()])
+            bins = range(0, max_length + binsize, binsize)
+            for sample, values in data.items():
+                _, weights = bin_sum(values, binsize=binsize, normalize=True)
+                phaseblock_lengths[sample] = {
+                    int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
+                }
+            all_data.append(phaseblock_lengths)
 
         # Add longest phaseblock to general stats table
         general_stats_data = {
@@ -187,35 +189,34 @@ class MultiqcModule(BaseMultiqcModule):
 
         self.general_stats_addcols(general_stats_data, general_stats_header)
 
-        if all_data:
-            pconfig = {
-                'id': 'hapcut2_phasingblock_lengths',
-                'title': "HapCUT2 phaseblock lengths",
-                'xlab': "Phaseblock length (kbp)",
-                'ylab': 'Total DNA density',
-                'yCeiling': 1,
-                'tt_label': '{point.x} kbp: {point.y:.4f}',
-                'data_labels': [
-                    {'name': 'Totals', 'ylab': 'Total DNA density'},
-                    {'name': 'Per Chunk', 'ylab': 'Total DNA density'},
-                ]
-            }
-            plot_html = linegraph.plot(all_data, pconfig)
+        pconfig = {
+            'id': 'hapcut2_phasingblock_lengths',
+            'title': "HapCUT2 phaseblock lengths",
+            'xlab': "Phaseblock length (kbp)",
+            'ylab': 'Total DNA density',
+            'yCeiling': 1,
+            'tt_label': '{point.x} kbp: {point.y:.4f}',
+            'data_labels': [
+                {'name': 'Totals', 'ylab': 'Total DNA density'},
+                {'name': 'Per Chunk', 'ylab': 'Total DNA density'},
+            ]
+        }
+        plot_html = linegraph.plot(all_data, pconfig)
 
-            # Add a report section with plot
-            self.add_section(
-                name="HapCUT2 phaseblock lengths",
-                description="Phaseblock lengths as reported by HapCUT2",
-                plot=plot_html
-            )
+        # Add a report section with plot
+        self.add_section(
+            name="HapCUT2 phaseblock lengths",
+            description="Phaseblock lengths as reported by HapCUT2",
+            plot=plot_html
+        )
 
-            # Make new dict with keys as strings for writable output.
-            phaseblock_lengths_writable = dict()
-            for sample, data in all_data[1].items():
-                phaseblock_lengths_writable[sample] = {str(k): v for k, v in data.items()}
+        # Make new dict with keys as strings for writable output.
+        phaseblock_lengths_writable = dict()
+        for sample, data in all_data[1].items():
+            phaseblock_lengths_writable[sample] = {str(k): v for k, v in data.items()}
 
-            # Write parsed report data to a file
-            self.write_data_file(phaseblock_lengths_writable, "hapcut2_phaseblock_lengths")
+        # Write parsed report data to a file
+        self.write_data_file(phaseblock_lengths_writable, "hapcut2_phaseblock_lengths")
 
         return len(all_data[1])
 
