@@ -132,7 +132,7 @@ class MultiqcModule(BaseMultiqcModule):
                     'title': 'N50 phaseblock',
                     'description': 'N50 statistic for phaseblock lengths',
                     'scale': 'Blues',
-                    'suffix': 'Mbp',
+                    'suffix': ' Mbp',
                     'format': '{:,.3f}'
                 }})
 
@@ -181,7 +181,7 @@ class MultiqcModule(BaseMultiqcModule):
                 'title': 'Longest phaseblock',
                 'description': 'Longest phaseblock created',
                 'scale': 'Blues',
-                'suffix': 'Mbp',
+                'suffix': ' Mbp',
                 'format': '{:,.3f}'
             }})
 
