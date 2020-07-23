@@ -150,7 +150,7 @@ class MultiqcModule(BaseMultiqcModule):
                 sample_data[sample_name].append(phaseblock["phaseblock_length"])
 
             # Aggregate values sharing same root to get the total
-            total_name = " | ".join(sample_name.replace(" ", "").split("|")[:-1] + ["Total"])
+            total_name = " | ".join(sample_name.replace(" ", "").split("|")[:-1] + ["final"])
             totals_data[total_name].extend(sample_data[sample_name])
 
         # Skip if no data found
@@ -171,6 +171,21 @@ class MultiqcModule(BaseMultiqcModule):
                         int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
                     }
                 all_data.append(phaseblock_lengths)
+
+        # Add longest phaseblock to general stats table
+        general_stats_data = {
+            name: {"longest_phaseblock": max(data) / 1_000_000} for name, data in totals_data.items()  # Length in Mbp
+        }
+        general_stats_header = OrderedDict({
+            "longest_phaseblock": {
+                'title': 'Longest phaseblock',
+                'description': 'Longest phaseblock created',
+                'scale': 'Blues',
+                'suffix': 'Mbp',
+                'format': '{:,.3f}'
+            }})
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
 
         if all_data:
             pconfig = {
