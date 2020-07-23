@@ -118,6 +118,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         if len(data_lengths) == 0:
             log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
+            return 0
 
         data_lengths_binned = dict()
         binsize = 50000
