@@ -4,22 +4,28 @@ Plot data from
 import logging
 import pandas as pd
 import numpy as np
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, Counter
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from pathlib import Path
 import os
+
+from blr.utils import print_stats, calculate_N50
+
 logger = logging.getLogger(__name__)
 
 SIZE_WIDE = (10, 6)
 
 
 def main(args):
+    summary = Counter()
+
     name_to_function = {
         "molecule_stats": process_molecule_stats,   # Files containing "molecule_stats" and ending with "tsv"
         "barcode_clstrs": process_barcode_clstr     # Files named "barcodes.clstr"
     }
-    # Make output directory if not allready present.
+
+    # Make output directory if not present.
     args.output_dir.mkdir(exist_ok=True)
 
     matched = defaultdict(list)
@@ -38,10 +44,13 @@ def main(args):
 
     for func_name, files in matched.items():
         proc_func = name_to_function.get(func_name)
-        proc_func(files, args.output_dir)
+        proc_func(files, args.output_dir, summary)
+
+    if summary:
+        print_stats(summary, __name__)
 
 
-def process_barcode_clstr(files, directory: Path):
+def process_barcode_clstr(files, directory: Path, summary):
     if len(files) == 1:
         data = pd.read_csv(files[0], sep="\t", names=["Canonical", "Reads", "Components"])
         data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
@@ -90,17 +99,26 @@ def process_multiple(files, func):
     return pd.concat(d)
 
 
-def process_molecule_stats(files, directory: Path):
+def process_molecule_stats(files, directory: Path, summary):
     if len(files) == 1:
         data = process_molecule_stats_file(files[0])
     else:
         data = process_multiple(files, process_molecule_stats_file)
+
+    summary["Barcodes"] = len(data["Barcode"].unique())
+    summary["N50 reads per molecule"] = calculate_N50(data["Reads"])
+    summary["Mean molecule length"] = float(data["Length"].mean())
+    summary["Median molecule length"] = float(data["Length"].median())
+    summary["DNA in molecules >20 kbp (%)"] = 100 * len(data[data["Length"] > 20_000]) / len(data)
+    summary["DNA in molecules >100 kbp (%)"] = 100 * len(data[data["Length"] > 100_000]) / len(data)
+
     plot_molecule_stats(data, directory)
 
 
 def process_molecule_stats_file(file, nr=None):
     data = pd.read_csv(file, sep="\t")
-    data["ChunkID"] = nr
+    if nr is not None and "ChunkID" not in data.columns.values:
+        data["ChunkID"] = nr
     return data
 
 
@@ -172,7 +190,7 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     # - y = log frequency
     barcode_mols = data.groupby("Barcode")["Barcode"].count()
     with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+1), kind="hist")
+        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+2), kind="hist")
         ax.set_xlabel("Molecules per barcode")
         ax.set_yscale('log')
 
@@ -214,6 +232,7 @@ class Plot:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         plt.title(self.title)
+        plt.tight_layout()
         plt.savefig(self.filepath)
 
 
