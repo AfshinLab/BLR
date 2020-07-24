@@ -28,7 +28,7 @@ class MultiqcModule(BaseMultiqcModule):
             target="WhatsHap",
             anchor="whatshap",
             info="""
-             is a software for phasing genomic variants using DNA sequencing reads, also called read-based phasing or 
+             is a software for phasing genomic variants using DNA sequencing reads, also called read-based phasing or
              haplotype assembly. It is especially suitable for long reads, but works also well with short reads.
              """
         )
@@ -43,7 +43,7 @@ class MultiqcModule(BaseMultiqcModule):
                 name="Phasing stats",
                 description="Phasing statistics table",
                 helptext='''
-                Collection of phasing statistics related to variants and phaseblocks.   
+                Collection of phasing statistics related to variants and phaseblocks
                 ''',
                 plot=table.plot(table_data, table_headers, {
                     'id': 'whatshap_phasing_stats_table',
