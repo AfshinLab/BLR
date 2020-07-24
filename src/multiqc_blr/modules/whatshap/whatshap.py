@@ -40,7 +40,7 @@ class MultiqcModule(BaseMultiqcModule):
 
             # Add a report section with table
             self.add_section(
-                name="WhatsHap phasing stats",
+                name="Phasing stats",
                 description="Phasing statistics table",
                 helptext='''
                 Collection of phasing statistics related to variants and phaseblocks.   
