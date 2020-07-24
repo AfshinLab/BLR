@@ -90,7 +90,9 @@ def get_multiqc_input(wildcards):
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi",
         "final.phaseblock_data.tsv",
-        "final.whatshap_stats.tsv"
+        "final.whatshap_stats.tsv",
+        "final.insert_size_metrics.txt",
+        "final.insert_size_histogram.pdf"
     ]
     if config["phasing_ground_truth"]:
         inputs.append("final.phasing_stats.txt")
@@ -622,3 +624,18 @@ rule whatshap_stats:
          "whatshap stats"
          " --tsv {output.tsv}"
          " {input.phased_vcf} > {log}"
+
+
+rule collect_insert_size_metrics:
+    """Collect insert size metrics for BAM file."""
+    output:
+        metrics = "final.insert_size_metrics.txt",
+        hist = "final.insert_size_histogram.pdf",
+    input:
+        bam = "final.bam"
+    log: "collect_insert_size_metrics.log"
+    shell:
+        "picard CollectInsertSizeMetrics"
+        " I={input.bam}"
+        " O={output.metrics}"
+        " H={output.hist} 2> {log}"
