@@ -118,9 +118,9 @@ rule multiqc_summarize:
 
 def plot_figures_input(wildcards):
     if config["library_type"] == "blr":
-        return "final.molecule_stats.tsv", "barcodes.clstr"
+        return "final.molecule_stats.filtered.tsv", "barcodes.clstr"
     else:
-        return "final.molecule_stats.tsv"
+        return "final.molecule_stats.filtered.tsv"
 
 
 rule plot_figures:
@@ -342,6 +342,20 @@ rule get_barcodes_to_filter:
         barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
         with open(output.tsv, "w") as file:
             print("\n".join(barcodes_to_filter), file=file)
+
+
+rule filter_molecule_stats:
+    """Remove barcodes that are to be filtered out from stats"""
+    output:
+        tsv = "final.molecule_stats.filtered.tsv"
+    input:
+        tsv = "final.molecule_stats.tsv",
+        barcodes = "final.barcodes_filtered_out.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        barcodes_to_filter = pd.read_csv(input.barcodes, sep="\t", names=["Barcode"])
+        molecules_filtered = molecules[~molecules["Barcode"].isin(barcodes_to_filter["Barcode"])]
+        molecules_filtered.to_csv(output.tsv, sep="\t")
 
 
 # filterclusters creates a .bai file directly

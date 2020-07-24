@@ -16,7 +16,7 @@ SIZE_WIDE = (10, 6)
 
 def main(args):
     name_to_function = {
-        "molecule_stats": process_molecule_stats,   # Files ending in "molecule_stats.tsv"
+        "molecule_stats": process_molecule_stats,   # Files containing "molecule_stats" and ending with "tsv"
         "barcode_clstrs": process_barcode_clstr     # Files named "barcodes.clstr"
     }
     # Make output directory if not allready present.
@@ -30,7 +30,7 @@ def main(args):
             matched["barcode_clstrs"].append(filepath)
             continue
 
-        if filename.endswith("molecule_stats.tsv"):
+        if "molecule_stats" in filename and filename.endswith(".tsv"):
             matched["molecule_stats"].append(filepath)
             continue
 
