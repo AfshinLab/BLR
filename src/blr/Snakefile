@@ -89,7 +89,8 @@ def get_multiqc_input(wildcards):
         "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi",
-        "final.phaseblock_data.tsv"
+        "final.phaseblock_data.tsv",
+        "final.whatshap_stats.tsv"
     ]
     if config["phasing_ground_truth"]:
         inputs.append("final.phasing_stats.txt")
@@ -608,3 +609,15 @@ rule aggregate_phaseblock_data:
                 with open(input_file) as file:
                     for p in parse_phaseblocks(file):
                         print(p.snv_span, p.phased_snvs, p.length, p.fragments, sep="\t", file=output_tsv)
+
+rule whatshap_stats:
+    """Calculate phaseing stats related to variants and phaseblocks."""
+    output:
+        tsv = "final.whatshap_stats.tsv"
+    input:
+        phased_vcf = "final.phased.vcf"
+    log: "whatshap_stats.log"
+    shell:
+         "whatshap stats"
+         " --tsv {output.tsv}"
+         " {input.phased_vcf} > {log}"

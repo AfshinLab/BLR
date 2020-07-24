@@ -34,6 +34,7 @@ setup(
         "multiqc.modules.v1": [
             "stats = multiqc_blr.modules.stats:MultiqcModule",
             "hapcut2 = multiqc_blr.modules.hapcut2:MultiqcModule",
+            "whatshap = multiqc_blr.modules.whatshap:MultiqcModule",
         ],
         "multiqc.cli_options.v1": [
             "disable_plugin = multiqc_blr.cli:disable_plugin"

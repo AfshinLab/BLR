@@ -56,3 +56,9 @@ def execution_start():
                            {'hapcut2/phasing_stats': {'fn': '*.txt',
                                                       'contents_re': '^switch rate:*',
                                                       'num_lines': 1}})
+
+    if "whatshap/stats" not in config.sp:
+        config.update_dict(config.sp,
+                           {'whatshap/stats': {'fn': '*.tsv',
+                                                      'contents': '#sample	chromosome	file_name	variants	phased	unphased	singletons	blocks	variant_per_block_median	variant_per_block_avg	variant_per_block_min	variant_per_block_max	variant_per_block_sum	bp_per_block_median	bp_per_block_avg	bp_per_block_min	bp_per_block_max	bp_per_block_sum	heterozygous_variants	heterozygous_snvs	phased_snvs	block_n50',
+                                                      'num_lines': 1}})

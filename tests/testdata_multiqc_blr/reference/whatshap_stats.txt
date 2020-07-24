@@ -1,0 +1,2 @@
+Sample	variants	phased	unphased	singletons	blocks	variant_per_block_median	variant_per_block_avg	variant_per_block_min	variant_per_block_max	variant_per_block_sum	bp_per_block_median	bp_per_block_avg	bp_per_block_min	bp_per_block_max	bp_per_block_sum	heterozygous_variants	heterozygous_snvs	phased_snvs	block_n50	percent_SNVs_phased	percent_variants_phased
+example	86276	51777	11176	0	102	3.0	507.6176470588235	2	10686	51777	79.0	352661.0588235294	2	9997754	35971428	62953	49132	48662	nan	99.04339330782382	82.24707321334964

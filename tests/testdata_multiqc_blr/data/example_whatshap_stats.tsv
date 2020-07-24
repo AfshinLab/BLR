@@ -1,0 +1,6 @@
+#sample	chromosome	file_name	variants	phased	unphased	singletons	blocks	variant_per_block_median	variant_per_block_avg	variant_per_block_min	variant_per_block_max	variant_per_block_sum	bp_per_block_median	bp_per_block_avg	bp_per_block_min	bp_per_block_max	bp_per_block_sum	heterozygous_variants	heterozygous_snvs	phased_snvs	block_n50
+20	chrA	final.phased.vcf	24637	17427	2130	0	54	3.0	322.72222222222223	2	3736	17427	434.5	102727.25925925926	7	1651346	5547272	19557	16156	15967	nan
+20	chrB	final.phased.vcf	28436	15675	4363	0	25	2	627.0	2	10533	15675	48	584798.76	2	9078770	14619969	20038	15094	14945	nan
+20	chrC	final.phased.vcf	19665	10717	3241	0	14	2.0	765.5	2	10686	10717	17.5	714155.0714285715	2	9997754	9998171	13958	10252	10168	nan
+20	chrD	final.phased.vcf	13538	7958	1442	0	9	2	884.2222222222222	2	6840	7958	18	645112.8888888889	2	4915272	5806016	9400	7630	7582	nan
+20	ALL	final.phased.vcf	86276	51777	11176	0	102	3.0	507.61764705882354	2	10686	51777	79.0	352661.0588235294	2	9997754	35971428	62953	49132	48662	nan
