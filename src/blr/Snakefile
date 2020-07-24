@@ -355,7 +355,7 @@ rule filter_molecule_stats:
         molecules = pd.read_csv(input.tsv, sep="\t")
         barcodes_to_filter = pd.read_csv(input.barcodes, sep="\t", names=["Barcode"])
         molecules_filtered = molecules[~molecules["Barcode"].isin(barcodes_to_filter["Barcode"])]
-        molecules_filtered.to_csv(output.tsv, sep="\t")
+        molecules_filtered.to_csv(output.tsv, sep="\t", index=False)
 
 
 # filterclusters creates a .bai file directly
