@@ -54,7 +54,7 @@ class MultiqcModule(BaseMultiqcModule):
                 stats_data[tool_name] = dict()
                 headers[tool_name] = OrderedDict()
 
-            sample_name = self.clean_s_name(f["fn"], f["root"])
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(f".{tool_name}", "")
 
             log.debug(f"Found report for tool {tool_name} with sample {sample_name}")
 
@@ -79,17 +79,17 @@ class MultiqcModule(BaseMultiqcModule):
                  f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in stats_data.items()])})")
 
         # For each tool generat a separat statistics table for all found samples.
-        for tool_name, data in stats_data.items():
+        for tool_name, tool_data in stats_data.items():
             tool_name_title = tool_name.capitalize()
 
             # Write parsed report data to a file
-            self.write_data_file(data, f"{tool_name}_stats")
+            self.write_data_file(tool_data, f"{tool_name}_stats")
 
             pconfig = {
                 'id': 'blr_stats_table',
                 'title': f"{tool_name_title} stats",
             }
-            table_html = table.plot(data, headers[tool_name], pconfig)
+            table_html = table.plot(tool_data, headers[tool_name], pconfig)
 
             # Add a report section with table
             self.add_section(
@@ -108,6 +108,58 @@ class MultiqcModule(BaseMultiqcModule):
                 ''',
                 plot=table_html
             )
+
+            # Include select stats from "plot" tool in general stats table.
+            if tool_name == "plot":
+                general_stats_data = dict()
+                for name, data in tool_data.items():
+                    general_stats_data[name] = {
+                        "n50_lpm": data["n50_reads_per_molecule"],
+                        "mean_molecule_length_kbp": data["mean_molecule_length"] / 1000,
+                        "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
+                        "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
+                        "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"]
+                    }
+
+                general_stats_header = OrderedDict({
+                    "n50_lpm": {
+                        'title': 'N50 LPM',
+                        'description': 'N50 linked-reads per molecule',
+                        'scale': 'Blues',
+                        'format': '{:,}'
+                    },
+                    "mean_molecule_length_kbp": {
+                        'title': 'Mean len',
+                        'description': 'Mean molecule length in kbp',
+                        'scale': 'Blues',
+                        'suffix': ' kbp',
+                        'format': '{:,.1f}'
+                    },
+                    "median_molecule_length_kbp": {
+                        'title': 'Median len',
+                        'description': 'Median molecule length in kbp',
+                        'scale': 'Blues',
+                        'suffix': ' kbp',
+                        'format': '{:,.1f}'
+                    },
+                    "dna_in_molecules_20_kbp_percent": {
+                        'title': 'DNA>20kbp',
+                        'description': 'Percent of DNA in molecules longer than 20 kbp',
+                        'scale': 'Blues',
+                        'suffix': '%',
+                        'format': '{:.1f}'
+                    },
+                    "dna_in_molecules_100_kbp_percent": {
+                        'title': 'DNA>100kbp',
+                        'description': 'Percent of DNA in molecules longer than 100 kbp',
+                        'scale': 'Blues',
+                        'suffix': '%',
+                        'format': '{:.1f}'
+                    },
+
+                })
+
+                self.general_stats_addcols(general_stats_data, general_stats_header)
 
     def gather_phaseblock_data(self):
         data_lengths = dict()

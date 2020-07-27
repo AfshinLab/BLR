@@ -127,7 +127,7 @@ rule plot_figures:
     """Generate plots for final report."""
     output: directory("figures")
     input: plot_figures_input
-    log: "final.plot_figures.log"
+    log: "final.plot.log"
     shell:
         "blr plot"
         " {input}"
