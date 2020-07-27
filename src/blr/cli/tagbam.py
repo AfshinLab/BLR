@@ -69,15 +69,17 @@ def mode_ema(read, _):  # summary is passed to this function but is not used
     :return:
     """
 
-    # Strip header
-    read.query_name = read.query_name.rsplit(":", 1)[0]
+    # Split header into original read name and barcode
+    read.query_name, header_barcode = read.query_name.rsplit(":", 1)
 
-    # Modify barcode to remove '-1' added at end by ema e.g 'BX:Z:TTTGTTCATGAGTACG-1' --> 'BX:Z:TTTGTTCATGAGTACG'
-    # These letters are not handled by picard markduplicates.
+    # Modify tag barcode to remove '-1' added at end by ema e.g 'BX:Z:TTTGTTCATGAGTACG-1' --> 'BX:Z:TTTGTTCATGAGTACG'
+    # Ema also trims the barcode to 16bp (10x Barcode length) so it need to be exchanged for the one in the header.
     current_barcode = get_bamtag(read, "BX")
     if current_barcode and current_barcode.endswith("-1"):
         modified_barcode = current_barcode[:-2]
-        read.set_tag("BX", modified_barcode, value_type="Z")
+        # Make sure that the SAM tag barcode is a substring of the header barcode
+        assert header_barcode.startswith(modified_barcode)
+        read.set_tag("BX", header_barcode, value_type="Z")
 
 
 def add_arguments(parser):
