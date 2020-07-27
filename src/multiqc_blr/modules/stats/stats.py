@@ -118,7 +118,8 @@ class MultiqcModule(BaseMultiqcModule):
                         "mean_molecule_length_kbp": data["mean_molecule_length"] / 1000,
                         "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
                         "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
-                        "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"]
+                        "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"],
+                        "nr_barcodes_final_millions": data["barcodes"] / 1_000_000
                     }
 
                 general_stats_header = OrderedDict({
@@ -155,6 +156,13 @@ class MultiqcModule(BaseMultiqcModule):
                         'scale': 'Blues',
                         'suffix': '%',
                         'format': '{:.1f}'
+                    },
+                    "nr_barcodes_final_millions": {
+                        'title': '# barcodes',
+                        'description': 'Number of barcode in final data.',
+                        'suffix': 'M',
+                        'scale': 'Blues',
+                        'format': '{:,.1f}'
                     },
 
                 })
