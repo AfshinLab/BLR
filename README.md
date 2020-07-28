@@ -114,6 +114,35 @@ To enable DeepVariant, install it separately to your environment.
 
 This will enable the `variant_caller: deepvariant` option in the analysis config file.    
 
+#### 2.3 Lariat aligner
+
+To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to manually install it within your 
+environment.
+
+- First create a new environment with whish to build lariat from source 
+```
+conda create -n lariat-build
+conda activate lariat-build
+conda install go 
+condat install clangxx_osx-64
+```
+- Clone and build lariat
+```
+git clone https://github.com/10XGenomics/lariat
+cd lariat
+git submodule update --init --recursive
+cd go
+make
+```
+- Test install by running
+```
+bin/lariat -h
+```
+- Add lariat to your blr environment
+```
+ln -s /path/to/bin/lariat /path/to/miniconda/envs/my-blr-env/bin/.
+```
+
 ### 3. Updating
 
 Change working directory to your blr git folder and update.
