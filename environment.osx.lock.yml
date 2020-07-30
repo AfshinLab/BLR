@@ -5,21 +5,22 @@ channels:
 dependencies:
   - appdirs=1.4.3=py_1
   - attrs=19.3.0=py_0
-  - bcftools=1.10.2=h4c7ce49_2
+  - bcftools=1.10.2=h4c7ce49_3
   - biopython=1.77=py36h37b9a7d_0
   - bowtie2=2.3.5.1=py36h2dec4b4_0
   - brotlipy=0.7.0=py36h37b9a7d_1000
   - bwa=0.7.17=h2573ce8_7
   - bzip2=1.0.8=h0b31af3_2
+  - c-ares=1.16.1=haf1e3a3_0
   - ca-certificates=2020.6.20=hecda079_0
   - certifi=2020.6.20=py36h9f0ad1d_0
-  - cffi=1.14.0=py36h356ff06_0
+  - cffi=1.14.1=py36h6a9c9ac_0
   - chardet=3.0.4=py36h9f0ad1d_1006
   - click=7.1.2=pyh9f0ad1d_0
   - coloredlogs=14.0=py36h9f0ad1d_1
   - colormath=3.0.0=py_2
   - configargparse=1.2.3=pyh9f0ad1d_0
-  - cryptography=2.9.2=py36hc9d8292_0
+  - cryptography=3.0=py36h54f4bc5_0
   - cutadapt=2.5=py36h01d97ff_0
   - cycler=0.10.0=py_2
   - dataclasses=0.7=py36_0
@@ -34,11 +35,11 @@ dependencies:
   - freebayes=1.3.2=py36hebd581e_2
   - freetype=2.10.2=h8da9a1a_0
   - future=0.18.2=py36h9f0ad1d_1
-  - gatk4=4.1.8.0=py38h37ae868_0
+  - gatk4=4.1.8.1=py38_0
   - gitdb=4.0.5=py_0
   - gitpython=3.1.3=py_0
   - gsl=2.6=ha2d443c_0
-  - hapcut2=1.2=h4eb3cf5_1
+  - hapcut2=1.3.2=h4eb3cf5_0
   - htslib=1.10.2=h422799e_1
   - humanfriendly=8.2=py36h9f0ad1d_0
   - icu=67.1=h4a8c4bd_0
@@ -48,50 +49,59 @@ dependencies:
   - importlib_resources=3.0.0=py36h9f0ad1d_0
   - ipython_genutils=0.2.0=py_1
   - jinja2=2.11.2=pyh9f0ad1d_0
+  - jpeg=9d=h0b31af3_0
   - jsonschema=3.2.0=py36h9f0ad1d_1
   - jupyter_core=4.6.3=py36h9f0ad1d_1
   - k8=0.2.5=h7475705_0
   - kiwisolver=1.2.0=py36h863e41a_0
-  - krb5=1.17.1=h14dd6a4_1
+  - krb5=1.17.1=h14dd6a4_2
+  - lcms2=2.11=h174193d_0
   - libblas=3.8.0=17_openblas
   - libcblas=3.8.0=17_openblas
-  - libcurl=7.71.1=he6690cf_1
-  - libcxx=10.0.0=h1af66ff_2
+  - libcurl=7.71.1=he6690cf_4
+  - libcxx=10.0.1=h5f48129_0
   - libdeflate=1.6=h0b31af3_0
   - libedit=3.1.20191231=hed1e85f_1
+  - libev=4.33=haf1e3a3_0
   - libffi=3.2.1=h4a8c4bd_1007
   - libgfortran=4.0.0=2
   - libiconv=1.15=h0b31af3_1006
   - liblapack=3.8.0=17_openblas
-  - libopenblas=0.3.10=h3d69b6c_0
+  - libnghttp2=1.41.0=h8a08a2b_1
+  - libopenblas=0.3.10=openmp_h63d9170_4
   - libpng=1.6.37=hbbe82c9_1
-  - libssh2=1.9.0=h39bdce6_3
-  - libxml2=2.9.10=hc06c4ae_1
-  - llvm-openmp=10.0.0=h28b9765_0
+  - libssh2=1.9.0=h39bdce6_5
+  - libtiff=4.1.0=h2ae36a8_6
+  - libwebp-base=1.1.0=h0b31af3_3
+  - libxml2=2.9.10=h7fdee97_2
+  - llvm-openmp=10.0.1=h28b9765_0
+  - lz4-c=1.9.2=h4a8c4bd_1
   - lzstring=1.0.4=py_1001
   - markdown=3.2.2=py_0
   - markupsafe=1.1.1=py36h37b9a7d_1
-  - matplotlib-base=3.2.2=py36h83d3ec1_1
-  - minimap2=2.17=hbbe82c9_2
+  - matplotlib-base=3.3.0=py36h534ab7b_1
+  - minimap2=2.17=hbbe82c9_3
   - mosdepth=0.2.9=h06e8507_1
-  - multiqc=1.9=pyh9f0ad1d_0
+  - multiqc=1.9=py_1
   - nbformat=5.0.7=py_0
   - ncurses=6.1=h0a44026_1002
   - networkx=2.4=py_1
   - nomkl=1.0=h5ca1d4c_0
-  - numpy=1.18.5=py36hdc5ca10_0
+  - numpy=1.19.1=py36h4a66613_0
+  - olefile=0.46=py_0
   - openjdk=8.0.192=h0b31af3_1005
-  - openssl=1.1.1g=h0b31af3_0
-  - pandas=1.0.5=py36hcc1bba6_0
-  - parallel=20200522=0
+  - openssl=1.1.1g=h0b31af3_1
+  - pandas=1.1.0=py36h27176af_0
+  - parallel=20200722=0
   - pcre=8.44=h4a8c4bd_0
   - perl=5.26.2=haec8ef5_1006
-  - picard-slim=2.23.2=0
+  - picard-slim=2.23.3=0
   - pigz=2.3.4=hbbe82c9_1
-  - pip=20.1.1=py_1
-  - psutil=5.7.0=py36h37b9a7d_1
+  - pillow=7.2.0=py36h2ae5dfa_1
+  - pip=20.2=py_0
+  - psutil=5.7.2=py36h9de38fb_0
   - pycparser=2.20=pyh9f0ad1d_2
-  - pyfaidx=0.5.9=pyh4c3bd37_0
+  - pyfaidx=0.5.9.1=pyh864c0ab_0
   - pyopenssl=19.1.0=py_1
   - pyparsing=2.4.7=pyh9f0ad1d_0
   - pyrsistent=0.16.0=py36h37b9a7d_0
@@ -108,9 +118,9 @@ dependencies:
   - ruamel.yaml=0.16.6=py36h37b9a7d_1
   - ruamel.yaml.clib=0.2.0=py36h37b9a7d_1
   - samtools=1.10=h457b48f_2
-  - scipy=1.5.0=py36h1dac7e4_0
+  - scipy=1.5.2=py36h01b1e2b_0
   - setuptools=49.2.0=py36h9f0ad1d_0
-  - simplejson=3.17.0=py36h37b9a7d_1
+  - simplejson=3.17.2=py36h9de38fb_0
   - six=1.15.0=pyh9f0ad1d_0
   - smmap=3.0.4=pyh9f0ad1d_0
   - snakemake-minimal=5.18.1=py_0
@@ -121,11 +131,11 @@ dependencies:
   - tk=8.6.10=hbbe82c9_0
   - toposort=1.5=py_3
   - tornado=6.0.4=py36h37b9a7d_1
-  - tqdm=4.47.0=pyh9f0ad1d_0
+  - tqdm=4.48.0=pyh9f0ad1d_0
   - traitlets=4.3.3=py36h9f0ad1d_1
-  - urllib3=1.25.9=py_0
+  - urllib3=1.25.10=py_0
   - vcflib=1.0.0_rc2=he0122c3_2
-  - whatshap=1.0=py36h1730ee7_0
+  - whatshap=1.0=py36h6bea8ea_1
   - wheel=0.34.2=py_1
   - wrapt=1.12.1=py36h37b9a7d_1
   - xopen=0.9.0=py36h9f0ad1d_0
@@ -133,4 +143,5 @@ dependencies:
   - yaml=0.2.5=h0b31af3_0
   - zipp=3.1.0=py_0
   - zlib=1.2.11=h0b31af3_1006
+  - zstd=1.4.5=h0384e3a_2
 
