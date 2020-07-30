@@ -324,8 +324,9 @@ rule concat_molecule_stats:
         dfs = list()
         for nr, file in enumerate(input.tsv):
             df =  pd.read_csv(file, sep="\t")
-            df["ChunkID"] = nr
-            dfs.append(df)
+            if not df.empty:
+                df["ChunkID"] = nr
+                dfs.append(df)
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
