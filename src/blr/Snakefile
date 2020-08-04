@@ -331,6 +331,8 @@ rule concat_molecule_stats:
                 df["ChunkID"] = nr
                 dfs.append(df)
 
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t", index=False)
 
 rule get_barcodes_to_filter:
     output:
