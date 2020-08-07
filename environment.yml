@@ -32,3 +32,4 @@ dependencies:
   - picard-slim
   - whatshap
   - mosdepth
+  - conda-pack 
