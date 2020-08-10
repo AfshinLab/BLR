@@ -66,16 +66,34 @@ rule preproc_10x:
         " -o {output.bins} {input.counts_ncnt} 2>&1 | tee {log}"
 
 
-rule merge_bins_and_split_pairs:
-    """Merge bins of trimmed and barcoded reads together and split into read pairs."""
+rule merge_bins:
+    """Merge bins of trimmed and barcoded reads together"""
+    output:
+        interleaved_fastq="trimmed.barcoded.fastq",
+    input:
+        bins = "temp_bins"
+    run:
+        if config["read_mapper"]  == "ema":
+           shell("cat {input.bins}/ema-bin* > {output.interleaved_fastq}")
+        else:
+            shell(
+                "cat {input.bins}/ema-bin*"
+                " |"
+                " tr ' ' '_' > {output.interleaved_fastq}"  # Modify header 
+                " &&"
+                " cat {input.bins}/ema-nobc >> {output.interleaved_fastq}" # Include non-barcoded reads.
+            )
+
+
+rule split_pairs:
+    """Split into read pairs."""
     output:
         r1_fastq="trimmed.barcoded.1.fastq.gz",
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
-        bins = "temp_bins"
+        interleaved_fastq="trimmed.barcoded.fastq",
     shell:
-        "cat {input.bins}/ema-bin* |"
-        " paste - - - - - - - - |"
+        " paste - - - - - - - - < {input.interleaved_fastq} |"
         " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"
         " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
 
