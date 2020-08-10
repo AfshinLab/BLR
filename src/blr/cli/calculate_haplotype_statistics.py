@@ -50,6 +50,10 @@ def parse_vcf_phase(vcf_file, indels=False):
     chrom_blocks = dict()
 
     for el in parse_vcf(vcf_file):
+        # Skip non-phased entries
+        if "|" not in el[9].split(':')[0]:
+            continue
+
         # get the index where the PS information is
         for i, f in enumerate(el[8].split(':')):
             if i == 0:
