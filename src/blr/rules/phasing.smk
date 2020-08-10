@@ -59,12 +59,6 @@ rule hapcut2_phasing:
         "mv {output.phase}.phased.VCF {output.phased_vcf}"
 
 
-rule symlink_reference_phased:
-    output: "ground_truth.phased.vcf"
-    shell:
-        "ln -s {config[phasing_ground_truth]} {output}"
-
-
 rule hapcut2_stats:
     """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
     for details. """
@@ -72,11 +66,12 @@ rule hapcut2_stats:
         stats = "final.phasing_stats.txt"
     input:
         vcf1 = "final.phased.vcf",
-        vcf2 = "ground_truth.phased.vcf"
+    params:
+        vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else ""
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
-        " -v2 {input.vcf2}"
+        " {params.vcf2}"
         " -o {output.stats}"
 
 

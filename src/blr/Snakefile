@@ -42,23 +42,12 @@ else:
     chunks = []
 
 
-def get_final_targets(wildcards):
-    """Define final file names based on configs."""
-    input_files = [
+rule final:
+   input:
         "reads.1.final.fastq.gz",
         "reads.2.final.fastq.gz",
         "multiqc_report.html",
         "final.bam",
-    ]
-    if config["phasing_ground_truth"]:
-        input_files.append("final.phasing_stats.txt")
-
-    return input_files
-
-
-rule final:
-   input:
-        get_final_targets
 
 
 rule fastqc_raw_reads:
@@ -76,8 +65,14 @@ rule fastqc_raw_reads:
         " 2> {log}"
 
 
-def get_multiqc_input(wildcards):
-    inputs = [
+rule multiqc_summarize:
+    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
+    more input files it controls when snakemake runs the multiqc summary.
+    """
+    output:
+        multiqc_data_dir = directory("multiqc_data"),
+        summarized_reports = "multiqc_report.html"
+    input:
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
         "final.bam",
@@ -92,22 +87,8 @@ def get_multiqc_input(wildcards):
         "final.phaseblock_data.tsv",
         "final.whatshap_stats.tsv",
         "final.insert_size_metrics.txt",
-        "final.insert_size_histogram.pdf"
-    ]
-    if config["phasing_ground_truth"]:
-        inputs.append("final.phasing_stats.txt")
-    return inputs
-
-
-rule multiqc_summarize:
-    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
-    more input files it controls when snakemake runs the multiqc summary.
-    """
-    output:
-        multiqc_data_dir = directory("multiqc_data"),
-        summarized_reports = "multiqc_report.html"
-    input:
-        get_multiqc_input
+        "final.insert_size_histogram.pdf",
+        "final.phasing_stats.txt"
     log:
         "multiqc.log"
     shell:
