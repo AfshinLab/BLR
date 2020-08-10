@@ -52,20 +52,18 @@ rule preproc_10x:
         whitelist = "barcodes_whitelist.txt"
     log: "ema_preproc.log"
     threads: 20
-    run:
+    params:
         hamming_correction = "" if not config["apply_hamming_correction"] else " -h"
-        shell(
-            "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
-            " tr '\t' '\n' |"
-            " ema preproc"
-            " -w {input.whitelist}"
-            " -n {threads}"
-            "{hamming_correction}"
-            " -t {threads}"
-            " -b"
-            " -h"
-            " -o {output.bins} {input.counts_ncnt} 2>&1 | tee {log}"
-        )
+    shell:
+        "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
+        " tr '\t' '\n' |"
+        " ema preproc"
+        " -w {input.whitelist}"
+        " -n {threads}"
+        " {params.hamming_correction}"
+        " -t {threads}"
+        " -b"
+        " -o {output.bins} {input.counts_ncnt} 2>&1 | tee {log}"
 
 
 rule merge_bins_and_split_pairs:
