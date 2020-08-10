@@ -44,10 +44,9 @@ else:
 
 rule final:
    input:
-        "reads.1.final.fastq.gz",
-        "reads.2.final.fastq.gz",
         "multiqc_report.html",
         "final.bam",
+        "final.phased.bam"
 
 
 rule fastqc_raw_reads:
