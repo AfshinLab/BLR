@@ -45,10 +45,6 @@ def run_filterclusters(
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):
             summary["Total reads"] += 1
 
-            if read.is_duplicate:
-                summary["Duplicate reads removed"] += 1
-                continue
-
             barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
 
             if barcode in barcodes_to_filter:

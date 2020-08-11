@@ -87,7 +87,8 @@ rule multiqc_summarize:
         "final.whatshap_stats.tsv",
         "final.insert_size_metrics.txt",
         "final.insert_size_histogram.pdf",
-        "final.phasing_stats.txt"
+        "final.phasing_stats.txt",
+        "final.duplicate_metrics.txt"
     log:
         "multiqc.log"
     shell:
@@ -636,3 +637,16 @@ rule collect_insert_size_metrics:
         " I={input.bam}"
         " O={output.metrics}"
         " H={output.hist} 2> {log}"
+
+
+rule collect_duplicate_metrics:
+    output:
+        metrics = "final.duplicate_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_duplicate_metrics.log"
+    shell:
+        "picard CollectDuplicateMetrics"
+        " I={input.bam}"
+        " M={output.metrics}"
+        " ASSUME_SORTED=true 2> {log}"

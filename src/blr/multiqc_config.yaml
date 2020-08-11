@@ -5,3 +5,11 @@ intro_text: "This is a collection of results from the BLR pipeline. Go to our
 table_columns_visible:
     mosdepth:
         30_x_pc: False
+
+extra_fn_clean_exts:
+    - type: remove
+      pattern: .duplicate_metrics
+      module: picard
+
+sample_names_ignore:
+    - 'chr*'
