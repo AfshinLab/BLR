@@ -149,15 +149,6 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_ylabel("Molecule coverage (kbp)")
         ax.set_yticklabels(map(int, plt.yticks()[0] / 1000))
 
-    # Total barcode molecule length histogram
-    # - x = sum of molecule lengths for barcode
-    # - y = frequency
-    barcode_len = data.groupby("Barcode")["Length"].sum()
-    with Plot("Total molecule length per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_len.plot(ax=ax, kind="hist")
-        ax.set_xlabel("Sum molecule length per barcode (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
-
     # Molecules per barcode
     # - x = molecules per barcode
     # - y = log frequency

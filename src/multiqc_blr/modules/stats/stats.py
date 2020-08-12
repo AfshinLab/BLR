@@ -39,6 +39,10 @@ class MultiqcModule(BaseMultiqcModule):
         if n_phaseblock_reports > 0:
             log.info("Found {} phaseblock reports".format(n_phaseblock_reports))
 
+        n_molecule_length_reports = self.gather_molecule_lengths()
+        if n_molecule_length_reports > 0:
+            log.info("Found {} molecule length reports".format(n_molecule_length_reports))
+
     def gather_stats_logs(self):
         # Find and load any input files for this module
         headers = dict()
@@ -229,6 +233,44 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Write parsed report data to a file
         self.write_data_file(lengths_writable, "stats_phaseblock_lengths")
+
+        return len(data_lengths)
+
+    def gather_molecule_lengths(self):
+        data_lengths = dict()
+        for f in self.find_log_files('stats/molecule_lengths', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_lengths", "")
+            sample_data = pd.read_csv(f["f"], sep="\t")
+            sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
+            data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
+
+        if len(data_lengths) == 0:
+            log.debug("Could not find any molecule lengths data in {}".format(config.analysis_dir))
+            return 0
+
+        pconfig = {
+            'id': 'molecule_lengths',
+            'title': "Stats: Molecule lengths",
+            'xlab': "Molecule length (kbp)",
+            'ylab': 'Total DNA density',
+            'tt_label': '{point.x} kbp: {point.y:.4f}',
+        }
+        plot_html = linegraph.plot(data_lengths, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Molecule lengths",
+            description="Molecule lengths binned in 1 kbp and their length summed for eached bin to get the density.",
+            plot=plot_html
+        )
+
+        # Make new dict with keys as strings for writable output.
+        lengths_writable = dict()
+        for sample, data in data_lengths.items():
+            lengths_writable[sample] = {str(k): v for k, v in data.items()}
+
+        # Write parsed report data to a file
+        self.write_data_file(lengths_writable, "stats_molecule_lengths")
 
         return len(data_lengths)
 

@@ -88,7 +88,8 @@ rule multiqc_summarize:
         "final.insert_size_metrics.txt",
         "final.insert_size_histogram.pdf",
         "final.phasing_stats.txt",
-        "final.duplicate_metrics.txt"
+        "final.duplicate_metrics.txt",
+        "final.molecule_lengths.tsv"
     log:
         "multiqc.log"
     shell:
@@ -610,6 +611,22 @@ rule aggregate_phaseblock_data:
                 with open(input_file) as file:
                     for p in parse_phaseblocks(file):
                         print(p.snv_span, p.phased_snvs, p.length, p.fragments, sep="\t", file=output_tsv)
+
+
+rule aggregate_molecule_lengths:
+    output:
+        tsv = "final.molecule_lengths.tsv"
+    input:
+        tsv = "final.molecule_stats.filtered.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        bins = range(0, max(molecules["Length"])+1000, 1000)
+        molecules["Bin"] = pd.cut(molecules["Length"], bins=bins, labels=bins[:-1])
+        binned_lengths = molecules.groupby("Bin", as_index=False)["Length"].sum()
+        binned_lengths.columns = ["Bin", "LengthSum"]
+        binned_lengths = binned_lengths[binned_lengths["LengthSum"] > 0]  # Remove zero entries
+        binned_lengths.to_csv(output.tsv, sep="\t", index=False)
+
 
 rule whatshap_stats:
     """Calculate phaseing stats related to variants and phaseblocks."""
