@@ -81,15 +81,16 @@ def run_tagfastq(
     out_interleaved = not output2
     logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
-    # Required for ema sorted output
-    # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
-    output_chunk = list()
-    chunk_size = 1_000_000  # int(summary["Reads with corrected barcodes"] / 100)  # Use 100 bins
-    logger.info(f"Using chunks of size {chunk_size} for sorting.")
-    chunk_id = 0
-    tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
-    chunk_file_template = "chunk_*.tsv"
-    chunk_sep = "\t"
+    if mapper == "ema":
+        # Required for ema sorted output
+        # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
+        output_chunk = list()
+        chunk_size = 1_000_000
+        logger.info(f"Using chunks of size {chunk_size} for sorting.")
+        chunk_id = 0
+        tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
+        chunk_file_template = "chunk_*.tsv"
+        chunk_sep = "\t"
 
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r",
