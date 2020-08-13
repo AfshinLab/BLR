@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict, defaultdict, Counter
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.colors import LogNorm
 from pathlib import Path
 import os
@@ -19,6 +20,10 @@ SIZE_WIDE = (10, 6)
 
 def main(args):
     summary = Counter()
+
+    # Fix for running matplotlib in background on SSH.
+    # https://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
+    matplotlib.use("Agg")
 
     name_to_function = {
         "molecule_stats": process_molecule_stats,   # Files containing "molecule_stats" and ending with "tsv"
