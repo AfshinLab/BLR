@@ -74,7 +74,11 @@ def strip_barcode(pysam_read, tags_to_be_removed, removed_tags):
 
     # Remove tags
     for bam_tag in tags_to_be_removed:
-        removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        try:
+            removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        except KeyError:
+            continue
+
         # Strip read from tag
         pysam_read.set_tag(bam_tag, None, value_type="Z")
 
