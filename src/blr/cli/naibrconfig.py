@@ -39,6 +39,15 @@ def add_arguments(parser):
         "-k", "--min-overlaps", type=int, default=3,
         help="Minimum number of barcode overlaps supporting a candidate NA. Default: %(default)s")
     parser.add_argument(
+        "--min-len", type=int,
+        help="Minimum length of linked-read fragment to consider. Default: estimated from input bam")
+    parser.add_argument(
+        "--min-reads", type=int, default=2,
+        help="Minimum nr of reads in linked-read fragment for it to be considered. Default: %(default)s")
+    parser.add_argument(
+        "--min-discs", type=int, default=2,
+        help="Minimum number of discordant reads. Default: %(default)s")
+    parser.add_argument(
         "-o", "--output", type=Path, required=True,
         help="Name of output config file.")
 
@@ -51,7 +60,10 @@ def main(args):
         "d": args.distance,
         "min_sv": args.min_sv,
         "threads": args.threads,
-        "k": args.min_overlaps
+        "k": args.min_overlaps,
+        "min_len": args.min_len,
+        "min_reads": args.min_reads,
+        "min_discs": args.min_discs
     }
 
     copy_and_mod_config(CONFIGURATION_FILE_NAME, args.output, parameters)
@@ -68,6 +80,9 @@ def copy_and_mod_config(template_file: str, output_file: Path, parameters):
 
 def change_row(row, parameters):
     key = row.split("=", maxsplit=1)[0]
-    row = key + "=" + str(parameters[key]) + "\n"
-    logger.info(f"Setting config value '{row.strip()}'")
+    if parameters[key]:
+        row = key + "=" + str(parameters[key]) + "\n"
+        logger.info(f"Setting config value '{row.strip()}'")
+    else:
+        row = "#" + row
     return row
