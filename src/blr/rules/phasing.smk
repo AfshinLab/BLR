@@ -1,6 +1,7 @@
 """
 Rules related to phasing of variants (called or reference set)
 """
+import os
 
 
 rule hapcut2_extracthairs:
@@ -130,31 +131,39 @@ rule haplotag:
         shell(command + " 2> {log} > {output.bam}")
 
 
-import os
-analysis_folder = os.getcwd()
-
 
 rule build_config:
     """
     Builds a config file required for running NAIBR.
     """
     output:
-        config = "{base}.naibr.config"
+        config = "naibr.config"
     input:
-        bam = "{base}.calling.phased.bam",
-        index = "{base}.calling.phased.bam.bai"
-    log: "{base}.build_config.log"
+        bam = "final.phased.bam",
+        index = "final.phased.bam.bai"
+    log: "build_config.log"
+    params:
+        cwd = os.getcwd()
     shell:
         "blr naibrconfig"
         " ."
         " {input.bam}"
-        " {wildcards.base}.lsv_calling"
-        " --threads {threads}"
+        " {params.cwd}"
+        " --threads {workflow.cores}"
         " -o {output.config}"
         " 2> {log}"
 
-import os
-analysis_folder = os.getcwd()
+
+rule get_naibr_path:
+    """Symlink existing NAIBR repo if specified or clone the latest version"""
+    output:
+        naibr_path = temp(directory("NAIBR"))
+    run:
+        if config["naibr_path"]:
+            shell("ln -s {config[naibr_path]} {output.naibr_path}")
+        else:
+            shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
+
 
 rule lsv_calling:
     """
@@ -162,17 +171,23 @@ rule lsv_calling:
     env.
     """
     output:
-        results = directory("{base}.lsv_calling")
+        results = "final.naibr_sv_calls.bedpe"
     input:
-        config = "{base}.naibr.config"
-    log: "{base}.lsv_calling.log"
+        config = "naibr.config",
+        naibr_path = "NAIBR"
+    log: "lsv_calling.log"
+    threads: 20
     conda: "../naibr-environment.yml"
+    params:
+        cwd = os.getcwd()
     shell:
-        "cd {config[naibr_path]}"
+        "cd {input.naibr_path}"
         " &&"
         " python"
         " NAIBR.py"
-        " {analysis_folder}/{input.config}"
-        " 2> {analysis_folder}/{log}"
+        " {params.cwd}/{input.config}"
+        " > {params.cwd}/{log}"
         " &&"
         " cd -"
+        " &&"
+        " mv NAIBR_SVs.bedpe {output.results}"

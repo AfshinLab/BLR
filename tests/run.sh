@@ -39,8 +39,7 @@ blr config \
     --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.vcf \
     --set max_molecules_per_bc 1 \
     --set heap_space 1 \
-    --set chunk_size 10000 \
-    --set naibr_path ../NAIBR
+    --set chunk_size 10000
 
 cd outdir-bowtie2
 blr run

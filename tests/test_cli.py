@@ -28,8 +28,6 @@ REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
 REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf").absolute())
 DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
 
-NAIBR_PATH = str(Path("NAIBR").absolute())
-
 
 def count_bam_alignments(path):
     with pysam.AlignmentFile(path) as af:
@@ -272,8 +270,8 @@ def test_init_from_workdir(tmp_path, workdir):
 def test_lsv_calling(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
-         [("reference_variants", "null"), ("naibr_path", NAIBR_PATH)]
+        [("reference_variants", "null")]
     )
-    target = "mapped.lsv_calling"
+    target = "final.naibr_sv_calls.bedpe"
     run(workdir=workdir, targets=[target])
-    assert workdir.joinpath(target).is_dir()
+    assert workdir.joinpath(target).is_file()
