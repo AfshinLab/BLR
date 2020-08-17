@@ -46,7 +46,7 @@ def add_arguments(parser):
 def main(args):
     parameters = {
         "min_mapq": args.min_mapq,
-        "bam_file": args.bam_file.resolve(),
+        "bam_file": args.bam_file.absolute(),
         "outdir": args.outdir.resolve(),
         "d": args.distance,
         "min_sv": args.min_sv,
