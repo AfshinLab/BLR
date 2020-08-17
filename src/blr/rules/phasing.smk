@@ -146,11 +146,14 @@ rule build_config:
         cwd = os.getcwd()
     shell:
         "blr naibrconfig"
-        " ."
-        " {input.bam}"
-        " {params.cwd}"
+        " --bam-file {input.bam}"
+        " --outdir {params.cwd}"
+        " --distance {config[window_size]}"
+        " --min-mapq 40"
+        " --min-sv 1000"
         " --threads {workflow.cores}"
-        " -o {output.config}"
+        " --min-overlaps 3"
+        " --output {output.config}"
         " 2> {log}"
 
 
