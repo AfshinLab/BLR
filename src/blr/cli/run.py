@@ -111,6 +111,7 @@ def run(
             printfilegraph=printfilegraph,
             targets=targets,
             workdir=workdir,
+            use_conda=True
         )
     if not success:
         raise SnakemakeError()

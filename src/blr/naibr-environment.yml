@@ -1,0 +1,16 @@
+# Whenever this file is updated, you need to run misc/condalock.sh to create
+# the environment.lock.yml file.
+
+channels:
+  - conda-forge
+  - bioconda
+  - anaconda
+  - defaults
+dependencies:
+  - python=2.7
+  - pysam
+  - numpy
+  - scipy
+  - matplotlib
+  - future
+  - mpmath

@@ -114,7 +114,6 @@ rule haplotag:
                 "whatshap haplotag"
                 " {input.vcf}"
                 " {input.bam}"
-                " -o {output.bam}"
                 " --linked-read-distance-cutoff {config[window_size]}"
                 " --reference {config[genome_reference]}"
                 " {ignore_readgroups}",
@@ -126,7 +125,54 @@ rule haplotag:
                 " --min-mapq {config[min_mapq]}"
                 " {input.bam}"
                 " {input.hapcut2_phase_file}"
-                " -o {output.bam}"
         }
         command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log}")
+        shell(command + " 2> {log} > {output.bam}")
+
+
+import os
+analysis_folder = os.getcwd()
+
+
+rule build_config:
+    """
+    Builds a config file required for running NAIBR.
+    """
+    output:
+        config = "{base}.naibr.config"
+    input:
+        bam = "{base}.calling.phased.bam",
+        index = "{base}.calling.phased.bam.bai"
+    log: "{base}.build_config.log"
+    shell:
+        "blr naibrconfig"
+        " ."
+        " {input.bam}"
+        " {wildcards.base}.lsv_calling"
+        " --threads {threads}"
+        " -o {output.config}"
+        " 2> {log}"
+
+import os
+analysis_folder = os.getcwd()
+
+rule lsv_calling:
+    """
+    Runs NAIBR for LSV calling. This involves activating a python2 env, changing wd, running and changing back wd and
+    env.
+    """
+    output:
+        results = directory("{base}.lsv_calling")
+    input:
+        config = "{base}.naibr.config"
+    log: "{base}.lsv_calling.log"
+    conda: "../naibr-environment.yml"
+    shell:
+        "cd {config[naibr_path]}"
+        " &&"
+        " python"
+        " NAIBR.py"
+        " {analysis_folder}/{input.config}"
+        " 2> {analysis_folder}/{log}"
+        " &&"
+        " cd -"
