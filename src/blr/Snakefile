@@ -52,15 +52,16 @@ rule final:
 rule fastqc_raw_reads:
     """Creates fastqc reports from raw read files. Output names are automatically given by fastqc."""
     output:
-        qc = expand("trimmed.barcoded.{nr}_fastqc.html", nr=(1,2)),
-        zip = expand("trimmed.barcoded.{nr}_fastqc.zip", nr=(1,2))
+        qc = "trimmed.barcoded.{nr,[12]}_fastqc.html",
+        zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
     input:
-        reads = expand("trimmed.barcoded.{nr}.fastq.gz", nr=(1,2)),
-    log:
-        "fastqc_raw_reads.log"
+        reads = "trimmed.barcoded.{nr,[12]}.fastq.gz",
+    log: "trimmed.barcoded.{nr,[12]}_fastqc.log"
+    threads: 2  # Fix java.lang.OutOfMemoryError (https://github.com/s-andrews/FastQC/issues/24)
     shell:
         "fastqc"
         " {input.reads}"
+        " -t {threads}"
         " 2> {log}"
 
 
