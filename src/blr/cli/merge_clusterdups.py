@@ -1,6 +1,6 @@
 """
 Merge barcodes by re-tagging reads in BAM with new barcodes. Takes a CSV with previous and new
-barcode pairs or a pickle file with a dict containing previous barcode as keys and new barcodes as values.
+barcode pairs.
 """
 
 import logging
