@@ -90,7 +90,8 @@ rule multiqc_summarize:
         "final.insert_size_histogram.pdf",
         "final.phasing_stats.txt",
         "final.duplicate_metrics.txt",
-        "final.molecule_lengths.tsv"
+        "final.molecule_lengths.tsv",
+        "final.alignment_summary_metrics.txt"
     log:
         "multiqc.log"
     shell:
@@ -668,3 +669,17 @@ rule collect_duplicate_metrics:
         " I={input.bam}"
         " M={output.metrics}"
         " ASSUME_SORTED=true 2> {log}"
+
+rule collect_alignment_summary_metrics:
+    output:
+        metrics = "final.alignment_summary_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_alignment_summary_metrics.log"
+    shell:
+        "picard CollectAlignmentSummaryMetrics"
+        " I={input.bam}"
+        " O={output.metrics}"
+        " MAX_INSERT_SIZE=2000"
+        " ASSUME_SORTED=true 2> {log}"
+        " "
