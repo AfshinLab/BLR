@@ -80,8 +80,6 @@ rule multiqc_summarize:
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi",
         "final.phaseblock_data.tsv",
@@ -581,8 +579,6 @@ rule mosdepth:
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi"
     input:
@@ -596,6 +592,7 @@ rule mosdepth:
         "mosdepth"
         " --threads {threads}"
         " --by {params.bin_size}"
+        " --no-per-base"
         " {params.prefix}"
         " {input.bam}"
 
