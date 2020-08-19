@@ -6,7 +6,7 @@ Rules related to phasing of variants (called or reference set)
 rule hapcut2_extracthairs:
     """Extract heterozygous variants covered by alignments in BAM"""
     output:
-        unlinked = "{base}.calling.unlinked.txt"
+        unlinked = temp("{base}.calling.unlinked.txt")
     input:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
@@ -22,7 +22,7 @@ rule hapcut2_extracthairs:
 rule hapcut2_linkfragments:
     """Link heterozygous variants together using barcode information"""
     output:
-        linked = "{base}.calling.linked.txt"
+        linked = temp("{base}.calling.linked.txt")
     input:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
