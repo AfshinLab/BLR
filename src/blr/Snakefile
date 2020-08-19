@@ -295,7 +295,7 @@ rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
         bam = temp("{base}.sorted.tag.bcmerge.mkdup.mol.bam"),
-        stats = "{base}.molecule_stats.tsv"
+        stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
     log: "{base}.buildmolecules.log"
