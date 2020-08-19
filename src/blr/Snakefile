@@ -42,11 +42,24 @@ else:
     chunks = []
 
 
-rule final:
-   input:
+def final_input(wildcards):
+    files = [
         "multiqc_report.html",
         "final.bam",
-        "final.phased.bam"
+        "final.phased.bam",
+        "final.phased.vcf.gz",
+        "final.phased.vcf.gz.tbi",
+    ]
+    if not config["reference_variants"]:
+        files.extend([
+            "called.vcf.gz",
+            "called.vcf.gz.tbi"
+        ])
+    return files
+
+
+rule final:
+   input: final_input
 
 
 rule fastqc_raw_reads:
@@ -557,7 +570,7 @@ rule merge_bams:
 
 rule concat_phased_vcfs:
     output:
-        vcf = "final.phased.vcf"
+        vcf = temp("final.phased.vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf", chunk=chunks)
     shell:
@@ -566,7 +579,7 @@ rule concat_phased_vcfs:
 
 rule concat_called_vcfs:
     output:
-        vcf = "called.vcf"
+        vcf = temp("called.vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
     shell:
