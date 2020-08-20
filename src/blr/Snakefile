@@ -68,7 +68,7 @@ rule fastqc_raw_reads:
         qc = "trimmed.barcoded.{nr,[12]}_fastqc.html",
         zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
     input:
-        reads = "trimmed.barcoded.{nr,[12]}.fastq.gz",
+        reads = "trimmed.barcoded.{nr}.fastq.gz",
     log: "trimmed.barcoded.{nr,[12]}_fastqc.log"
     threads: 2  # Fix java.lang.OutOfMemoryError (https://github.com/s-andrews/FastQC/issues/24)
     shell:
