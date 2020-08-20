@@ -42,7 +42,7 @@ rule hapcut2_phasing:
     """Phase heterozygous variants using HapCUT2. Output phased VCF"""
     output:
         phase = "{base}.calling.phase",
-        phased_vcf = "{base}.calling.phased.vcf"
+        phased_vcf = temp("{base}.calling.phased.vcf")
     input:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",

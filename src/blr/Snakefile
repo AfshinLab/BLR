@@ -482,7 +482,7 @@ rule index_vcf:
 rule call_variants:
     """Call variants using the selected variant caller from configs."""
     output:
-        vcf = "{base}.variants.called.vcf"
+        vcf = temp("{base}.variants.called.vcf")
     input:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
