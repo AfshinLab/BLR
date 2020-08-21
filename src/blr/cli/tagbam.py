@@ -33,19 +33,20 @@ def main(args):
         for read in tqdm(infile.fetch(until_eof=True), desc="Processing reads", unit=" reads"):
             # Strips header from tag and depending on script mode, possibly sets SAM tag
             summary["Total reads"] += 1
-            processing_function(read, summary)
+            processing_function(read, args.sample_nr, summary)
             outfile.write(read)
 
     print_stats(summary, name=__name__)
     logger.info("Finished")
 
 
-def mode_samtags_underline_separation(read, summary):
+def mode_samtags_underline_separation(read, sample_nr, summary):
     """
     Trims header from tags and sets SAM tags according to values found in header.
     Assumes format: @header_<tag>:<type>:<seq> (can be numerous tags). Constrictions are: Header includes SAM tags
     separated by "_".
     :param read: pysam read alignment
+    :param sample_nr: barcodes samples tag.
     :param summary: Collections's Counter object
     :return:
     """
@@ -57,15 +58,19 @@ def mode_samtags_underline_separation(read, summary):
     # Set SAM tags
     for tag in header[1:]:
         tag, tag_type, val = tag.split(":")
+        if tag == "BX":
+            val += "-" + str(sample_nr)
+
         read.set_tag(tag, val, value_type=tag_type)
         summary[f"Reads with tag {tag}"] += 1
 
 
-def mode_ema(read, _):  # summary is passed to this function but is not used
+def mode_ema(read, sample_nr, _):  # summary is passed to this function but is not used
     """
     Trims header from barcode sequences.
     Assumes format @header:and:more...:header:<seq>. Constrictions: There must be exactly 9 elements separated by ":"
     :param read: pysam read alignment
+    :param sample_nr:
     :return:
     """
 
@@ -79,7 +84,7 @@ def mode_ema(read, _):  # summary is passed to this function but is not used
         modified_barcode = current_barcode[:-2]
         # Make sure that the SAM tag barcode is a substring of the header barcode
         assert header_barcode.startswith(modified_barcode)
-        read.set_tag("BX", header_barcode, value_type="Z")
+        read.set_tag("BX", header_barcode + "-" + str(sample_nr), value_type="Z")
 
 
 def add_arguments(parser):
@@ -88,3 +93,5 @@ def add_arguments(parser):
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output BAM to file rather then stdout.")
+    parser.add_argument("-s", "--sample-nr", default=1, type=int,
+                        help="Add sample number to each barcode ")

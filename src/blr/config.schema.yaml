@@ -102,3 +102,7 @@ properties:
     type: integer
     default: 1000
     description: mosdepth window size in bp to calculate coverage statistics.
+  sample_nr:
+    type: integer
+    default: 1
+    description: Sample nr used to distiguish barcodes when merging BAM files.

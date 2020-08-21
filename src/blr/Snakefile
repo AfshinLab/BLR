@@ -23,7 +23,7 @@ include: "rules/phasing.smk"
 
 # Create read group string to tag reads.
 platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
-readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
+readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_type'], sample="20", platfrom_unit="unit1",
                       platform=platform)
 
 
@@ -257,7 +257,10 @@ rule tagbam:
     log:
         "{base}.tagbam.log"
     shell:
-        "blr tagbam {input.bam} -o {output.bam} 2> {log}"
+        "blr tagbam "
+        " -o {output.bam}"
+        " --sample-nr {config[sample_nr]}"
+        " {input.bam}  2> {log}"
 
 
 rule clusterrmdup:
