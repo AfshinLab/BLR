@@ -1,4 +1,4 @@
-[![Travis CI](https://api.travis-ci.org/FrickTobias/BLR.svg?branch=master)](https://travis-ci.org/FrickTobias/BLR/)
+![CI](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)
 
 :exclamation:**NB! This is currently under heavy development.**:exclamation:
 
