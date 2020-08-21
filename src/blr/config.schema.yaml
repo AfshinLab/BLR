@@ -105,3 +105,7 @@ properties:
   tellseq_index:
     type: [ "string", "null" ]
     description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
+  sample_nr:
+    type: integer
+    default: 1
+    description: Sample nr used to distiguish barcodes when merging BAM files.

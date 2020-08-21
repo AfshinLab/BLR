@@ -25,7 +25,7 @@ include: "rules/phasing.smk"
 
 # Create read group string to tag reads.
 platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
-readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
+readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_type'], sample="20", platfrom_unit="unit1",
                       platform=platform)
 
 
@@ -44,25 +44,39 @@ else:
     chunks = []
 
 
-rule final:
-   input:
+def final_input(wildcards):
+    files = [
         "multiqc_report.html",
         "final.bam",
-        "final.phased.bam"
+        "final.phased.bam",
+        "final.phased.vcf.gz",
+        "final.phased.vcf.gz.tbi",
+    ]
+    if not config["reference_variants"]:
+        files.extend([
+            "called.vcf.gz",
+            "called.vcf.gz.tbi"
+        ])
+    return files
+
+
+rule final:
+   input: final_input
 
 
 rule fastqc_raw_reads:
     """Creates fastqc reports from raw read files. Output names are automatically given by fastqc."""
     output:
-        qc = expand("trimmed.barcoded.{nr}_fastqc.html", nr=(1,2)),
-        zip = expand("trimmed.barcoded.{nr}_fastqc.zip", nr=(1,2))
+        qc = "trimmed.barcoded.{nr,[12]}_fastqc.html",
+        zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
     input:
-        reads = expand("trimmed.barcoded.{nr}.fastq.gz", nr=(1,2)),
-    log:
-        "fastqc_raw_reads.log"
+        reads = "trimmed.barcoded.{nr}.fastq.gz",
+    log: "trimmed.barcoded.{nr,[12]}_fastqc.log"
+    threads: 2  # Fix java.lang.OutOfMemoryError (https://github.com/s-andrews/FastQC/issues/24)
     shell:
         "fastqc"
         " {input.reads}"
+        " -t {threads}"
         " 2> {log}"
 
 
@@ -81,20 +95,29 @@ rule multiqc_summarize:
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi",
         "final.phaseblock_data.tsv",
         "final.whatshap_stats.tsv",
         "final.insert_size_metrics.txt",
         "final.insert_size_histogram.pdf",
-        "final.phasing_stats.txt"
+        "final.phasing_stats.txt",
+        "final.duplicate_metrics.txt",
+        "final.molecule_lengths.tsv",
+        "final.alignment_summary_metrics.txt"
     log:
         "multiqc.log"
     shell:
         "multiqc"
         " ."
+        " -m mosdepth"
+        " -m fastqc"
+        " -m picard"
+        " -m whatshap"
+        " -m stats"
+        " -m hapcut2"
+        " -m cutadapt"
+        " -m custom_content"
         " 2> {log}"
 
 
@@ -220,7 +243,7 @@ rule split_into_chunks:
 
 rule get_unmapped_reads:
     output:
-        bam = "unmapped.bam"
+        bam = temp("unmapped.bam")
     input:
         bam = "initialmapping.bam"
     log: "unmapped.log"
@@ -230,19 +253,22 @@ rule get_unmapped_reads:
 
 rule tagbam:
     output:
-        bam = "{base}.sorted.tag.bam"
+        bam = temp("{base}.sorted.tag.bam")
     input:
         bam = "{base}.sorted.bam"
     log:
         "{base}.tagbam.log"
     shell:
-        "blr tagbam {input.bam} -o {output.bam} 2> {log}"
+        "blr tagbam "
+        " -o {output.bam}"
+        " --sample-nr {config[sample_nr]}"
+        " {input.bam}  2> {log}"
 
 
 rule clusterrmdup:
     """Merge cluster duplicates defined as two separate cluster sharing """
     output:
-        bam = "{base}.sorted.tag.bcmerge.bam",
+        bam = temp("{base}.sorted.tag.bcmerge.bam"),
         merges = "{base}.barcode-merges.csv"
     input:
         bam = "{base}.sorted.tag.bam"
@@ -258,7 +284,7 @@ rule clusterrmdup:
 rule mark_duplicates:
     """Mark duplicates within barcodes clusters."""
     output:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.bam",
+        bam = temp("{base}.sorted.tag.bcmerge.mkdup.bam"),
         metrics = "{base}.sorted.tag.bcmerge.mkdup_metrics.txt"
     input:
         bam = "{base}.sorted.tag.bcmerge.bam"
@@ -281,8 +307,8 @@ rule mark_duplicates:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
-        stats = "{base}.molecule_stats.tsv"
+        bam = temp("{base}.sorted.tag.bcmerge.mkdup.mol.bam"),
+        stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
     log: "{base}.buildmolecules.log"
@@ -533,7 +559,7 @@ def get_phase_input_vcf(wildcards):
 
 rule split_or_symlink_phase_input_vcf:
     output:
-        vcf = "chunks/{chunk}.phaseinput.vcf"
+        vcf = temp("chunks/{chunk}.phaseinput.vcf")
     input:
         unpack(get_phase_input_vcf)
     run:
@@ -557,7 +583,7 @@ rule merge_bams:
 
 rule concat_phased_vcfs:
     output:
-        vcf = "final.phased.vcf"
+        vcf = temp("final.phased.vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf", chunk=chunks)
     shell:
@@ -566,7 +592,7 @@ rule concat_phased_vcfs:
 
 rule concat_called_vcfs:
     output:
-        vcf = "called.vcf"
+        vcf = temp("called.vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
     shell:
@@ -579,8 +605,6 @@ rule mosdepth:
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi"
     input:
@@ -594,6 +618,7 @@ rule mosdepth:
         "mosdepth"
         " --threads {threads}"
         " --by {params.bin_size}"
+        " --no-per-base"
         " {params.prefix}"
         " {input.bam}"
 
@@ -611,6 +636,22 @@ rule aggregate_phaseblock_data:
                 with open(input_file) as file:
                     for p in parse_phaseblocks(file):
                         print(p.snv_span, p.phased_snvs, p.length, p.fragments, sep="\t", file=output_tsv)
+
+
+rule aggregate_molecule_lengths:
+    output:
+        tsv = "final.molecule_lengths.tsv"
+    input:
+        tsv = "final.molecule_stats.filtered.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        bins = range(0, max(molecules["Length"])+1000, 1000)
+        molecules["Bin"] = pd.cut(molecules["Length"], bins=bins, labels=bins[:-1])
+        binned_lengths = molecules.groupby("Bin", as_index=False)["Length"].sum()
+        binned_lengths.columns = ["Bin", "LengthSum"]
+        binned_lengths = binned_lengths[binned_lengths["LengthSum"] > 0]  # Remove zero entries
+        binned_lengths.to_csv(output.tsv, sep="\t", index=False)
+
 
 rule whatshap_stats:
     """Calculate phaseing stats related to variants and phaseblocks."""
@@ -638,3 +679,30 @@ rule collect_insert_size_metrics:
         " I={input.bam}"
         " O={output.metrics}"
         " H={output.hist} 2> {log}"
+
+
+rule collect_duplicate_metrics:
+    output:
+        metrics = "final.duplicate_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_duplicate_metrics.log"
+    shell:
+        "picard CollectDuplicateMetrics"
+        " I={input.bam}"
+        " M={output.metrics}"
+        " ASSUME_SORTED=true 2> {log}"
+
+rule collect_alignment_summary_metrics:
+    output:
+        metrics = "final.alignment_summary_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_alignment_summary_metrics.log"
+    shell:
+        "picard CollectAlignmentSummaryMetrics"
+        " I={input.bam}"
+        " O={output.metrics}"
+        " MAX_INSERT_SIZE=2000"
+        " ASSUME_SORTED=true 2> {log}"
+        " "

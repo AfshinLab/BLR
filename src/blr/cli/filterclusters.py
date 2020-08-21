@@ -45,10 +45,6 @@ def run_filterclusters(
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):
             summary["Total reads"] += 1
 
-            if read.is_duplicate:
-                summary["Duplicate reads removed"] += 1
-                continue
-
             barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
 
             if barcode in barcodes_to_filter:
@@ -78,7 +74,11 @@ def strip_barcode(pysam_read, tags_to_be_removed, removed_tags):
 
     # Remove tags
     for bam_tag in tags_to_be_removed:
-        removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        try:
+            removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        except KeyError:
+            continue
+
         # Strip read from tag
         pysam_read.set_tag(bam_tag, None, value_type="Z")
 

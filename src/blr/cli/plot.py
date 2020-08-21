@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict, defaultdict, Counter
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.colors import LogNorm
 from pathlib import Path
 import os
@@ -19,6 +20,10 @@ SIZE_WIDE = (10, 6)
 
 def main(args):
     summary = Counter()
+
+    # Fix for running matplotlib in background on SSH.
+    # https://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
+    matplotlib.use("Agg")
 
     name_to_function = {
         "molecule_stats": process_molecule_stats,   # Files containing "molecule_stats" and ending with "tsv"
@@ -69,27 +74,12 @@ def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
         data["Reads"].plot(ax=ax, bins=bins, logy=True, logx=True, kind="hist")
         ax.set_xlabel("Reads per cluster")
 
-    # Cumulative sum of read count starting from largest cluster
-    # - x = number of reads
-    # - y = rank of cluster sorted from largest to smallest
-    with Plot("Cumulative read count", output_dir=directory) as (fig, ax):
-        data["Reads"].cumsum().plot(ax=ax)
-        ax.set_ylabel("Reads")
-        ax.set_xlabel("Rank")
-
     # Histogram over components per barcode cluster
     # - x = number of components per cluster
     # - y = frequency
     with Plot("Nr of components per barcode cluster histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
         data["Size"].plot(ax=ax, logy=True, bins=data["Size"].max(), kind="hist")
         ax.set_xlabel("Nr components per cluster")
-
-    # Histogram of length for canonical fragment
-    # - x = length of canonical fragment in bp
-    # - y = frequency
-    with Plot("Canonical fragment length histogram", output_dir=directory) as (fig, ax):
-        data["SeqLen"].plot(ax=ax, logy=True, kind="hist", bins=7)
-        ax.set_xlabel("Canonical fragment length (bp)")
 
 
 def process_multiple(files, func):
@@ -145,18 +135,6 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
         ax.set_ylabel("Reads per molecule")
 
-    # Get list of reads per kilobasepair fragment
-    read_per_kb = data["Reads"] / data["Length"] * 1000
-
-    # Histogram of reads per kilobase fragment
-    # - x = reads per kilobase molecule
-    # - y = frequency
-    with Plot("Read per kilobase molecule histogram", output_dir=directory) as (fig, ax):
-        max_count = max(map(int, read_per_kb))
-        read_per_kb.plot(ax=ax, bins=range(0, max_count+1), kind="hist", density=True,
-                         title="Read per kilobase molecule histogram")
-        ax.set_xlabel("Read count per kbp molecule")
-
     # Histogram of molecule read coverage
     # - x = molecule read coverage rate
     # - y = frequency
@@ -175,15 +153,6 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
         ax.set_ylabel("Molecule coverage (kbp)")
         ax.set_yticklabels(map(int, plt.yticks()[0] / 1000))
-
-    # Total barcode molecule length histogram
-    # - x = sum of molecule lengths for barcode
-    # - y = frequency
-    barcode_len = data.groupby("Barcode")["Length"].sum()
-    with Plot("Total molecule length per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_len.plot(ax=ax, kind="hist")
-        ax.set_xlabel("Sum molecule length per barcode (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
 
     # Molecules per barcode
     # - x = molecules per barcode

@@ -91,15 +91,21 @@ class MultiqcModule(BaseMultiqcModule):
         snvs_phased_data = dict()
         for f in self.find_log_files('whatshap/stats', filehandles=True):
             s_name = self.clean_s_name(f["fn"], f["root"]).replace(".whatshap_stats", "")
-            table_data[s_name] = dict()
             s_data = pd.read_csv(f["f"], sep="\t")
 
             # Add custom columns
             s_data['percent_SNVs_phased'] = 100 * s_data["phased_snvs"] / s_data["heterozygous_snvs"]
             s_data['percent_variants_phased'] = 100 * s_data["phased"] / s_data["heterozygous_variants"]
 
-            # Only keep chromsome ALL which is the aggregate data for all chromosomes.
-            all_data = s_data[s_data["chromosome"] == "ALL"].drop(["#sample", "file_name", "chromosome"], axis=1)
+            # For multiple chromosome only keep chromsome ALL which is the aggregate data.
+            if len(s_data) > 1:
+                all_data = s_data[s_data["chromosome"] == "ALL"].drop(["#sample", "file_name", "chromosome"], axis=1)
+            elif len(s_data) == 1:
+                all_data = s_data.drop(["#sample", "file_name", "chromosome"], axis=1)
+            else:
+                continue
+
+            table_data[s_name] = dict()
             for parameter, value in all_data.to_dict("records")[0].items():
                 table_data[s_name][parameter] = value
 
