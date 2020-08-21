@@ -33,8 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    import time
-    s = time.time()
     run_tagfastq(
         uncorrected_barcodes=args.uncorrected_barcodes,
         corrected_barcodes=args.corrected_barcodes,
@@ -47,7 +45,6 @@ def main(args):
         mapper=args.mapper,
         skip_singles=args.skip_singles
     )
-    logger.info(f"Total runtime: {time.time() - s} s")
 
 
 def run_tagfastq(
@@ -67,7 +64,7 @@ def run_tagfastq(
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
     with open(corrected_barcodes, "r") as reader:
-        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, skip_singles=skip_singles)
+        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, skip_singles=skip_singles)
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -91,6 +88,7 @@ def run_tagfastq(
         tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
         chunk_file_template = "chunk_*.tsv"
         chunk_sep = "\t"
+        tmp_writer = open(tmpdir / chunk_file_template.replace("*", str(chunk_id)), "w")
 
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r",
@@ -98,8 +96,6 @@ def run_tagfastq(
             dnaio.open(output1, file2=output2, interleaved=out_interleaved, mode="w",
                        fileformat="fastq") as writer, \
             BarcodeReader(uncorrected_barcodes) as uncorrected_barcode_reader:
-        if mapper == "ema":
-            tmp_writer = open(tmpdir / chunk_file_template.replace("*", str(chunk_id)), "w")
 
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
             # Header parsing
@@ -194,7 +190,7 @@ def run_tagfastq(
     logger.info("Finished")
 
 
-def parse_corrected_barcodes(open_file, summary, skip_singles=False):
+def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
     corrected canonical sequence
@@ -204,7 +200,8 @@ def parse_corrected_barcodes(open_file, summary, skip_singles=False):
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
     corrected_barcodes = dict()
-    heap_index = dict()
+    canonical_seqs = list()
+    heap_index = {}
     for index, cluster in tqdm(enumerate(open_file), desc="Clusters processed"):
         summary["Corrected barcodes"] += 1
         canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
@@ -214,9 +211,30 @@ def parse_corrected_barcodes(open_file, summary, skip_singles=False):
         summary["Reads with corrected barcodes"] += int(size)
         summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
         corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
+        canonical_seqs.append(canonical_seq)
 
-        heap_index[canonical_seq] = index
+    if mapper == "ema":
+        # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours.
+        scramble(canonical_seqs)
+        heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
+
     return corrected_barcodes, heap_index
+
+
+def scramble(seqs):
+    """Scramble sequences by moving pairs with similar prefix appart. Loosely based on bubble sort"""
+    swapped = True
+    iteration = 1
+    while swapped and iteration < 10:
+        iteration += 1
+        swapped = False
+        for i in range(len(seqs) - 2):
+            if seqs[i][:16] == seqs[i + 1][:16]:
+                # Swap the next-comming elements
+                seqs[i + 2], seqs[i + 1] = seqs[i + 1], seqs[i + 2]
+                # Set the flag to True so we'll loop again
+                swapped = True
+        logger.info("Iteration " + str(iteration))
 
 
 class BarcodeReader:
