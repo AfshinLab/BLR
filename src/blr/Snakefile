@@ -21,6 +21,12 @@ elif config["library_type"] == "stlfr":
 # Import rules for phasing
 include: "rules/phasing.smk"
 
+# TODO Subworkflow only single-threaded atm https://github.com/snakemake/snakemake/issues/208
+subworkflow from_partial:
+    snakefile: "rules/from_partial.smk"
+    configfile: "blr.yaml"
+    workdir: os.getcwd()
+
 # Create read group string to tag reads.
 platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
 readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_type'], sample="20", platfrom_unit="unit1",
@@ -60,6 +66,12 @@ def final_input(wildcards):
 
 rule final:
    input: final_input
+
+
+rule from_partial:
+    """Generate required input for running merged BAM from multiple separate runs"""
+    input:
+        from_partial("setup_from_input.done")
 
 
 rule fastqc_raw_reads:
