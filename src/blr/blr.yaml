@@ -38,7 +38,7 @@ phasing_ground_truth: # Path to phased variants used for calculating stats
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
 
 # Tool for tagging haplotype information from phasing onto BAM.
-haplotag_tool: blr # Choose 'whatshap' or 'blr'
+haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
 
 ##############################
 # Software-specific settings #
