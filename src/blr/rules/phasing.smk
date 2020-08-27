@@ -54,7 +54,7 @@ rule hapcut2_phasing:
         " --vcf {input.vcf}"
         " --out {output.phase}"
         " --error_analysis_mode 1"
-        " --outvcf 1 2> {log}"
+        " --outvcf 1 &> {log}"
         " && "
         "mv {output.phase}.phased.VCF {output.phased_vcf}"
 
