@@ -692,6 +692,7 @@ rule collect_duplicate_metrics:
         " M={output.metrics}"
         " ASSUME_SORTED=true 2> {log}"
 
+
 rule collect_alignment_summary_metrics:
     output:
         metrics = "final.alignment_summary_metrics.txt"
@@ -704,4 +705,3 @@ rule collect_alignment_summary_metrics:
         " O={output.metrics}"
         " MAX_INSERT_SIZE=2000"
         " ASSUME_SORTED=true 2> {log}"
-        " "
