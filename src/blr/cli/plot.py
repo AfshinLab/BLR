@@ -102,6 +102,10 @@ def process_molecule_stats(files, directory: Path, summary):
     summary["DNA in molecules >20 kbp (%)"] = 100 * len(data[data["Length"] > 20_000]) / len(data)
     summary["DNA in molecules >100 kbp (%)"] = 100 * len(data[data["Length"] > 100_000]) / len(data)
 
+    molecule_count = data.groupby("Barcode").count()["MoleculeID"]
+    summary["Mean molecule count"] = float(molecule_count.mean())
+    summary["Median molecule count"] = float(molecule_count.median())
+
     plot_molecule_stats(data, directory)
 
 
