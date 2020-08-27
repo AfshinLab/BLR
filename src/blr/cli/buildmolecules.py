@@ -24,7 +24,8 @@ def main(args):
         window=args.window,
         barcode_tag=args.barcode_tag,
         stats_tsv=args.stats_tsv,
-        molecule_tag=args.molecule_tag
+        molecule_tag=args.molecule_tag,
+        min_mapq=args.min_mapq
     )
 
 
@@ -35,7 +36,8 @@ def run_buildmolecules(
     window: int,
     barcode_tag: str,
     stats_tsv: str,
-    molecule_tag: str
+    molecule_tag: str,
+    min_mapq: int
 ):
     summary = Counter()
 
@@ -47,6 +49,7 @@ def run_buildmolecules(
                                                              window=window,
                                                              min_reads=threshold,
                                                              tn5=library_type == "blr",
+                                                             min_mapq=min_mapq,
                                                              summary=summary)
     # Writes filtered out
     with PySAMIO(input, output, __name__) as (openin, openout):
@@ -73,10 +76,10 @@ def run_buildmolecules(
     print_stats(summary, name=__name__)
 
 
-def parse_reads(pysam_openfile, barcode_tag, summary):
+def parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
     for read in tqdm(pysam_openfile.fetch(until_eof=True)):
         summary["Total reads"] += 1
-        if read.is_duplicate or read.is_unmapped:
+        if read.is_duplicate or read.is_unmapped or read.mapping_quality < min_mapq:
             summary["Non analyced reads"] += 1
             continue
 
@@ -88,7 +91,7 @@ def parse_reads(pysam_openfile, barcode_tag, summary):
         yield barcode, read
 
 
-def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary):
+def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, min_mapq, summary):
     """
     Builds all_molecules.bc_to_mol ([barcode][moleculeID] = molecule) and
     all_molecules.header_to_mol ([read_name]=mol_ID)
@@ -97,6 +100,7 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary
     :param window: Max distance between reads to include in the same molecule.
     :param min_reads: Minimum reads to include molecule in all_molecules.bc_to_mol
     :param tn5: boolean. Library is constructed using Tn5 transposase and has possible 9-bp overlaps.
+    :param min_mapq: int
     :param summary: dict for stats collection
     :return: dict[barcode][molecule] = moleculeInstance, dict[read_name] = mol_ID
     """
@@ -105,7 +109,7 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, summary
 
     prev_chrom = pysam_openfile.references[0]
     logger.info("Dividing barcodes into molecules")
-    for nr, (barcode, read) in enumerate(parse_reads(pysam_openfile, barcode_tag, summary)):
+    for nr, (barcode, read) in enumerate(parse_reads(pysam_openfile, barcode_tag, min_mapq, summary)):
         # Commit molecules between chromosomes
         if not prev_chrom == read.reference_name:
             all_molecules.report_and_remove_all()
@@ -351,4 +355,8 @@ def add_arguments(parser):
         "-m", "--molecule-tag", default="MI",
         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
              "Default: %(default)s"
+    )
+    parser.add_argument(
+        "--min-mapq", type=int, default=0,
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
     )

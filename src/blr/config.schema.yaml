@@ -106,3 +106,7 @@ properties:
     type: integer
     default: 1
     description: Sample nr used to distiguish barcodes when merging BAM files.
+  min_mapq:
+    type: integer
+    default: 0
+    description: Minimum MAPQ to include reads in certain analysis steps.

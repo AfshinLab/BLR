@@ -26,6 +26,7 @@ def main(args):
         barcode_tag=args.barcode_tag,
         buffer_size=args.buffer_size,
         window=args.window,
+        min_mapq=args.min_mapq
     )
 
 
@@ -36,6 +37,7 @@ def run_clusterrmdup(
     barcode_tag: str,
     buffer_size: int,
     window: int,
+    min_mapq: int
 ):
     logger.info("Starting Analysis")
     summary = Counter()
@@ -44,7 +46,7 @@ def run_clusterrmdup(
     pos_prev = 0
     merge_dict = dict()
     buffer_dup_pos = deque()
-    for read, mate in tqdm(paired_reads(input, summary), desc="Reading pairs"):
+    for read, mate in tqdm(paired_reads(input, min_mapq, summary), desc="Reading pairs"):
         barcode = get_bamtag(read, barcode_tag)
         if not barcode:
             summary["Non tagged reads"] += 2
@@ -111,11 +113,12 @@ def run_clusterrmdup(
     print_stats(summary, name=__name__)
 
 
-def paired_reads(path: str, summary):
+def paired_reads(path: str, min_mapq: int, summary):
     """
     Yield (forward_read, reverse_read) pairs for all properly paired read pairs in the input file.
 
     :param path: str, path to SAM file
+    :param min_mapq: int
     :param summary: dict
     :return: read, mate: both as pysam AlignedSegment objects.
     """
@@ -128,17 +131,18 @@ def paired_reads(path: str, summary):
             if read.query_name in cache:
                 mate = cache.pop(read.query_name)
             else:
-                if pair_is_mapped_and_proper(read, summary):
+                if pair_is_mapped_and_proper(read, min_mapq, summary):
                     cache[read.query_name] = read
                 continue
             if pair_orientation_is_fr(read, mate, summary):
                 yield read, mate
 
 
-def pair_is_mapped_and_proper(read: AlignedSegment, summary) -> bool:
+def pair_is_mapped_and_proper(read: AlignedSegment, min_mapq: int, summary) -> bool:
     """
     Checks so read pair meets requirements before being used in analysis.
     :param read: pysam read
+    :param min_mapq: int
     :param summary: dict
     :return: bool
     """
@@ -148,6 +152,10 @@ def pair_is_mapped_and_proper(read: AlignedSegment, summary) -> bool:
 
     if read.mate_is_unmapped:
         summary["Unmapped reads"] += 1
+        return False
+
+    if read.mapping_quality < min_mapq:
+        summary["Reads low MAPQ"] += 1
         return False
 
     if not read.is_proper_pair:
@@ -324,3 +332,6 @@ def add_arguments(parser):
         "--buffer-size", type=int, default=200,
         help="Buffer size for collecting duplicates. Should be around read length. "
         "Default: %(default)s")
+    parser.add_argument(
+        "--min-mapq", type=int, default=0,
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s")

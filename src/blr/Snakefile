@@ -276,6 +276,7 @@ rule clusterrmdup:
         " {input.bam}"
         " {output.merges}"
         " -o {output.bam}"
+        " --min-mapq {config[min_mapq]}"
         " -b {config[cluster_tag]} 2> {log}"
 
 
@@ -318,6 +319,7 @@ rule buildmolecules:
         " -m {config[molecule_tag]}"
         " -b {config[cluster_tag]}"
         " --window {config[window_size]}"
+        " --min-mapq {config[min_mapq]}"
         " 2> {log}"
 
 

@@ -116,6 +116,7 @@ rule haplotag:
                 " --molecule-tag {config[molecule_tag]}"
                 " --phase-set-tag {config[phase_set_tag]}"
                 " --haplotype-tag {config[haplotype_tag]}"
+                " --min-mapq {config[min_mapq]}"
                 " {input.bam}"
                 " {input.hapcut2_phase_file}"
                 " -o {output.bam}"

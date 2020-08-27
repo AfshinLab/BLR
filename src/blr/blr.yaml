@@ -49,3 +49,4 @@ barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to clust
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
 coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
+min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
