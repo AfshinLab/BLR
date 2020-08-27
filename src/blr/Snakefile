@@ -152,8 +152,8 @@ rule barcode_sort_fastq:
         " pigz > {output.fastq}"
 
 
-rule map_sort_tag:
-    """Map reads using the aligner specified in configs. Output is sorted and tagged with barcode."""
+rule map_sort:
+    """Map reads using the aligner specified in configs. Output is sorted."""
     output:
         bam = "initialmapping.bam"
     input:
