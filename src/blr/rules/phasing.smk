@@ -77,7 +77,7 @@ rule hapcut2_stats:
 
 def get_haplotag_input(wildcards):
     inputfiles = {"bam": f"{wildcards.base}.calling.bam"}
-    if config["reference_variants"] or config["haplotag_tool"] == "blr":
+    if config["haplotag_tool"] == "blr":
         inputfiles.update({
             "hapcut2_phase_file": f"{wildcards.base}.calling.phase"
         })
@@ -100,6 +100,8 @@ rule haplotag:
         unpack(get_haplotag_input)
     log: "{base}.haplotag.log"
     run:
+        ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else ""
+
         commands = {
             "whatshap":
                 "whatshap haplotag"
@@ -107,7 +109,8 @@ rule haplotag:
                 " {input.bam}"
                 " -o {output.bam}"
                 " --linked-read-distance-cutoff {config[window_size]}"
-                " --reference {config[genome_reference]}",
+                " --reference {config[genome_reference]}"
+                " {ignore_readgroups}",
             "blr":
                 "blr phasebam"
                 " --molecule-tag {config[molecule_tag]}"
