@@ -42,6 +42,7 @@ def run_buildmolecules(
     summary = Counter()
 
     # Build molecules from BCs and reads
+    save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with pysam.AlignmentFile(input, "rb") as infile:
         library_type = infile.header.to_dict()["RG"][0]["LB"]
         bc_to_mol_dict, header_to_mol_dict = build_molecules(pysam_openfile=infile,
@@ -51,6 +52,8 @@ def run_buildmolecules(
                                                              tn5=library_type == "blr",
                                                              min_mapq=min_mapq,
                                                              summary=summary)
+    pysam.set_verbosity(save)
+
     # Writes filtered out
     with PySAMIO(input, output, __name__) as (openin, openout):
         logger.info("Writing filtered bam file")
