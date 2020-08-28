@@ -113,6 +113,10 @@ class MultiqcModule(BaseMultiqcModule):
             for row in s_data.itertuples():
                 snvs_phased_data[s_name][row.chromosome] = row.percent_SNVs_phased
 
+        # Filter out samples to ignore
+        table_data = self.ignore_samples(table_data)
+        snvs_phased_data = self.ignore_samples(snvs_phased_data)
+
         if len(table_data) == 0:
             log.debug("Could not find any whatshap stats in {}".format(config.analysis_dir))
             return table_data, snvs_phased_data

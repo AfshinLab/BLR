@@ -94,6 +94,9 @@ class MultiqcModule(BaseMultiqcModule):
             for parameter, value in self.parse_phasing_stats(f["f"]):
                 phasing_data[sample_name][parameter] = value
 
+        # Filter out samples to ignore
+        phasing_data = self.ignore_samples(phasing_data)
+
         # Skip if no data
         if not phasing_data:
             return 0
