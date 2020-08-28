@@ -15,5 +15,9 @@ extra_fn_clean_exts:
       pattern: .duplicate_metrics
       module: picard
 
-sample_names_ignore:
-    - 'chr*'
+fn_ignore_dirs:
+    - '.snakemake'
+
+sp:
+    picard/markdups:
+      - fn: "final.duplicate_metrics.txt"
