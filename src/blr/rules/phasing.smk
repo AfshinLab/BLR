@@ -14,6 +14,9 @@ rule hapcut2_extracthairs:
     shell:
         "extractHAIRS"
         " --10X 1"
+        " --indels 1"
+        " --realign_variants 1"  # Improves overall error-rate
+        " --ref {config[genome_reference]}"
         " --bam {input.bam}"
         " --VCF {input.vcf}"
         " --out {output.unlinked} 2> {log}"
@@ -72,6 +75,7 @@ rule hapcut2_stats:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " {params.vcf2}"
+        " --indels"
         " -o {output.stats}"
 
 
