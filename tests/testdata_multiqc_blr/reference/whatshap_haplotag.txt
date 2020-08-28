@@ -1,0 +1,2 @@
+Sample	Total alignments processed	Alignments that could be tagged	Alignments spanning multiple phase sets	Percentage tagged
+example	8380	725	0	8.651551312649165

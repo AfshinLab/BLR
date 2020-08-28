@@ -1,0 +1,11 @@
+Found 1 samples in input VCF
+Keeping 1 samples for haplo-tagging
+Found 1 samples in BAM file
+Reading alignments and detecting alleles ...
+Found 41 reads covering 5 variants
+
+== SUMMARY ==
+Total alignments processed:                      8380
+Alignments that could be tagged:                  725
+Alignments spanning multiple phase sets:            0
+haplotag - total processing time: 0.13207793235778809

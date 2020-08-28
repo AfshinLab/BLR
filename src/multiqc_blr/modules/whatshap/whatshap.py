@@ -4,7 +4,7 @@
 from __future__ import print_function
 import logging
 import pandas as pd
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from multiqc import config
 from multiqc.plots import table, linegraph
@@ -86,6 +86,22 @@ class MultiqcModule(BaseMultiqcModule):
                 })
             )
 
+        haplotag_data = self.parse_haplotag()
+        if haplotag_data:
+            table_headers = self.get_haplotag_table_headers()
+
+            # Add a report section with table
+            self.add_section(
+                name="Haplotag info",
+                description="Information about haplotype assingment",
+                plot=table.plot(haplotag_data, table_headers, {
+                    'id': 'whatshap_haplotag_table',
+                    'title': "WhatsHap haplotag",
+                    'scale': False,
+                    'share_key': False
+                })
+            )
+
     def parse_stats(self):
         table_data = dict()
         snvs_phased_data = dict()
@@ -126,6 +142,35 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(snvs_phased_data, "whatshap_stats_snvs_phased")
 
         return table_data, snvs_phased_data
+
+    def parse_haplotag(self):
+        data = defaultdict(dict)
+        for f in self.find_log_files("whatshap/haplotag", filehandles=True):
+            s_name = self.clean_s_name(f["fn"], f["root"]).replace(".haplotag", "")
+
+            s_data = dict()
+            collect_data = False
+            for line in f["f"]:
+                if line.strip() == "== SUMMARY ==":
+                    collect_data = True
+                    continue
+
+                if collect_data and not line.startswith("haplotag"):
+                    param, value = line.strip().split(":", maxsplit=1)
+                    s_data[param] = int(value.strip())
+
+            # Calculate percent of reads that were tagged.
+            s_data["Percentage tagged"] = 100 * s_data['Alignments that could be tagged'] / s_data['Total alignments processed']
+            data[s_name] = s_data
+
+        data = self.ignore_samples(data)
+        if len(data) == 0:
+            log.debug("Could not find any whatshap haplotag data in {}".format(config.analysis_dir))
+            return data
+
+        self.write_data_file(data, "whatshap_haplotag")
+
+        return data
 
     @staticmethod
     def get_stats_table_headers():
@@ -276,4 +321,34 @@ class MultiqcModule(BaseMultiqcModule):
             'hidden': False,
             'placement': 1,
         }
+        return headers
+
+    @staticmethod
+    def get_haplotag_table_headers():
+        headers = OrderedDict()
+        headers['Total alignments processed'] = {
+            'title': 'Total alignments',
+            'description': 'The total number of alignments processed.',
+            'format': '{:,}',
+            'placement': 2
+            }
+        headers['Alignments that could be tagged'] = {
+            'title': 'Alignments tagged',
+            'description': 'The number of alignments that could be assigned to a haplotype',
+            'format': '{:,}',
+            'placement': 3
+            }
+        headers['Alignments spanning multiple phase sets'] = {
+            'title': 'Multiple PS',
+            'description': 'The number of alignments spanning multiple phase sets.',
+            'format': '{:,}',
+            'placement': 4
+            }
+        headers["Percentage tagged"] = {
+            'title': 'Tagged',
+            'description': 'The percentage of alignments that were assigned to a haplotype.',
+            'format': '{:.2f}',
+            'suffix': "%",
+            'placement': 1
+            }
         return headers
