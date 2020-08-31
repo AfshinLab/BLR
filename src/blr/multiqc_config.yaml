@@ -5,6 +5,7 @@ intro_text: "This is a collection of results from the BLR pipeline. Go to our
 table_columns_visible:
     mosdepth:
         30_x_pc: False
+        1_x_pc: True
     Bowtie 2 / HiSAT2:
         overall_alignment_rate: False
     Cutadapt:
