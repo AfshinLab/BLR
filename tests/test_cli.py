@@ -5,7 +5,7 @@ import pytest
 import dnaio
 
 from blr.__main__ import main as blr_main
-from blr.cli.init import init
+from blr.cli.init import init, init_from_dir
 from blr.cli.run import run
 from blr.cli.config import change_config
 from blr.utils import get_bamtag
@@ -75,7 +75,7 @@ def _workdir(tmp_path_factory):
         ]
     )
     # chromosomes B, C and D end up in the same chunk
-    run(workdir=path, targets=[f"chunks/chr{c}.calling.bam.bai" for c in "AB"])
+    run(workdir=path, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
     return path
 
 
@@ -209,3 +209,15 @@ def test_version_exit_code_zero():
     with pytest.raises(SystemExit) as e:
         blr_main(["--version"])
     assert e.value.code == 0
+
+
+def test_init_from_workdir(tmp_path, workdir):
+    old_workdir = workdir
+    new_workdir = tmp_path / "from_old"
+    init_from_dir(new_workdir, [old_workdir], "blr")
+    change_config(
+        new_workdir / DEFAULT_CONFIG,
+        [("genome_reference", REFERENCE_GENOME),
+         ("chunk_size", "50000")]
+        )
+    run(workdir=new_workdir, targets=["from_partial"])
