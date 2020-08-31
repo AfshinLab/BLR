@@ -160,7 +160,7 @@ class MultiqcModule(BaseMultiqcModule):
                     s_data[param] = int(value.strip())
 
             # Calculate percent of reads that were tagged.
-            s_data["Percentage tagged"] = 100 * s_data['Alignments that could be tagged'] / s_data['Total alignments processed']
+            s_data["% tagged"] = 100 * s_data['Alignments that could be tagged'] / s_data['Total alignments processed']
             data[s_name] = s_data
 
         data = self.ignore_samples(data)
@@ -344,7 +344,7 @@ class MultiqcModule(BaseMultiqcModule):
             'format': '{:,}',
             'placement': 4
             }
-        headers["Percentage tagged"] = {
+        headers["% tagged"] = {
             'title': 'Tagged',
             'description': 'The percentage of alignments that were assigned to a haplotype.',
             'format': '{:.2f}',

@@ -46,7 +46,7 @@ class MultiqcModule(BaseMultiqcModule):
     def gather_stats_logs(self):
         # Find and load any input files for this module
         headers = dict()
-        stats_data = dict()
+        data = dict()
         for f in self.find_log_files('stats', filehandles=True):
             tool_name = self.get_tool_name(f["f"])
 
@@ -54,39 +54,39 @@ class MultiqcModule(BaseMultiqcModule):
             if not tool_name:
                 continue
 
-            if tool_name not in stats_data:
-                stats_data[tool_name] = dict()
+            if tool_name not in data:
+                data[tool_name] = dict()
                 headers[tool_name] = OrderedDict()
 
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(f".{tool_name}", "")
 
             log.debug(f"Found report for tool {tool_name} with sample {sample_name}")
 
-            if sample_name in stats_data[tool_name]:
+            if sample_name in data[tool_name]:
                 log.debug(f"Duplicate sample name found for tool {tool_name}! Overwriting: {sample_name}")
 
-            stats_data[tool_name][sample_name] = dict()
+            data[tool_name][sample_name] = dict()
 
             for parameter, value in self.parse(f["f"]):
                 header_name = parameter.lower().replace(" ", "_")
-                stats_data[tool_name][sample_name][header_name] = value
+                data[tool_name][sample_name][header_name] = value
 
                 headers[tool_name][header_name] = {
                     'title': parameter
                 }
 
         # Filter out samples to ignore for each tool
-        stats_data = {tool: self.ignore_samples(data) for tool, data in stats_data.items() if self.ignore_samples(data)}
+        data = {tool: self.ignore_samples(data) for tool, data in data.items() if self.ignore_samples(data)}
 
         # Nothing found - raise a UserWarning to tell MultiQC
-        if len(stats_data) == 0:
+        if len(data) == 0:
             log.debug("Could not find any stats logs in {}".format(config.analysis_dir))
 
-        log.info(f"Found {len(stats_data)} tools (Report per tool: "
-                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in stats_data.items()])})")
+        log.info(f"Found {len(data)} tools (Report per tool: "
+                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in data.items()])})")
 
         # For each tool generat a separat statistics table for all found samples.
-        for tool_name, tool_data in stats_data.items():
+        for tool_name, tool_data in data.items():
             tool_name_title = tool_name.capitalize()
 
             # Write parsed report data to a file
