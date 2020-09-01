@@ -8,7 +8,7 @@ Edit the file 'bwa_bridge.c':
 
 - vi lariat/go/src/gobwa/bwa_bridge.c
 
-remove the last line: 
+comment the last line: 
 
 - '// char * bwa_pg = "10X Genomics";' 
 
