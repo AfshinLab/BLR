@@ -13,7 +13,7 @@ remove the last line:
 - '// char * bwa_pg = "10X Genomics";' 
 
 
-Loading required packages on bianca:
+Loading required packages on Uppmax:
 -------------------------
 - module load gcc zlib
 
