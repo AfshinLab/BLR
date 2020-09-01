@@ -15,7 +15,7 @@ remove the last line:
 
 Loading required packages on Uppmax:
 -------------------------
-- module load gcc zlib
+- module load gcc zlib go
 
 
 Make it!
