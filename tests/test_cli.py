@@ -75,7 +75,7 @@ def _workdir(tmp_path_factory):
         ]
     )
     # chromosomes B, C and D end up in the same chunk
-    run(workdir=path, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
+    run(workdir=path, targets=[f"chunks/chr{c}.calling.bam.bai" for c in "AB"])
     return path
 
 
@@ -214,6 +214,11 @@ def test_version_exit_code_zero():
 def test_init_from_workdir(tmp_path, workdir):
     old_workdir = workdir
     new_workdir = tmp_path / "from_old"
+
+    # Generate all require files is old workdir
+    run(workdir=old_workdir, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
+
+    # Initialize new dir based on old and run setup.
     init_from_dir(new_workdir, [old_workdir], "blr")
     change_config(
         new_workdir / DEFAULT_CONFIG,
