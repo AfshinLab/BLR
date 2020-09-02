@@ -96,13 +96,11 @@ def run_find_clusterdups(
         with open(output_pickle, 'wb') as file:
             pickle.dump(barcode_graph.graph, file, pickle.HIGHEST_PROTOCOL)
 
-    merge_dict = barcode_graph.get_merges()
-    summary["Barcodes removed"] = len(merge_dict)
-
     if output_merges:
         logger.info(f"Writing merges to {output_merges}")
         with open(output_merges, 'w') as file:
-            for old_barcode, new_barcode in merge_dict.items():
+            for old_barcode, new_barcode in barcode_graph.iter_merges():
+                summary["Barcodes removed"] += 1
                 print(old_barcode, new_barcode, sep=",", file=file)
 
     logger.info("Finished")
@@ -292,12 +290,15 @@ class BarcodeGraph:
 
     def get_merges(self):
         """Get dict of barcodes to merge in style of current_barcode -> new_barcode"""
-        merges_dict = dict()
+        return {current: new for current, new in self.iter_merges()}
+
+    def iter_merges(self):
+        """Iterate over merges. Yields tuple with current_barcode and new_barcode"""
         for component in self.components():
             barcodes_sorted = sorted(component)
             barcode_min = barcodes_sorted[0]
-            merges_dict.update({barcode: barcode_min for barcode in barcodes_sorted[1:]})
-        return merges_dict
+            for barcode in barcodes_sorted[1:]:
+                yield barcode, barcode_min
 
     def merge(self, other):
         """Merge BarcodeGraph objects"""

@@ -292,9 +292,8 @@ rule get_barcode_merges:
                 filegraph = BarcodeGraph.from_graph(pickle.load(file))
                 graph.merge(filegraph)
 
-        merge_dict = graph.get_merges()
         with open(output.merges, 'w') as file:
-            for old_barcode, new_barcode in merge_dict.items():
+            for old_barcode, new_barcode in graph.iter_merges():
                 print(old_barcode, new_barcode, sep=",", file=file)
 
 
