@@ -157,7 +157,7 @@ def run_tagfastq(
 
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
-                sample_index_qual = "K" * (len(sample_index))
+                sample_index_qual = "K" * len(sample_index)
                 print(
                     f"@{name_and_pos}",
                     read1.sequence,
@@ -167,7 +167,7 @@ def run_tagfastq(
                     f"{corrected_barcode_seq}-1",
                     corrected_barcode_qual,
                     sample_index,
-                    sample_index,
+                    sample_index_qual,
                     sep="\n", file=writer
                 )
             else:
