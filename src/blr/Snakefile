@@ -55,6 +55,11 @@ def final_input(wildcards):
             "called.vcf.gz",
             "called.vcf.gz.tbi"
         ])
+        if config["filter_variants"]:
+            files.extend([
+                "called.filtered.vcf.gz",
+                "called.filtered.vcf.gz.tbi"
+            ])
     return files
 
 
@@ -546,6 +551,76 @@ rule call_variants:
         shell(commands[config["variant_caller"]])
 
 
+rule extract_called:
+    """Extract SNPs and INDELs from called varinats"""
+    output:
+        vcf = "{base}.variants.called.{type,(SNP|INDEL)}.vcf"
+    input:
+        vcf = "{base}.variants.called.vcf"
+    log: "{base}.variants.called.{type,(SNP|INDEL)}.log"
+    shell:
+        "gatk SelectVariants"
+        " -V {input.vcf}"
+        " -select-type {wildcards.type}"
+        " -O {output.vcf} 2> {log}"
+
+
+rule filter_called_snps:
+    """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    output:
+        vcf = "{base}.variants.called.SNP.filtered.vcf"
+    input:
+        vcf = "{base}.variants.called.SNP.vcf"
+    log: "{base}.variants.called.SNP.filtered.log"
+    shell:
+        "gatk VariantFiltration"
+        " -V {input.vcf}"
+        " --filter-name 'lowQUAL'"
+        " --filter-expression 'QUAL < 15'"
+        " --filter-name 'highMQRankSum'"
+        " --filter-expression 'MQRankSum > 6.0'"
+        " --genotype-filter-name 'lowAD'"
+        " --genotype-filter-expression 'AD < 2.0'"
+        " --filter-name 'lowAF'"
+        " --filter-expression 'AF < 0.15'"
+        " -O {output.vcf} 2> {log}"
+
+
+rule filter_called_indels:
+    """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    output:
+        vcf = "{base}.variants.called.INDEL.filtered.vcf"
+    input:
+        vcf = "{base}.variants.called.INDEL.vcf"
+    log: "{base}.variants.called.INDEL.filtered.log"
+    shell:
+        "gatk VariantFiltration"
+        " -V {input.vcf}"
+        " --filter-name 'lowQUAL'"
+        " --filter-expression 'QUAL < 15'"
+        " --filter-name 'highMQRankSum'"
+        " --filter-expression 'MQRankSum > 6.0'"
+        " --genotype-filter-name 'lowAD'"
+        " --genotype-filter-expression 'AD < 4.0'"
+        " --filter-name 'lowAF'"
+        " --filter-expression 'AF < 0.25'"
+        " -O {output.vcf} 2> {log}"
+
+
+rule merge_filtered_snps_indels:
+    output:
+        vcf = "{base}.variants.called.filtered.vcf"
+    input:
+        vcf_snps = "{base}.variants.called.SNP.filtered.vcf",
+        vcf_indels = "{base}.variants.called.INDEL.filtered.vcf"
+    log: "{base}.variants.called.filtered.log"
+    shell:
+        "picard MergeVcfs"
+        " -O {output.vcf}"
+        " -I {input.vcf_snps}"
+        " -I {input.vcf_indels} 2> {log}"
+
+
 def get_phase_input_vcf(wildcards):
     if config["reference_variants"]:
         return {
@@ -553,7 +628,10 @@ def get_phase_input_vcf(wildcards):
             "bed": f"chunks/{wildcards.chunk}.bed",
         }
     else:
-        return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
+        if config["filter_variants"]:
+            return {"vcf": f"chunks/{wildcards.chunk}.variants.called.filtered.vcf"}
+        else:
+            return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
 
 
 rule split_or_symlink_phase_input_vcf:
@@ -591,9 +669,9 @@ rule concat_phased_vcfs:
 
 rule concat_called_vcfs:
     output:
-        vcf = temp("called.vcf")
+        vcf = temp("called.{filtered,(filtered.|)}vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
+        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks)
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
 

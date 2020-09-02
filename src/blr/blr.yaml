@@ -36,6 +36,7 @@ stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from
 reference_variants: # Path to reference variants used for phasing, if None will call variants with `variant_caller`
 phasing_ground_truth: # Path to phased variants used for calculating stats
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
+filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
 
 # Tool for tagging haplotype information from phasing onto BAM.
 haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
