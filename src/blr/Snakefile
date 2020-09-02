@@ -276,6 +276,7 @@ rule find_clusterdups:
         "blr find_clusterdups"
         " {input.bam}"
         " --output-pickle {output.pickle}"
+        " --min-mapq {config[min_mapq]}"
         " -b {config[cluster_tag]} 2> {log}"
 
 
@@ -310,7 +311,6 @@ rule merge_clusterdups:
         " {input.bam}"
         " {input.merges}"
         " -o {output.bam}"
-        " --min-mapq {config[min_mapq]}"
         " -b {config[cluster_tag]} 2> {log}"
 
 
