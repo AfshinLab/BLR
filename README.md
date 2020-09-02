@@ -117,31 +117,7 @@ This will enable the `variant_caller: deepvariant` option in the analysis config
 #### 2.3 Lariat aligner
 
 To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to manually install it within your 
-environment.
-
-- First create a new environment with whish to build lariat from source 
-```
-conda create -n lariat-build
-conda activate lariat-build
-conda install go 
-condat install clangxx_osx-64
-```
-- Clone and build lariat
-```
-git clone https://github.com/10XGenomics/lariat
-cd lariat
-git submodule update --init --recursive
-cd go
-make
-```
-- Test install by running
-```
-bin/lariat -h
-```
-- Add lariat to your blr environment
-```
-ln -s /path/to/bin/lariat /path/to/miniconda/envs/my-blr-env/bin/.
-```
+environment. For help on installation see [the following instructions](doc/lariat_install.rst). 
 
 ### 3. Updating
 
