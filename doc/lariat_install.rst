@@ -48,8 +48,7 @@ First clone the lariat repository
  git clone --recursive  https://github.com/10XGenomics/lariat.git
 
 
-Edit the file 'bwa_bridge.c' to comment out the final line. The final line should be:
- ``//char * bwa_pg = "10X Genomics";``.
+Edit the file 'bwa_bridge.c' to comment out the final line. The final line should be: ``//char * bwa_pg = "10X Genomics";``.
 
 .. code-block::
 
