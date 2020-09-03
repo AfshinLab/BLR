@@ -21,4 +21,38 @@ fn_ignore_dirs:
 
 sp:
     picard/markdups:
-      - fn: "final.duplicate_metrics.txt"
+        fn: "final.duplicate_metrics.txt"
+    picard/alignment_metrics:
+        fn: "final.alignment_summary_metrics.txt"
+    picard/basedistributionbycycle:
+        skip: true
+    picard/gcbias:
+        skip: true
+    picard/hsmetrics:
+        skip: true
+    picard/insertsize:
+        fn: "final.insert_size_metrics.txt"
+    picard/oxogmetrics:
+        skip: true
+    picard/pcr_metrics:
+        skip: true
+    picard/quality_by_cycle:
+        skip: true
+    picard/quality_score_distribution:
+        skip: true
+    picard/quality_yield_metrics:
+        skip: true
+    picard/rnaseqmetrics:
+        skip: true
+    picard/rrbs_metrics:
+        skip: true
+    picard/sam_file_validation:
+        skip: true
+    picard/variant_calling_metrics:
+        skip: true
+    picard/wgs_metrics:
+        skip: true
+    cutadapt:
+        fn: "cutadapt_trim.log"
+    whatshap/stats:
+        fn: "final.whatshap_stats.tsv"
