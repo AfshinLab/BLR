@@ -46,7 +46,9 @@ def final_input(wildcards):
     files = [
         "multiqc_report.html",
         "final.bam",
+        "final.bam.bai"
         "final.phased.bam",
+        "final.phased.bam.bai",
         "final.phased.vcf.gz",
         "final.phased.vcf.gz.tbi",
     ]
