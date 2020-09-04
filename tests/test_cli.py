@@ -102,19 +102,28 @@ def test_default_read_mapper(workdir):
     assert n_input_fastq_reads <= count_bam_alignments(workdir / "initialmapping.bam")
 
 
-def test_trim_blr(workdir):
+# The read mapper will partly determine the output format so we test for different mappers here. Bowtie2, bwa and
+# minimap2 all use the same format so only bowtie2 is tested.
+@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
+def test_trim_blr(workdir, read_mapper):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("read_mapper", read_mapper)]
+    )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     assert count_fastq_reads(trimmed[0]) <= count_fastq_reads(TESTDATA_BLR_READ1)
     assert count_fastq_reads(trimmed[1]) <= count_fastq_reads(TESTDATA_BLR_READ2)
 
 
-def test_trim_tenx(tmp_path):
+@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
+def test_trim_tenx(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TENX_READ1, "10x")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("barcode_whitelist", TESTDATA_TENX_BARCODES)]
+        [("barcode_whitelist", TESTDATA_TENX_BARCODES),
+         ("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
@@ -122,12 +131,14 @@ def test_trim_tenx(tmp_path):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9  # More than 90% kept
 
 
-def test_trim_stlfr(tmp_path):
+@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
+def test_trim_stlfr(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_STLFR_READ1, "stlfr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES)]
+        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
+         ("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
