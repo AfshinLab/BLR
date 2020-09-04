@@ -111,9 +111,9 @@ def test_trim_blr(workdir, read_mapper):
         [("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
-    assert count_fastq_reads(trimmed[0]) <= count_fastq_reads(TESTDATA_BLR_READ1)
-    assert count_fastq_reads(trimmed[1]) <= count_fastq_reads(TESTDATA_BLR_READ2)
+    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    assert count_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+    assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_BLR_READ2) > 0.9
 
 
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
@@ -143,7 +143,7 @@ def test_trim_stlfr(tmp_path, read_mapper):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
-        assert count_fastq_reads(raw) >= count_fastq_reads(workdir / trimmed)
+        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
 @pytest.mark.parametrize("read_mapper", ["bwa", "minimap2", "ema"])
