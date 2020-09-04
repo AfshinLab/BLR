@@ -136,6 +136,7 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
             sys.exit(1)
 
     # TODO Add warning if multiple workdirs are passed but they use the same 'sample_nr' to tag barcodes
+    # TODO Enable re-tagging files is share same 'sample_nr'?
 
     if " " in str(directory):
         logger.error("The name of the analysis directory must not contain spaces")
@@ -160,5 +161,4 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
 
     logger.info(f"Directory {directory} initialized.")
     logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
-    logger.info(f"Run 'cd {directory} && blr run from_partial' to setup folder completely. The run 'blr run' to "
-                f"complete the analysis.")
+    logger.info(f"Run 'cd {directory} && blr run from_partial' to start the analysis.")

@@ -4,8 +4,12 @@ Prepare input for running pipeline starting previously generated run.
 import sys
 import glob
 import pandas as pd
+from snakemake.utils import validate
 
 from blr.utils import  chromosome_chunks, parse_fai, symlink_relpath
+
+configfile: "blr.yaml"
+validate(config, "config.schema.yaml")
 
 # Generate chunks
 if config["genome_reference"] is not None:
@@ -21,14 +25,7 @@ else:
     chunks = []
 
 
-rule all:
-    input:
-        "setup_from_input.done"
-
-
 rule final:
-    output:
-        touch("setup_from_input.done")
     input:
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
@@ -91,15 +88,13 @@ rule merge_or_link_input_bams:
         bam = "final.bam"
     input:
         dir = "inputs"
+    threads: 20
     run:
         input_bams = glob.glob(input.dir + "/*." + output.bam)
-        print(input_bams)
         if len(input_bams) == 1:
             symlink_relpath(input_bams[0], output.bam)
         else:
-            # TODO Run multi-threaded when https://github.com/snakemake/snakemake/issues/208 fixed or switched from
-            #  subworkflow to 'include' format.
-            shell("samtools merge -p {output.bam} {input_bams}")
+            shell("samtools merge -p -@ {threads} {output.bam} {input_bams}")
 
 
 rule concat_or_link_input_molecule_stats:
