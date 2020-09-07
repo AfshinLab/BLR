@@ -32,7 +32,8 @@ def main(args):
         barcode_tag=args.barcode_tag,
         buffer_size=args.buffer_size,
         window=args.window,
-        min_mapq=args.min_mapq
+        min_mapq=args.min_mapq,
+        library_type=args.library_type
     )
 
 
@@ -43,8 +44,10 @@ def run_find_clusterdups(
     barcode_tag: str,
     buffer_size: int,
     window: int,
-    min_mapq: int
+    min_mapq: int,
+    library_type: str
 ):
+    tn5 = library_type in {'blr', 'stlfr'}
     logger.info("Starting Analysis")
     summary = Counter()
     positions = OrderedDict()
@@ -74,7 +77,7 @@ def run_find_clusterdups(
         current_position = (mate.reference_start, read.reference_end, orientation)
 
         if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window)
+            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, tn5)
 
             if chrom_new != chrom_prev:
                 positions.clear()
@@ -88,11 +91,7 @@ def run_find_clusterdups(
         positions[current_position].add_barcode(barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window)
-
-    # Remove several step redundancy (5 -> 3, 3 -> 1) => (5 -> 1, 3 -> 1)
-    reduce_several_step_redundancy(merge_dict)
-    summary["Barcodes removed"] = len(merge_dict)
+    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, tn5)
 
     # Write outputs
     if output_pickle:
@@ -173,13 +172,14 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
     return False
 
 
-def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int):
+def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int, tn5: bool):
     """
     Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
     :param positions: list: Position to check for duplicates
     :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param window: int: Max distance allowed between positions to call barcode duplicate.
+    :param tn5: bool: Libray constructed using Tn5 tagmentation
     """
     positions_to_remove = list()
     for position, tracked_position in positions.items():
@@ -190,7 +190,8 @@ def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: in
                     buffer_dup_pos=buffer_dup_pos,
                     position=tracked_position.position,
                     position_barcodes=tracked_position.barcodes,
-                    window=window
+                    window=window,
+                    tn5=tn5
                 )
             tracked_position.has_updated_barcodes = False
         else:
@@ -219,16 +220,17 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int):
+def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, tn5: bool):
     """
-    Builds up a merge dictionary for which any keys should be overwritten by their value. Also
-    keeps all previous positions saved in a list in which all reads which still are withing the
-    window size are saved.
+    Builds up a graph of connected barcodes i.e. barcode sharing two duplicates within the current window. For Tn5 type
+    libraries, overlapping positions are skipped unless they are allowed by Tn5 tagmentation (i.e overlap 9±1 bp). Also
+    keeps all previous positions saved in a list in which all reads which still are withing the window size are saved.
     :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
     :param position_barcodes: seq: Barcodes at analyzed position
     :param window: int: Max distance allowed between postions to call barcode duplicate.
+    :param tn5: bool: Libray constructed using Tn5 tagmentation
     """
 
     # Loop over list to get the positions closest to the analyzed position first. When position
@@ -237,7 +239,7 @@ def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, 
         distance = position[0] - compared_position[1]
 
         # Skip comparison against overlapping reads unless they are from Tn5 tagmentation.
-        if distance < 0 and distance not in {-8, -9, -10}:
+        if tn5 and distance < 0 and distance not in {-8, -9, -10}:
             continue
 
         if distance <= window:
@@ -345,3 +347,7 @@ def add_arguments(parser):
     parser.add_argument(
         "--min-mapq", type=int, default=0,
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s")
+    parser.add_argument(
+        "-l", "--library-type", default="blr", choices=["blr", "10x", "stlfr"],
+        help="Library type of data. Default: %(default)s"
+    )
