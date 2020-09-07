@@ -96,7 +96,7 @@ def get_haplotag_input(wildcards):
 rule haplotag:
     """
     Transfer haplotype information from the phased VCF file to the bam file.
-    Adds HP tag with haplotype (0 or 1) and PS tag with phase set information.
+    Adds HP tag with haplotype (1 or 2) and PS tag with phase set information.
     """
     output:
         bam = "{base}.calling.phased.bam"
