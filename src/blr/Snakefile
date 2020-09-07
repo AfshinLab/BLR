@@ -425,7 +425,6 @@ rule filterclusters:
         " {input.barcodes}"
         " -m {config[molecule_tag]}"
         " -b {config[cluster_tag]}"
-        " -s {config[sequence_tag]}"
         " 2> {log} |"
         " tee {output.bam}"
         " |"

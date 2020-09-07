@@ -16,7 +16,6 @@ def main(args):
         barcodes=args.barcodes,
         output=args.output,
         barcode_tag=args.barcode_tag,
-        sequence_tag=args.sequence_tag,
         molecule_tag=args.molecule_tag
     )
 
@@ -26,10 +25,9 @@ def run_filterclusters(
     barcodes: str,
     output: str,
     barcode_tag: str,
-    sequence_tag: str,
     molecule_tag: str
 ):
-    tags_to_remove = [barcode_tag, sequence_tag, molecule_tag]
+    tags_to_remove = [barcode_tag, molecule_tag]
     removed_tags = {tag: set() for tag in tags_to_remove}
     summary = Counter()
     logger.info("Starting")
@@ -101,10 +99,6 @@ def add_arguments(parser):
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s"
-    )
-    parser.add_argument(
-        "-s", "--sequence-tag", default="RX",
-        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s"
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
