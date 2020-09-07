@@ -195,6 +195,16 @@ def test_call_variants(workdir, variant_caller):
     assert workdir.joinpath(target).is_file()
 
 
+def test_filter_variants(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("reference_variants", "null"), ("filter_variants", "true")]
+    )
+    target = "called.filtered.vcf"
+    run(workdir=workdir, targets=[target])
+    assert workdir.joinpath(target).is_file()
+
+
 def test_plot_figures(workdir):
     target = "figures"
     run(workdir=workdir, targets=[target])

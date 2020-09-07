@@ -110,3 +110,7 @@ properties:
     type: integer
     default: 0
     description: Minimum MAPQ to include reads in certain analysis steps.
+  filter_variants:
+    type: boolean
+    default: false
+    description: Filter called variants (SNPs and INDELs) before phasing
