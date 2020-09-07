@@ -1,6 +1,6 @@
 """
-Remove barcode duplicates (two different barcode sequences origin to the same droplet, tagging the
-same tagmented long molecule) by merging barcode sequences for reads sharing duplicates.
+Find barcode cluster duplicates (two different barcode sequences origin to the same droplet, tagging the
+same tagmented long molecule).
 
 Condition to call barcode duplicate:
 
@@ -10,19 +10,25 @@ apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 """
 
 from pysam import AlignmentFile, AlignedSegment
+from argparse import ArgumentError
 import logging
-from collections import Counter, deque, OrderedDict
+from collections import Counter, deque, OrderedDict, defaultdict
+import pickle
+from copy import deepcopy
 
-from blr.utils import PySAMIO, get_bamtag, print_stats, tqdm
+from blr.utils import get_bamtag, print_stats, tqdm
 
 logger = logging.getLogger(__name__)
 
 
 def main(args):
-    run_clusterrmdup(
+    if not (args.output_pickle or args.output_merges):
+        raise ArgumentError(None, "Arguments --output-merges and/or --output-pickle required")
+
+    run_find_clusterdups(
         input=args.input,
-        output=args.output,
-        merge_log=args.merge_log,
+        output_pickle=args.output_pickle,
+        output_merges=args.output_merges,
         barcode_tag=args.barcode_tag,
         buffer_size=args.buffer_size,
         window=args.window,
@@ -30,10 +36,10 @@ def main(args):
     )
 
 
-def run_clusterrmdup(
+def run_find_clusterdups(
     input: str,
-    output: str,
-    merge_log: str,
+    output_pickle: str,
+    output_merges: str,
     barcode_tag: str,
     buffer_size: int,
     window: int,
@@ -44,7 +50,7 @@ def run_clusterrmdup(
     positions = OrderedDict()
     chrom_prev = None
     pos_prev = 0
-    merge_dict = dict()
+    barcode_graph = BarcodeGraph()
     buffer_dup_pos = deque()
     for read, mate in tqdm(paired_reads(input, min_mapq, summary), desc="Reading pairs"):
         barcode = get_bamtag(read, barcode_tag)
@@ -68,7 +74,7 @@ def run_clusterrmdup(
         current_position = (mate.reference_start, read.reference_end, orientation)
 
         if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
+            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, summary)
 
             if chrom_new != chrom_prev:
                 positions.clear()
@@ -82,32 +88,20 @@ def run_clusterrmdup(
         positions[current_position].add_barcode(barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window, summary)
-
-    # Remove several step redundancy (5 -> 3, 3 -> 1) => (5 -> 1, 3 -> 1)
-    reduce_several_step_redundancy(merge_dict)
-    summary["Barcodes removed"] = len(merge_dict)
+    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, summary)
 
     # Write outputs
-    barcodes_written = set()
-    with PySAMIO(input, output, __name__) as (infile, out), \
-            open(merge_log, "w") as bc_merge_file:
-        print("Previous_barcode,New_barcode", file=bc_merge_file)
-        for read in tqdm(infile, desc="Writing output", total=summary["Total reads"]):
+    if output_pickle:
+        logger.info(f"Writing pickle object to {output_pickle}")
+        with open(output_pickle, 'wb') as file:
+            pickle.dump(barcode_graph.graph, file, pickle.HIGHEST_PROTOCOL)
 
-            # If read barcode in merge dict, change tag and header to compensate.
-            previous_barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
-            if previous_barcode in merge_dict:
-                summary["Reads with new barcode"] += 1
-                new_barcode = str(merge_dict[previous_barcode])
-                read.set_tag(barcode_tag, new_barcode, value_type="Z")
-
-                # Merge file writing
-                if previous_barcode not in barcodes_written:
-                    barcodes_written.add(previous_barcode)
-                    print(f"{previous_barcode},{new_barcode}", file=bc_merge_file)
-
-            out.write(read)
+    if output_merges:
+        logger.info(f"Writing merges to {output_merges}")
+        with open(output_merges, 'w') as file:
+            for old_barcode, new_barcode in barcode_graph.iter_merges():
+                summary["Barcodes removed"] += 1
+                print(old_barcode, new_barcode, sep=",", file=file)
 
     logger.info("Finished")
     print_stats(summary, name=__name__)
@@ -175,11 +169,11 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
     return False
 
 
-def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, summary):
+def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int, summary):
     """
     Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
     :param positions: list: Position to check for duplicates
-    :param merge_dict: dict: Tracks which barcodes should be merged.
+    :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param window: int: Max distance allowed between positions to call barcode duplicate.
     :param summary: dict
@@ -190,7 +184,7 @@ def find_barcode_duplicates(positions, buffer_dup_pos, merge_dict, window: int, 
         if tracked_position.has_updated_barcodes:
             if tracked_position.is_duplicate():
                 seed_duplicates(
-                    merge_dict=merge_dict,
+                    barcode_graph=barcode_graph,
                     buffer_dup_pos=buffer_dup_pos,
                     position=tracked_position.position,
                     position_barcodes=tracked_position.barcodes,
@@ -223,12 +217,12 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, window: int):
+def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int):
     """
     Builds up a merge dictionary for which any keys should be overwritten by their value. Also
     keeps all previous positions saved in a list in which all reads which still are withing the
     window size are saved.
-    :param merge_dict: dict: Tracks which barcodes should be merged.
+    :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
     :param position_barcodes: seq: Barcodes at analyzed position
@@ -250,7 +244,7 @@ def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, win
 
             # If two or more unique barcodes are found, update merge dict
             if len(barcode_intersect) >= 2:
-                update_merge_dict(merge_dict, barcode_intersect)
+                barcode_graph.add_connected_barcodes(barcode_intersect)
         else:
             # Remove positions outside of window (at end of list) since positions are sorted.
             for i in range(len(buffer_dup_pos) - index):
@@ -261,53 +255,69 @@ def seed_duplicates(merge_dict, buffer_dup_pos, position, position_barcodes, win
     buffer_dup_pos.appendleft((position, position_barcodes))
 
 
-def update_merge_dict(merge_dict, barcodes):
-    """
-    Add new barcodes to merge_dict.
-    :param merge_dict: dict: Barcode pairs directing merges
-    :param barcodes: set: Barcodes to add
-    """
-    barcodes_sorted = sorted(barcodes)
-    barcodes_real_min = find_min_barcode(barcodes_sorted[0], merge_dict)
-    for barcode_to_merge in barcodes_sorted[1:]:
-        # Never add give one key multiple values (connect the prev/new values instead)
-        if barcode_to_merge in merge_dict:
-            previous_min = find_min_barcode(barcode_to_merge, merge_dict)
-            if not previous_min == barcodes_real_min:
-                if min(barcodes_real_min, previous_min) == barcodes_real_min:
-                    merge_dict[previous_min] = barcodes_real_min
-                else:
-                    merge_dict[barcodes_real_min] = previous_min
+class BarcodeGraph:
+    def __init__(self, graph=None):
+        self.graph = graph if graph else defaultdict(set)
+        self._seen = set()
 
-        # Normal case, just add high_bc_id => min_bc_id
-        else:
-            merge_dict[barcode_to_merge] = barcodes_real_min
+    def add_connected_barcodes(self, barcodes):
+        for barcode in barcodes:
+            self.graph[barcode].update(barcodes - set(barcode))
 
+    def _update_component(self, nodes, component):
+        """Breadth-first search of nodes"""
+        new_nodes = set()
+        for n in nodes:
+            if n not in self._seen:
+                self._seen.add(n)
+                component.add(n)
+                new_nodes |= self.graph[n]
 
-def find_min_barcode(barcode, merge_dict):
-    """
-    Goes through merge dict and finds the alphabetically top string for a chain of key-value
-    entries. E.g if merge_dict has TAGA => GGAT, GGAT => CTGA, CTGA => ACGA it will return ACGA if
-    any of the values CTGA, GGAT, TAGA or ACGA are given.
-    :param: bc_minimum: str: Barcode
-    :param: merge_dict: dict: Barcode pairs directing merges
-    :return: str: alphabetically top barcode string
-    """
-    while barcode in merge_dict:
-        barcode = merge_dict[barcode]
-    return barcode
+        new_nodes = new_nodes.difference(component)
 
+        if new_nodes:
+            self._update_component(new_nodes, component)
 
-def reduce_several_step_redundancy(merge_dict):
-    """
-    Takes translation  dict saved in object and makes sure 5->3, 3->1 becomes 5->1, 3->1
-    :param merge_dict: "messy" merge_dict
-    :return: "clean" merge_dict
-    """
+    def components(self):
+        """Generate all connected components of graph"""
+        self._seen.clear()
+        for node, neigbours in self.graph.items():
+            if node not in self._seen:
+                self._seen.add(node)
+                component = {node}
+                self._update_component(neigbours, component)
+                yield component
 
-    for barcode_to_remove in sorted(merge_dict.keys()):
-        merge_dict[barcode_to_remove] = find_min_barcode(barcode_to_remove, merge_dict)
-    return merge_dict
+    def get_merges(self):
+        """Get dict of barcodes to merge in style of current_barcode -> new_barcode"""
+        return {current: new for current, new in self.iter_merges()}
+
+    def iter_merges(self):
+        """Iterate over merges. Yields tuple with current_barcode and new_barcode"""
+        for component in self.components():
+            barcodes_sorted = sorted(component)
+            barcode_min = barcodes_sorted[0]
+            for barcode in barcodes_sorted[1:]:
+                yield barcode, barcode_min
+
+    def merge(self, other):
+        """Merge BarcodeGraph objects"""
+        for barcode, connected_barcodes in other.graph.items():
+            self.graph[barcode] |= connected_barcodes
+
+    @classmethod
+    def from_graph(cls, graph):
+        """Construct BarcodeGraph instance from existing graph"""
+        return cls(deepcopy(graph))
+
+    @classmethod
+    def from_merges(cls, merges):
+        """Construct BarcodeGraph instance from existing dict of merges"""
+        graph = defaultdict(set)
+        for current_barcode, new_barcode in merges.items():
+            graph[current_barcode].add(new_barcode)
+            graph[new_barcode].add(current_barcode)
+        return cls(graph)
 
 
 def add_arguments(parser):
@@ -315,12 +325,11 @@ def add_arguments(parser):
         "input",
         help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
     parser.add_argument(
-        "merge_log",
-        help="CSV log file containing all merges done. File is in format: "
-        "{old barcode id},{new barcode id}")
+        "--output-pickle",
+        help="Output python dict of barcodes to merge as pickle object.")
     parser.add_argument(
-        "-o", "--output", default="-",
-        help="Write output BAM to file rather then stdout.")
+        "--output-merges",
+        help="Output a CSV log file containing all merges done. File is in format: {old barcode id},{new barcode id}")
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s")
