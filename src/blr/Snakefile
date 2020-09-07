@@ -356,6 +356,7 @@ rule buildmolecules:
         " -b {config[cluster_tag]}"
         " --window {config[window_size]}"
         " --min-mapq {config[min_mapq]}"
+        " --library-type {config[library_type]}"
         " 2> {log}"
 
 

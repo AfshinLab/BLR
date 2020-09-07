@@ -25,7 +25,8 @@ def main(args):
         barcode_tag=args.barcode_tag,
         stats_tsv=args.stats_tsv,
         molecule_tag=args.molecule_tag,
-        min_mapq=args.min_mapq
+        min_mapq=args.min_mapq,
+        library_type=args.library_type
     )
 
 
@@ -37,19 +38,19 @@ def run_buildmolecules(
     barcode_tag: str,
     stats_tsv: str,
     molecule_tag: str,
-    min_mapq: int
+    min_mapq: int,
+    library_type: str
 ):
     summary = Counter()
 
     # Build molecules from BCs and reads
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with pysam.AlignmentFile(input, "rb") as infile:
-        library_type = infile.header.to_dict()["RG"][0]["LB"]
         bc_to_mol_dict, header_to_mol_dict = build_molecules(pysam_openfile=infile,
                                                              barcode_tag=barcode_tag,
                                                              window=window,
                                                              min_reads=threshold,
-                                                             tn5=library_type == "blr",
+                                                             tn5=library_type in {"blr", "stlfr"},
                                                              min_mapq=min_mapq,
                                                              summary=summary)
     pysam.set_verbosity(save)
@@ -175,6 +176,10 @@ class Molecule:
             summary["Tn5-overlapping reads"] += 1
             return True
 
+        # Overlapping reads are ok for non-Tn5 libraries, for example 10x genomics.
+        if not tn5:
+            return True
+        
         summary["Overlapping reads in molecule"] += 1
         return False
 
@@ -362,4 +367,8 @@ def add_arguments(parser):
     parser.add_argument(
         "--min-mapq", type=int, default=0,
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
+    )
+    parser.add_argument(
+        "-l", "--library-type", default="blr", choices=["blr", "10x", "stlfr"],
+        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s"
     )
