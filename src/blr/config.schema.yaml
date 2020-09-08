@@ -114,3 +114,7 @@ properties:
     type: boolean
     default: false
     description: Filter called variants (SNPs and INDELs) before phasing
+  phase_indels:
+    type: boolean
+    default: true
+    description: Phase INDELs along with SNPs

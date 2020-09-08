@@ -11,10 +11,12 @@ rule hapcut2_extracthairs:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
     log: "{base}.hapcut2_extracthairs.log"
+    params:
+        indels = "1" if config["phase_indels"] else "0"
     shell:
         "extractHAIRS"
         " --10X 1"
-        " --indels 1"
+        " --indels {params.indels}"
         " --realign_variants 1"  # Improves overall error-rate
         " --ref {config[genome_reference]}"
         " --bam {input.bam}"
@@ -70,12 +72,13 @@ rule hapcut2_stats:
     input:
         vcf1 = "final.phased.vcf",
     params:
-        vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else ""
+        vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
+        indels = " --indels" if config["phase_indels"] else ""
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " {params.vcf2}"
-        " --indels"
+        " {params.indels}"
         " -o {output.stats}"
 
 
