@@ -166,12 +166,12 @@ def run_tagfastq(
 
             tmp_writer.close()
 
-            logger.info(f"Opening chunks for merge")
+            logger.info("Opening chunks for merge")
             chunks = []
             for chunk in tmpdir.iterdir():
                 chunks.append(open(chunk))
 
-            logger.info(f"Merging chunks")
+            logger.info("Merging chunks")
             for entry in tqdm(heapq.merge(*chunks, key=lambda x: int(x.split(chunk_sep)[0])), desc="Merging chunks"):
                 entry = entry.split(chunk_sep)
                 r1 = dnaio.Sequence(*entry[1:4])
