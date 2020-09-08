@@ -149,17 +149,19 @@ def test_trim_stlfr(tmp_path, read_mapper):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
-def test_trim_tellseq(tmp_path):
+@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
+def test_trim_tellseq(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("tellseq_index", TESTDATA_TELLSEQ_INDEX)]
+        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
+         ("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed):
-        assert count_fastq_reads(raw) >= count_fastq_reads(workdir / trimmed)
+        assert count_fastq_reads(raw) / count_fastq_reads(workdir / trimmed) > 0.9
 
 
 @pytest.mark.parametrize("read_mapper", ["bwa", "minimap2", "ema"])
