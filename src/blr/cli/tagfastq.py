@@ -203,17 +203,20 @@ def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
     canonical_seqs = list()
     heap_index = {}
     for index, cluster in tqdm(enumerate(open_file), desc="Clusters processed"):
-        summary["Corrected barcodes"] += 1
         canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
+        summary["Corrected barcodes"] += 1
+        summary["Reads with corrected barcodes"] += int(size)
+        summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
+
         if skip_singles and int(size) == 1:
             summary["Clusters size 1 skipped"] += 1
             continue
-        summary["Reads with corrected barcodes"] += int(size)
-        summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
+
         corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
         canonical_seqs.append(canonical_seq)
 
     if mapper == "ema":
+        logger.info("Creating heap index for sorting barcodes for ema mapping.")
         # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours.
         scramble(canonical_seqs)
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
@@ -221,14 +224,15 @@ def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
     return corrected_barcodes, heap_index
 
 
-def scramble(seqs):
+def scramble(seqs, maxiter=10):
     """Scramble sequences by moving pairs with similar prefix appart. Loosely based on bubble sort"""
     swapped = True
     iteration = 1
-    while swapped and iteration < 10:
+    while swapped and iteration < maxiter:
         iteration += 1
         swapped = False
         for i in range(len(seqs) - 2):
+            # Compare 16 first bases of both seqs
             if seqs[i][:16] == seqs[i + 1][:16]:
                 # Swap the next-comming elements
                 seqs[i + 2], seqs[i + 1] = seqs[i + 1], seqs[i + 2]
@@ -246,7 +250,7 @@ class BarcodeReader:
     def parse(self):
         for barcode in tqdm(self._file, desc="Uncorrected barcodes processed", disable=True):
             read_name, _ = barcode.name.split(maxsplit=1)
-            yield (read_name, barcode.sequence)
+            yield read_name, barcode.sequence
 
     def get_barcode(self, read_name, maxiter=10):
         if read_name in self._cache:
@@ -308,5 +312,5 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--skip-singles", default=False, action="store_true",
-        help="Skip adding barcode information for corrected barcodes with only one supporting read"
+        help="Skip adding barcode information for corrected barcodes with only one supporting read pair"
     )
