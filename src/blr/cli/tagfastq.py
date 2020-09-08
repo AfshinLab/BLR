@@ -22,18 +22,20 @@ import logging
 import sys
 import dnaio
 from itertools import islice
-from blr.utils import tqdm
+from collections import Counter
+
+from blr.utils import tqdm, print_stats
 
 logger = logging.getLogger(__name__)
 
 
 def main(args):
     logger.info("Starting")
-
+    summary = Counter()
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
     with open(args.corrected_barcodes, "r") as reader:
-        corrected_barcodes = parse_corrected_barcodes(reader)
+        corrected_barcodes = parse_corrected_barcodes(reader, summary, skip_singles=args.skip_singles)
 
     in_interleaved = not args.input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -47,7 +49,6 @@ def main(args):
     out_interleaved = not args.output2
     logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
-    reads_missing_barcode = 0
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with dnaio.open(args.input1, file2=args.input2, interleaved=in_interleaved, mode="r",
                     fileformat="fastq") as reader, \
@@ -63,7 +64,7 @@ def main(args):
             uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
 
             # Check if barcode was found and update header with barcode info.
-            if uncorrected_barcode_seq:
+            if uncorrected_barcode_seq and uncorrected_barcode_seq in corrected_barcodes:
                 corrected_barcode_seq = corrected_barcodes[uncorrected_barcode_seq]
 
                 raw_barcode_id = f"{args.sequence_tag}:Z:{uncorrected_barcode_seq}"
@@ -81,7 +82,7 @@ def main(args):
                     read1.name = " ".join([new_name, nr_and_index1])
                     read2.name = " ".join([new_name, nr_and_index2])
             else:
-                reads_missing_barcode += 1
+                summary["Reads missing barcode"] += 1
 
                 # EMA aligner cannot handle reads without barcodes so these are skipped.
                 if args.mapper == "ema":
@@ -90,21 +91,27 @@ def main(args):
             # Write to out
             writer.write(read1, read2)
 
-    logger.info(f"Read-pairs missing barcodes: {reads_missing_barcode}")
+    print_stats(summary, name=__name__)
 
     logger.info("Finished")
 
 
-def parse_corrected_barcodes(open_file):
+def parse_corrected_barcodes(open_file, summary, skip_singles=False):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
     corrected canonical sequence
     :param open_file: starcode tabular output file.
+    :param summary: collections.Counter object
+    :param skip_singles: bool. Skip clusters of size 1
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
     corrected_barcodes = dict()
     for cluster in tqdm(open_file, desc="Clusters processed"):
-        canonical_seq, _, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
+        summary["Clusters"] += 1
+        canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
+        if skip_singles and int(size) == 1:
+            summary["Clusters size 1 skipped"] += 1
+            continue
         corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
     return corrected_barcodes
 
@@ -177,4 +184,8 @@ def add_arguments(parser):
     parser.add_argument(
         "-m", "--mapper",
         help="Specify read mapper for labeling reads with barcodes. "
+    )
+    parser.add_argument(
+        "--skip-singles", default=False, action="store_true",
+        help="Skip adding barcode information for corrected barcodes with only one supporting read"
     )

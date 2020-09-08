@@ -75,7 +75,7 @@ properties:
     description: Heap space to run java scripts with (gatk).
   library_type:
     type: string
-    pattern: "blr|10x|stlfr"
+    pattern: "blr|10x|stlfr|tellseq"
     description: Library type.
   barcode_whitelist:
     type: [ "string", "null" ]
@@ -102,6 +102,9 @@ properties:
     type: integer
     default: 1000
     description: mosdepth window size in bp to calculate coverage statistics.
+  tellseq_index:
+    type: [ "string", "null" ]
+    description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
   sample_nr:
     type: integer
     default: 1

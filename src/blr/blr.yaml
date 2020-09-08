@@ -10,7 +10,7 @@ genome_reference:  # Path to indexed reference
 dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
 read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2 or ema
-library_type: # Library type. Chose blr, 10x or stlfr
+library_type: # Library type. Chose blr, 10x, stlfr or tellseq
 sample_nr: 1 # Integer used as RG idetifier and to distiguish barcodes when merging BAM files.
 
 #################
@@ -29,6 +29,9 @@ apply_hamming_correction: false # Apply hamming correction when demultiplexing 1
 # stLFR libraries
 stlfr_barcodes: # Path to stLFR barcodes
 stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from tagmentation)
+
+# TELL-Seq libraries
+tellseq_index: # Path to index 1 file containing the associated 18 bp barcode sequences.
 
 ####################
 # Phasing settings #
