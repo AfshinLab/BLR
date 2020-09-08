@@ -179,7 +179,7 @@ class Molecule:
         # Overlapping reads are ok for non-Tn5 libraries, for example 10x genomics.
         if not tn5:
             return True
-        
+
         summary["Overlapping reads in molecule"] += 1
         return False
 
