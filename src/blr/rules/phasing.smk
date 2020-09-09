@@ -2,7 +2,7 @@
 Rules related to phasing of variants (called or reference set)
 """
 import os
-
+import pandas as pd
 
 rule hapcut2_extracthairs:
     """Extract heterozygous variants covered by alignments in BAM"""
@@ -174,7 +174,7 @@ rule lsv_calling:
     env.
     """
     output:
-        results = "final.naibr_sv_calls.bedpe"
+        results = "final.naibr_sv_calls.tsv"
     input:
         config = "naibr.config",
         naibr_path = "NAIBR"
@@ -194,3 +194,43 @@ rule lsv_calling:
         " cd -"
         " &&"
         " mv NAIBR_SVs.bedpe {output.results}"
+
+
+rule format_naibr_bedpe:
+    output:
+        bedpe = "final.naibr_sv_calls.bedpe"
+    input:
+        tsv = "final.naibr_sv_calls.tsv"
+    run:
+        # Translation based on this: https://github.com/raphael-group/NAIBR/issues/11
+        # Note that this is not entirely accurate as the more complex variants are possible.
+        sv_types = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
+        names = ["Chr1",	"Break1",	"Chr2",	"Break2", "SplitMolecules", "DiscordantReads", "Orientation",
+                 "Haplotype", "Score", "PassFilter"]
+        data = pd.read_csv(input.tsv, sep="\t", header=0, names=names)
+        with open(output.bedpe, "w") as file:
+            for nr, row in enumerate(data.itertuples(index=False)):
+                # Use BEDPE format according to 10x: https://support.10xgenomics.com/genome-exome/software/pipelines/latest/output/bedpe
+                # Supported by IGV (see https://github.com/igvteam/igv/wiki/BedPE-Support)
+                print(
+                    row.Chr1,
+                    row.Break1,
+                    row.Break1,
+                    row.Chr2,
+                    row.Break2,
+                    row.Break2,
+                    f"call_{nr}",
+                    row.Score,
+                    "+",
+                    "+",
+                    "." if row.PassFilter == "PASS" else "Filtered",
+                    "Type={};Split_molecules={};Discordant_reads={};Orientation={};Haplotype={}".format(
+                        sv_types[row.Orientation],
+                        row.SplitMolecules,
+                        row.DiscordantReads,
+                        row.Orientation,
+                        row.Haplotype,
+                    ),
+                    sep="\t",
+                    file=file
+                )
