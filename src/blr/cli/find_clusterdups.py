@@ -207,7 +207,10 @@ def get_barcode_threshold(dup_positions, quantile: float = 0.999, min_threshold=
     Calculate upper threshold for number of barcodes per position to include in duplicate query.
     """
     barcode_coverage = np.array([len(position.barcodes) for position in dup_positions.values()])
-    return max(min_threshold, ceil(np.quantile(barcode_coverage, quantile)))
+    if barcode_coverage.size > 0:
+        return max(min_threshold, ceil(np.quantile(barcode_coverage, quantile)))
+    else:
+        return min_threshold
 
 
 def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, window: int, tn5: bool, summary):
