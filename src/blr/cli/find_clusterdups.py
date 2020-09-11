@@ -9,7 +9,7 @@ at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(d
 apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
 """
 
-from pysam import AlignmentFile, AlignedSegment
+from pysam import AlignmentFile, AlignedSegment, set_verbosity
 from argparse import ArgumentError
 import logging
 from collections import Counter, deque, OrderedDict, defaultdict
@@ -117,6 +117,7 @@ def paired_reads(path: str, min_mapq: int, summary):
     :return: read, mate: both as pysam AlignedSegment objects.
     """
     cache = dict()
+    save = set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with AlignmentFile(path) as openin:
         for read in openin:
             summary["Total reads"] += 1
@@ -130,6 +131,7 @@ def paired_reads(path: str, min_mapq: int, summary):
                 continue
             if pair_orientation_is_fr(read, mate, summary):
                 yield read, mate
+    set_verbosity(save)
 
 
 def pair_is_mapped_and_proper(read: AlignedSegment, min_mapq: int, summary) -> bool:
