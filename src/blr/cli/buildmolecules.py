@@ -11,7 +11,7 @@ from collections import Counter, OrderedDict, defaultdict
 import pandas as pd
 import statistics
 
-from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50, tqdm
+from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def run_buildmolecules(
                                                              barcode_tag=barcode_tag,
                                                              window=window,
                                                              min_reads=threshold,
-                                                             tn5=library_type in {"blr", "stlfr"},
+                                                             library=library_type,
                                                              min_mapq=min_mapq,
                                                              summary=summary)
     pysam.set_verbosity(save)
@@ -95,7 +95,7 @@ def parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
         yield barcode, read
 
 
-def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, min_mapq, summary):
+def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type, min_mapq, summary):
     """
     Builds all_molecules.bc_to_mol ([barcode][moleculeID] = molecule) and
     all_molecules.header_to_mol ([read_name]=mol_ID)
@@ -103,13 +103,13 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, tn5, min_map
     :param barcode_tag: Tag used to store barcode in bam file.
     :param window: Max distance between reads to include in the same molecule.
     :param min_reads: Minimum reads to include molecule in all_molecules.bc_to_mol
-    :param tn5: boolean. Library is constructed using Tn5 transposase and has possible 9-bp overlaps.
+    :param library_type: str. Library construction method.
     :param min_mapq: int
     :param summary: dict for stats collection
     :return: dict[barcode][molecule] = moleculeInstance, dict[read_name] = mol_ID
     """
 
-    all_molecules = AllMolecules(min_reads=min_reads, window=window, tn5=tn5)
+    all_molecules = AllMolecules(min_reads=min_reads, window=window, library_type=library_type)
 
     prev_chrom = pysam_openfile.references[0]
     logger.info("Dividing barcodes into molecules")
@@ -164,20 +164,25 @@ class Molecule:
 
         self.number_of_reads += 1
 
-    def has_acceptable_overlap(self, read, tn5, summary):
+    def has_acceptable_overlap(self, read, library_type, summary):
         if read.query_name in self.read_headers:  # Within pair
             return True
 
         if self.stop < read.reference_start:  # No overlap
             return True
 
-        # If tn5 was used for library construction, overlaps of ~9 bp are accepted.
-        if tn5 and 8 <= self.stop - read.reference_start <= 10:
+        # If Tn5 transposase was used for library construction, overlaps of ~9 bp are accepted.
+        if library_type in {'blr', 'stlfr'} and 8 <= self.stop - read.reference_start <= 10:
             summary["Tn5-overlapping reads"] += 1
             return True
 
-        # Overlapping reads are ok for non-Tn5 libraries, for example 10x genomics.
-        if not tn5:
+        # If MuA transposase was used for library construction, overlaps of ~5 bp are accepted.
+        if library_type == 'tellseq' and 4 <= self.stop - read.reference_start <= 6:
+            summary["MuA-overlapping reads"] += 1
+            return True
+
+        # Overlapping reads are ok for 10x genomics libraries.
+        if library_type == "10x":
             return True
 
         summary["Overlapping reads in molecule"] += 1
@@ -199,11 +204,11 @@ class AllMolecules:
     reads in .molecule_cache.
     """
 
-    def __init__(self, min_reads, window, tn5):
+    def __init__(self, min_reads, window, library_type):
         """
         :param min_reads: Minimum reads required to add molecule to .bc_to_mol from .cache_dict
         :param window: Current window for detecting molecules.
-        :param tn5: bool. If library is of Tn5 type.
+        :param library_type: str. Library construction method
         """
 
         # Min required reads for calling proximal reads a molecule
@@ -213,7 +218,7 @@ class AllMolecules:
         self.window = window
 
         # Bool for checking Tn5 overlaps
-        self.tn5 = tn5
+        self.library_type = library_type
 
         # Molecule tracking system
         self.molecule_cache = OrderedDict()
@@ -245,7 +250,7 @@ class AllMolecules:
         Check if overlap between current read and those in the molecule are acceptable.
         """
         molecule = self.molecule_cache[barcode]
-        return molecule.has_acceptable_overlap(read, self.tn5, summary)
+        return molecule.has_acceptable_overlap(read, self.library_type, summary)
 
     def read_is_in_window(self, read, barcode):
         """
@@ -369,6 +374,6 @@ def add_arguments(parser):
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
     )
     parser.add_argument(
-        "-l", "--library-type", default="blr", choices=["blr", "10x", "stlfr"],
+        "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
         help="Select library type from currently available technologies: %(choices)s. Default: %(default)s"
     )
