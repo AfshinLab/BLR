@@ -16,6 +16,9 @@ else:
         return iterable
 
 
+ACCEPTED_LIBRARY_TYPES = ["blr", "10x", "stlfr", "tellseq"]
+
+
 def is_1_2(s, t):
     """
     Determine whether s and t are identical except for a single character of
