@@ -131,7 +131,7 @@ rule multiqc_summarize:
 
 
 def plot_figures_input(wildcards):
-    if config["library_type"] == "blr":
+    if config["library_type"] in {"blr", "tellseq"}:
         return "final.molecule_stats.filtered.tsv", "barcodes.clstr"
     else:
         return "final.molecule_stats.filtered.tsv"
