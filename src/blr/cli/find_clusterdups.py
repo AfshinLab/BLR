@@ -15,6 +15,8 @@ import logging
 from collections import Counter, deque, OrderedDict, defaultdict
 import pickle
 from copy import deepcopy
+import numpy as np
+from math import ceil
 
 from blr.utils import get_bamtag, print_stats, tqdm
 
@@ -33,6 +35,7 @@ def main(args):
         buffer_size=args.buffer_size,
         window=args.window,
         min_mapq=args.min_mapq,
+        quantile_threshold=args.quantile_threshold,
         library_type=args.library_type
     )
 
@@ -45,53 +48,62 @@ def run_find_clusterdups(
     buffer_size: int,
     window: int,
     min_mapq: int,
+    quantile_threshold: float,
     library_type: str
 ):
     tn5 = library_type in {'blr', 'stlfr'}
     logger.info("Starting Analysis")
     summary = Counter()
     positions = OrderedDict()
+    dup_positions = OrderedDict()
     chrom_prev = None
     pos_prev = 0
     barcode_graph = BarcodeGraph()
-    buffer_dup_pos = deque()
     for read, mate in tqdm(paired_reads(input, min_mapq, summary), desc="Reading pairs"):
         barcode = get_bamtag(read, barcode_tag)
         if not barcode:
             summary["Non tagged reads"] += 2
             continue
 
-        if mate.is_read1 and read.is_read2:
-            orientation = "F"
-        else:
-            orientation = "R"
+        orientation = "F" if mate.is_read1 and read.is_read2 else "R"
 
         summary["Reads analyzed"] += 2
 
         chrom_new = read.reference_name
         pos_new = read.reference_start
 
-        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') with is used to group
+        # Store position (5'-ends of R1 and R2) and orientation ('F' or 'R') which is used to group
         # duplicates. Based on picard MarkDuplicates definition, see
         # https://sourceforge.net/p/samtools/mailman/message/25062576/
         current_position = (mate.reference_start, read.reference_end, orientation)
 
         if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
-            find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, tn5)
+            find_duplicate_positions(positions, dup_positions)
 
             if chrom_new != chrom_prev:
-                positions.clear()
-                buffer_dup_pos.clear()
+                if chrom_prev is not None:
+                    threshold = get_barcode_threshold(dup_positions, quantile=quantile_threshold)
+
+                    summary["Barcode duplicate positions"] += len(dup_positions)
+
+                    logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes for {chrom_prev}")
+                    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window, tn5, summary)
+                    positions.clear()
+                    dup_positions.clear()
                 chrom_prev = chrom_new
 
             pos_prev = pos_new
 
-        if current_position not in positions:
-            positions[current_position] = PositionTracker(current_position)
-        positions[current_position].add_barcode(barcode)
+        positions.setdefault(current_position, PositionTracker(current_position)).add_barcode(barcode)
 
     # Process last chunk
-    find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window, tn5)
+    find_duplicate_positions(positions, dup_positions)
+    threshold = get_barcode_threshold(dup_positions, quantile=quantile_threshold)
+
+    summary["Barcode duplicate positions"] += len(dup_positions)
+
+    logger.info(f"Using threshold {threshold} to filter duplicate position on contig {chrom_prev}")
+    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window, tn5, summary)
 
     # Write outputs
     if output_pickle:
@@ -172,33 +184,49 @@ def pair_orientation_is_fr(read: AlignedSegment, mate: AlignedSegment, summary) 
     return False
 
 
-def find_barcode_duplicates(positions, buffer_dup_pos, barcode_graph, window: int, tn5: bool):
+def find_duplicate_positions(positions, dup_positions):
     """
-    Parse positions to check for valid duplicate positions that can be quired to find barcodes to merge
-    :param positions: list: Position to check for duplicates
-    :param barcode_graph: dict: Tracks which barcodes should be merged.
-    :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
-    :param window: int: Max distance allowed between positions to call barcode duplicate.
-    :param tn5: bool: Libray constructed using Tn5 tagmentation
+    Parse positions to find duplicate positions, i.e. containing more than one barcode, and add these to the
+    dup_positions list. Non duplicate positions are removed.
     """
     positions_to_remove = list()
     for position, tracked_position in positions.items():
         if tracked_position.has_updated_barcodes:
             if tracked_position.is_duplicate():
-                seed_duplicates(
-                    barcode_graph=barcode_graph,
-                    buffer_dup_pos=buffer_dup_pos,
-                    position=tracked_position.position,
-                    position_barcodes=tracked_position.barcodes,
-                    window=window,
-                    tn5=tn5
-                )
+                dup_positions[position] = tracked_position
             tracked_position.has_updated_barcodes = False
         else:
             positions_to_remove.append(position)
 
     for position in positions_to_remove:
         del positions[position]
+
+
+def get_barcode_threshold(dup_positions, quantile: float = 0.999, min_threshold=6):
+    """
+    Calculate upper threshold for number of barcodes per position to include in duplicate query.
+    """
+    barcode_coverage = np.array([len(position.barcodes) for position in dup_positions.values()])
+    return max(min_threshold, ceil(np.quantile(barcode_coverage, quantile)))
+
+
+def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, window: int, tn5: bool, summary):
+    """
+    Query barcode duplicates from list of duplicate positions. Position are filtered using the set threshold.
+    """
+    buffer_dup_pos = deque()
+    for position, tracked_position in tqdm(dup_positions.items(), desc="Seeding dups"):
+        if len(tracked_position.barcodes) < threshold:
+            summary["Filtered barcode duplicate positions"] += 1
+            seed_duplicates(
+                barcode_graph=barcode_graph,
+                buffer_dup_pos=buffer_dup_pos,
+                position=tracked_position.position,
+                position_barcodes=tracked_position.barcodes,
+                window=window,
+                tn5=tn5,
+                summary=summary
+            )
 
 
 class PositionTracker:
@@ -212,7 +240,7 @@ class PositionTracker:
         self.has_updated_barcodes = False
 
     def add_barcode(self, barcode: str):
-        self.has_updated_barcodes = True
+        self.has_updated_barcodes = barcode not in self.barcodes
         self.reads += 2
         self.barcodes.add(barcode)
 
@@ -220,11 +248,11 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, tn5: bool):
+def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, tn5: bool, summary):
     """
-    Builds up a graph of connected barcodes i.e. barcode sharing two duplicates within the current window. For Tn5 type
-    libraries, overlapping positions are skipped unless they are allowed by Tn5 tagmentation (i.e overlap 9±1 bp). Also
-    keeps all previous positions saved in a list in which all reads which still are withing the window size are saved.
+    Identifies connected barcodes i.e. barcodes sharing two duplicate positions within the current window which is used
+    to construct a graph. For Tn5 type libraries, overlapping positions are not compared unless they are allowed by Tn5
+    tagmentation (i.e overlap 9±1 bp).
     :param barcode_graph: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
@@ -232,13 +260,12 @@ def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, 
     :param window: int: Max distance allowed between postions to call barcode duplicate.
     :param tn5: bool: Libray constructed using Tn5 tagmentation
     """
-
-    # Loop over list to get the positions closest to the analyzed position first. When position
+    # Loop over list to get the positions closest to the analyzed position first. When positions
     # are out of the window size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
         distance = position[0] - compared_position[1]
 
-        # Skip comparison against overlapping reads unless they are from Tn5 tagmentation.
+        # Skip comparison against overlapping reads unless they are from Tn5 tagmentation for Tn5-type libraries.
         if tn5 and distance < 0 and distance not in {-8, -9, -10}:
             continue
 
@@ -337,7 +364,7 @@ def add_arguments(parser):
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s")
     parser.add_argument(
-        "-w", "--window", type=int, default=100000,
+        "-w", "--window", type=int, default=30000,
         help="Window size. Duplicate positions within this distance will be used to find cluster "
         "duplicates. Default: %(default)s")
     parser.add_argument(
@@ -347,6 +374,10 @@ def add_arguments(parser):
     parser.add_argument(
         "--min-mapq", type=int, default=0,
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s")
+    parser.add_argument(
+        "-q", "--quantile-threshold", type=float, default=0.999,
+        help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s"
+    )
     parser.add_argument(
         "-l", "--library-type", default="blr", choices=["blr", "10x", "stlfr"],
         help="Library type of data. Default: %(default)s"

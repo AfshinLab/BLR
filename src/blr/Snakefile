@@ -280,6 +280,7 @@ rule find_clusterdups:
         " --output-pickle {output.pickle}"
         " --min-mapq {config[min_mapq]}"
         " --library-type {config[library_type]}"
+        " --window {config[window_size]}"
         " -b {config[cluster_tag]} 2> {log}"
 
 
