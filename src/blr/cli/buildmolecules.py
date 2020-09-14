@@ -50,7 +50,7 @@ def run_buildmolecules(
                                                              barcode_tag=barcode_tag,
                                                              window=window,
                                                              min_reads=threshold,
-                                                             library=library_type,
+                                                             library_type=library_type,
                                                              min_mapq=min_mapq,
                                                              summary=summary)
     pysam.set_verbosity(save)
