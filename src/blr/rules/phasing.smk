@@ -151,23 +151,29 @@ rule haplotag:
 
 
 
+def bams_for_lsv_calling(wildcards):
+    phased = ".phased" if wildcards.chunk in {c[0].name for c in chunks["phased"]} else ""
+    return {
+        "bam": f"chunks/{{chunk}}.calling{phased}.bam",
+        "bai": f"chunks/{{chunk}}.calling{phased}.bam.bai"
+    }
+
+
 rule build_config:
     """
     Builds a config file required for running NAIBR.
     """
     output:
-        config = "{base}.naibr.config"
-    input:
-        bam = "{base}.calling.phased.bam",
-        index = "{base}.calling.phased.bam.bai"
-    log: "{base}.build_config.log"
+        config = "chunks/{chunk}.naibr.config"
+    input: unpack(bams_for_lsv_calling)
+    log: "chunks/{chunk}.build_config.log"
     params:
         cwd = os.getcwd(),
         blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
     shell:
         "blr naibrconfig"
         " --bam-file {input.bam}"
-        " --outdir {params.cwd}/{wildcards.base}_naibr"
+        " --outdir {params.cwd}/chunks/{wildcards.chunk}_naibr"
         " --distance 10000"
         " --min-mapq {config[naibr_min_mapq]}"
         " --min-sv 1000"

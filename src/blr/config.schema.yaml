@@ -125,6 +125,9 @@ properties:
     type: boolean
     default: true
     description: Phase INDELs along with SNPs
+  phasing_contigs:
+    type: ["string", "null"]
+    description: Chromosomes/contigs to perform phasing on. Must be a continous string with comma separated contigs.
   naibr_path:
     type: ["string", "null"]
     description: Path to NAIBR folder
