@@ -202,7 +202,7 @@ def find_duplicate_positions(positions, dup_positions):
         del positions[position]
 
 
-def get_barcode_threshold(dup_positions, quantile: float = 0.999, min_threshold=6):
+def get_barcode_threshold(dup_positions, quantile: float = 0.99, min_threshold=6):
     """
     Calculate upper threshold for number of barcodes per position to include in duplicate query.
     """
@@ -378,7 +378,7 @@ def add_arguments(parser):
         "--min-mapq", type=int, default=0,
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s")
     parser.add_argument(
-        "-q", "--quantile-threshold", type=float, default=0.999,
+        "-q", "--quantile-threshold", type=float, default=0.99,
         help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s"
     )
     parser.add_argument(

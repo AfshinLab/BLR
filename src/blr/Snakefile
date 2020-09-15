@@ -281,6 +281,7 @@ rule find_clusterdups:
         " --min-mapq {config[min_mapq]}"
         " --library-type {config[library_type]}"
         " --window {config[window_size]}"
+        " --quantile-threshold 0.99"
         " -b {config[cluster_tag]} 2> {log}"
 
 
