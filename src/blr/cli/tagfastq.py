@@ -26,6 +26,7 @@ from collections import Counter
 import heapq
 from pathlib import Path
 import tempfile
+from contextlib import ExitStack
 
 from blr.utils import tqdm, print_stats
 
@@ -166,24 +167,19 @@ def run_tagfastq(
 
             tmp_writer.close()
 
-            logger.info("Opening chunks for merge")
-            chunks = []
-            for chunk in tmpdir.iterdir():
-                chunks.append(open(chunk))
+            with ExitStack() as chunkstack:
+                logger.info("Opening chunks for merge")
+                chunks = []
+                for chunk in tmpdir.iterdir():
+                    chunks.append(chunkstack.enter_context(open(chunk)))
 
-            logger.info("Merging chunks")
-            for entry in tqdm(heapq.merge(*chunks, key=lambda x: int(x.split(chunk_sep)[0])), desc="Merging chunks"):
-                entry = entry.split(chunk_sep)
-                r1 = dnaio.Sequence(*entry[1:4])
-                r2 = dnaio.Sequence(*entry[4:7])
-                writer.write(r1, r2)
-                summary["Read pairs written"] += 1
-
-            for open_chunk in chunks:
-                try:
-                    open_chunk.close()
-                except AttributeError:
-                    pass
+                logger.info("Merging chunks")
+                for entry in heapq.merge(*chunks, key=lambda x: int(x.split(chunk_sep)[0])):
+                    entry = entry.split(chunk_sep)
+                    r1 = dnaio.Sequence(*entry[1:4])
+                    r2 = dnaio.Sequence(*entry[4:7])
+                    writer.write(r1, r2)
+                    summary["Read pairs written"] += 1
 
     print_stats(summary, __name__)
 
