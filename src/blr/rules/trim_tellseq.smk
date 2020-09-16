@@ -52,6 +52,7 @@ rule tag_tellseq_reads:
         " -b {config[cluster_tag]}"
         " -s {config[sequence_tag]}"
         " --mapper {config[read_mapper]}"
+        " --pattern-match {config[tellseq_barcode]}"
         " --skip-singles"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
