@@ -6,23 +6,32 @@ rule tellseq_link_barcodes:
     output: "barcodes.fastq.gz"
     shell: "ln -s {config[tellseq_index]} {output}"
 
-rule tellseq_barcode_clustering:
-    """Cluster barcodes using starcode"""
+
+rule tellseq_barcodes_correction:
+    """Correct barcodes"""
     output:
         "barcodes.clstr"
     input:
         "barcodes.fastq.gz"
-    threads: 20
-    log: "tellseq_barcode_clustering.log"
-    shell:
-        "pigz -cd {input} |"
-        " starcode"
-        " -o {output}"
-        " -t {threads}"
-        " -d 1"
-        " -r 2"
-        " --print-clusters"
-        " 2> {log}"
+    threads: 20 if config["tellseq_correction"] == "cluster" else 1
+    log: "barcodes.clstr.log"
+    run:
+        commands = {
+            "cluster":
+                "pigz -cd {input} |"
+                " starcode"
+                " -o {output}"
+                " -t {threads}"
+                " -d 1"
+                " -r 2"
+                " --print-clusters",
+            "correct_singles":
+                "blr correctbc"
+                " {input}"
+                " -o {output}"
+        }
+        shell(commands[config["tellseq_correction"]] + " 2> {log}")
+
 
 rule tag_tellseq_reads:
     """Tag reads with uncorrected and corrected barcode."""

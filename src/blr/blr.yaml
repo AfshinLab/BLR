@@ -32,6 +32,7 @@ stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from
 
 # TELL-Seq libraries
 tellseq_index: # Path to index 1 file containing the associated 18 bp barcode sequences.
+tellseq_correction: correct_singles # Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
 
 ####################
 # Phasing settings #
