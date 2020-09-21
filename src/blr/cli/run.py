@@ -45,14 +45,14 @@ def add_arguments(parser):
              "graphviz to be installed). Default: %(default)s. To get output to pdf file, pipe output into dot "
              "as follows: blr run --filegraph | dot -Tpdf > filegraph.pdf")
     arg('targets', nargs='*', default=[],
-        help="File(s) to create. If omitted, the full pipeline is run. Include 'from_partial' if initializing from a "
+        help="File(s) to create. If omitted, the full pipeline is run. Include 'anew' if initializing from a "
              "previous analysis run(s).")
 
 
 def main(args):
 
     try:
-        if "from_partial" in args.targets:
+        if "anew" in args.targets:
             run(dryrun=args.dryrun,
                 cores=args.cores,
                 keepgoing=args.keepgoing,
@@ -62,8 +62,8 @@ def main(args):
                 printdag=args.dag,
                 printfilegraph=args.filegraph,
                 targets=None,
-                snakefile="from_partial.smk")
-            args.targets.remove("from_partial")
+                snakefile="run_anew.smk")
+            args.targets.remove("anew")
 
         run(dryrun=args.dryrun,
             cores=args.cores,

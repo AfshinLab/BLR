@@ -1,5 +1,5 @@
 """
-Prepare input for running pipeline starting previously generated run.
+Prepare input for running pipeline starting from previously generated run(s).
 """
 import sys
 import glob

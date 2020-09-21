@@ -225,4 +225,4 @@ def test_init_from_workdir(tmp_path, workdir):
         [("genome_reference", REFERENCE_GENOME),
          ("chunk_size", "50000")]
         )
-    run(workdir=new_workdir, snakefile="from_partial.smk")
+    run(workdir=new_workdir, snakefile="run_anew.smk")
