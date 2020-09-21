@@ -122,7 +122,7 @@ def run_tagfastq(
                     new_name = ":".join([name_and_pos, corrected_barcode_seq])
                     new_name = " ".join((new_name, corr_barcode_id))
                     read1.name, read2.name = new_name, new_name
-                elif args.mapper != "lariat":
+                elif mapper != "lariat":
                     new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
                     read1.name = " ".join([new_name, nr_and_index1])
                     read2.name = " ".join([new_name, nr_and_index2])
@@ -289,8 +289,11 @@ class BarcodeReader:
 
 class Output:
     def __init__(self, file1, file2=None, interleaved=False, mapper=None):
-        if mapper == "lariat":
+        self.mapper = mapper
+        if self.mapper == "lariat":
             self._open_file = xopen(file1, mode='w')
+            if file2:
+                Path(file2).touch()
         else:
             if interleaved:
                 self._open_file = dnaio.open(file1, interleaved=True, mode="w", fileformat="fastq")
