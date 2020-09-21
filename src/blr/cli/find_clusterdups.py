@@ -86,7 +86,8 @@ def run_find_clusterdups(
 
                     summary["Barcode duplicate positions"] += len(dup_positions)
 
-                    logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes for {chrom_prev}")
+                    logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes "
+                                f"for {chrom_prev}")
                     query_barcode_duplicates(dup_positions, barcode_graph, threshold, window, tn5, summary)
                     positions.clear()
                     dup_positions.clear()
