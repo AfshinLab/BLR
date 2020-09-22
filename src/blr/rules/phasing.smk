@@ -142,6 +142,7 @@ rule build_config:
         bam = "final.phased.bam",
         index = "final.phased.bam.bai"
     log: "build_config.log"
+    threads: workflow.cores * 0.75
     params:
         cwd = os.getcwd()
     shell:
@@ -149,9 +150,9 @@ rule build_config:
         " --bam-file {input.bam}"
         " --outdir {params.cwd}"
         " --distance {config[window_size]}"
-        " --min-mapq 40"
+        " --min-mapq {config[min_mapq]}"
         " --min-sv 1000"
-        " --threads {workflow.cores}"
+        " --threads {threads}"
         " --min-overlaps 3"
         " --output {output.config}"
         " 2> {log}"
