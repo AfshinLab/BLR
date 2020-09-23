@@ -124,3 +124,6 @@ properties:
   naibr_path:
     type: ["string", "null"]
     description: Path to NAIBR folder
+  naibr_min_mapq:
+    type: integer
+    description: Minimum mapping quality for NAIBR SV calling

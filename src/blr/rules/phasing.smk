@@ -152,7 +152,7 @@ rule build_config:
         " --bam-file {input.bam}"
         " --outdir {params.cwd}"
         " --distance {config[window_size]}"
-        " --min-mapq {config[min_mapq]}"
+        " --min-mapq {config[naibr_min_mapq]}"
         " --min-sv 1000"
         " --threads {threads}"
         " --min-overlaps 3"
