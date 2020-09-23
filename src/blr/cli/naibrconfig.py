@@ -80,7 +80,7 @@ def copy_and_mod_config(template_file: str, output_file: Path, parameters):
 
 def change_row(row, parameters):
     key = row.split("=", maxsplit=1)[0]
-    if parameters[key]:
+    if parameters[key] is not None:
         row = key + "=" + str(parameters[key]) + "\n"
         logger.info(f"Setting config value '{row.strip()}'")
     else:
