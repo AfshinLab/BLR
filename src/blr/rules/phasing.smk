@@ -117,6 +117,7 @@ rule haplotag:
                 " {input.bam}"
                 " --linked-read-distance-cutoff {config[window_size]}"
                 " --reference {config[genome_reference]}"
+                " -o {output.bam}"
                 " {ignore_readgroups}",
             "blr":
                 "blr phasebam"
@@ -124,11 +125,12 @@ rule haplotag:
                 " --phase-set-tag {config[phase_set_tag]}"
                 " --haplotype-tag {config[haplotype_tag]}"
                 " --min-mapq {config[min_mapq]}"
+                " -o {output.bam}"
                 " {input.bam}"
                 " {input.hapcut2_phase_file}"
         }
         command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log} > {output.bam}")
+        shell(command + " 2> {log}")
 
 
 
