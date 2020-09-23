@@ -1,16 +1,14 @@
-# Whenever this file is updated, you need to run misc/condalock.sh to create
-# the environment.lock.yml file.
-
+# Conda environment for running NAIBR (https://github.com/raphael-group/NAIBR)
+name: naibr
 channels:
   - conda-forge
   - bioconda
-  - anaconda
   - defaults
 dependencies:
-  - python=2.7
-  - pysam
-  - numpy
-  - scipy
-  - matplotlib
-  - future
-  - mpmath
+  - conda-forge::python=2.7.15
+  - bioconda::pysam=0.16.0.1
+  - conda-forge::numpy=1.16.5
+  - conda-forge::scipy=1.2.1
+  - conda-forge::matplotlib=2.2.5
+  - conda-forge::future=0.18.2
+  - conda-forge::mpmath=1.1.0
