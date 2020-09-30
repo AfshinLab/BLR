@@ -23,6 +23,8 @@ def main(args):
 
     if mapper == "ema":
         processing_function = mode_ema
+    elif mapper == "lariat":
+        processing_function = mode_lariat
     else:
         processing_function = mode_samtags_underline_separation
 
@@ -85,6 +87,14 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
         # Make sure that the SAM tag barcode is a substring of the header barcode
         assert header_barcode.startswith(modified_barcode)
         read.set_tag("BX", header_barcode + "-" + str(sample_nr), value_type="Z")
+
+
+def mode_lariat(read, sample_nr, _):
+    # Modify tag barcode to replace '-1' added at end by lariat with the correct sample_nr
+    current_barcode = get_bamtag(read, "BX")
+    if current_barcode and current_barcode.endswith("-1"):
+        modified_barcode = current_barcode[:-2]
+        read.set_tag("BX", modified_barcode + "-" + str(sample_nr), value_type="Z")
 
 
 def add_arguments(parser):
