@@ -85,7 +85,7 @@ def run_tagfastq(
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
         uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
-        if mapper == "ema":
+        if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
@@ -134,11 +134,11 @@ def run_tagfastq(
                     read2.sequence,
                     read2.qualities,
                 )
-
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
                 sample_index_qual = "K" * len(sample_index)
-                print(
+                chunks.build_chunk(
+                    str(heap[corrected_barcode_seq]),
                     f"@{name_and_pos}",
                     read1.sequence,
                     read1.qualities,
@@ -147,8 +147,7 @@ def run_tagfastq(
                     f"{corrected_barcode_seq}-1",
                     corrected_barcode_qual,
                     sample_index,
-                    sample_index_qual,
-                    sep="\n", file=writer
+                    sample_index_qual
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -162,6 +161,13 @@ def run_tagfastq(
                 r1 = dnaio.Sequence(*entry[1:4])
                 r2 = dnaio.Sequence(*entry[4:7])
                 writer.write(r1, r2)
+                summary["Read pairs written"] += 1
+
+        elif mapper == "lariat":
+            chunks.write_chunk()
+
+            for entry in chunks.parse_chunks():
+                print(*entry[1:10], sep="\n", file=writer)
                 summary["Read pairs written"] += 1
 
     print_stats(summary, __name__)
@@ -194,10 +200,13 @@ def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
         corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
         canonical_seqs.append(canonical_seq)
 
-    if mapper == "ema":
+    if mapper in ["ema", "lariat"]:
         logger.info("Creating heap index for sorting barcodes for ema mapping.")
-        # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours.
-        scramble(canonical_seqs)
+
+        # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours for ema.
+        if mapper == "ema":
+            scramble(canonical_seqs)
+
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
 
     return corrected_barcodes, heap_index

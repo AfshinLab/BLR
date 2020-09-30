@@ -155,29 +155,14 @@ rule plot_figures:
         " -o {output} 2> {log}"
 
 
-rule barcode_sort_fastq_lariat:
-    """Sort lariat type interleaved fastq"""
-    output:
-        fastq = "sorted.interleaved.fastq.gz"
-    input:
-        fastq = "trimmed.barcoded.1.fastq.gz"
-    shell:
-        "pigz -cd -p 1 {input.fastq} |"
-        " paste - - - - - - - - - |"
-        " sort -k6 |"
-        " tr '\t' '\n' |"
-        " pigz > {output.fastq}"
-
-
 rule map_sort:
     """Map reads using the aligner specified in configs. Output is sorted."""
     output:
         bam = "initialmapping.bam"
     input:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "lariat" else "sorted.interleaved.fastq.gz"
-    threads: 20
-    params:
+        r1_fastq = "trimmed.barcoded.1.fastq.gz",
         r2_fastq = "trimmed.barcoded.2.fastq.gz"
+    threads: 20
     log:
         map = "read_mapping.log",
         sort = "sorting.log"
@@ -189,7 +174,7 @@ rule map_sort:
                 " -R {readgroup}"
                 " {config[genome_reference]}"
                 " {input.r1_fastq}"
-                " {params.r2_fastq}",
+                " {input.r2_fastq}",
             "bowtie2":
                 "bowtie2"
                 " -p {threads}"
@@ -202,7 +187,7 @@ rule map_sort:
                 " --maxins 2000"
                 " -x {config[genome_reference]}"
                 " -1 {input.r1_fastq}"
-                " -2 {params.r2_fastq}",
+                " -2 {input.r2_fastq}",
             "minimap2":
                 "minimap2"
                 " -ax sr"
@@ -210,11 +195,11 @@ rule map_sort:
                 " -t {threads}"
                 " {config[genome_reference]}"
                 " {input.r1_fastq}"
-                " {params.r2_fastq}",
+                " {input.r2_fastq}",
             "ema":
                 "ema align"
                 " -1 <(pigz -cd {input.r1_fastq})"
-                " -2 <(pigz -cd {params.r2_fastq})"
+                " -2 <(pigz -cd {input.r2_fastq})"
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
