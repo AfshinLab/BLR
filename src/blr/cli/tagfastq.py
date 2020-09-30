@@ -80,23 +80,13 @@ def run_tagfastq(
     out_interleaved = not output2
     logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
-    if mapper == "ema":
-        # Required for ema sorted output
-        # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
-        output_chunk = list()
-        chunk_size = 1_000_000
-        logger.info(f"Using chunks of size {chunk_size} for sorting.")
-        chunk_id = 0
-        tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
-        chunk_file_template = "chunk_*.tsv"
-        chunk_sep = "\t"
-        tmp_writer = open(tmpdir / chunk_file_template.replace("*", str(chunk_id)), "w")
-
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
-    with dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r",
-                    fileformat="fastq") as reader, \
-            Output(output1, output2, interleaved=out_interleaved, mapper=mapper) as writer, \
-            BarcodeReader(uncorrected_barcodes) as uncorrected_barcode_reader:
+    with ExitStack() as stack:
+        reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
+        writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
+        uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
+        if mapper == "ema":
+            chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
             # Header parsing
@@ -135,25 +125,15 @@ def run_tagfastq(
 
             # Write to out
             if mapper == "ema":
-                output_chunk.append(
-                    chunk_sep.join((
-                        str(heap[corrected_barcode_seq]),
-                        read1.name,
-                        read1.sequence,
-                        read1.qualities,
-                        read2.name,
-                        read2.sequence,
-                        read2.qualities,
-                        "\n"
-                    ))
+                chunks.build_chunk(
+                    str(heap[corrected_barcode_seq]),
+                    read1.name,
+                    read1.sequence,
+                    read1.qualities,
+                    read2.name,
+                    read2.sequence,
+                    read2.qualities,
                 )
-                if not summary["Read pairs read"] % chunk_size:
-                    output_chunk = sorted(output_chunk, key=lambda x: int(x.split(chunk_sep)[0]))
-                    tmp_writer.writelines(output_chunk)
-                    output_chunk.clear()
-                    tmp_writer.close()
-                    chunk_id += 1
-                    tmp_writer = open(tmpdir / chunk_file_template.replace("*", str(chunk_id)), "w")
 
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
@@ -176,26 +156,13 @@ def run_tagfastq(
 
         # Empty final cache
         if mapper == "ema":
-            if output_chunk:
-                logger.info(f"Writing chunk {chunk_id}, final")
-                output_chunk = sorted(output_chunk, key=lambda x: int(x.split(chunk_sep)[0]))
-                tmp_writer.writelines(output_chunk)
+            chunks.write_chunk()
 
-            tmp_writer.close()
-
-            with ExitStack() as chunkstack:
-                logger.info("Opening chunks for merge")
-                chunks = []
-                for chunk in tmpdir.iterdir():
-                    chunks.append(chunkstack.enter_context(open(chunk)))
-
-                logger.info("Merging chunks")
-                for entry in heapq.merge(*chunks, key=lambda x: int(x.split(chunk_sep)[0])):
-                    entry = entry.split(chunk_sep)
-                    r1 = dnaio.Sequence(*entry[1:4])
-                    r2 = dnaio.Sequence(*entry[4:7])
-                    writer.write(r1, r2)
-                    summary["Read pairs written"] += 1
+            for entry in chunks.parse_chunks():
+                r1 = dnaio.Sequence(*entry[1:4])
+                r2 = dnaio.Sequence(*entry[4:7])
+                writer.write(r1, r2)
+                summary["Read pairs written"] += 1
 
     print_stats(summary, __name__)
 
@@ -306,8 +273,55 @@ class Output:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._open_file.close()
 
-    def write(self, *args):
-        return self._open_file.write(*args)
+
+class ChunkHandler:
+    def __init__(self, chunk_size: int = 1_000_000):
+        # Required for ema sorted output
+        # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
+        self._output_chunk = list()
+        self._chunk_size = chunk_size
+        self._chunk_id = 0
+        self._tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
+        self._chunk_file_template = "chunk_*.tsv"
+        self._chunk_sep = "\t"
+        self._tmp_writer = self.create_writer()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._tmp_writer.close()
+
+    def create_writer(self):
+        if hasattr(self, "_tmp_writer"):
+            self._tmp_writer.close()
+        tmpfile = self._tmpdir / self._chunk_file_template.replace("*", str(self._chunk_id))
+        self._chunk_id += 1
+        return open(tmpfile, "w")
+
+    def build_chunk(self, *args: str):
+        """Add entry to write to temporary file, first argument should be the heap index"""
+        self._output_chunk.append(self._chunk_sep.join(list(args) + ["\n"]))
+
+        if len(self._output_chunk) % self._chunk_size == 0:
+            self.write_chunk()
+            self._tmp_writer = self.create_writer()
+
+    def write_chunk(self):
+        self._output_chunk.sort(key=lambda x: int(x.split(self._chunk_sep)[0]))
+        self._tmp_writer.writelines(self._output_chunk)
+        self._output_chunk.clear()
+
+    def parse_chunks(self):
+        with ExitStack() as chunkstack:
+            logger.info("Opening chunks for merge")
+            chunks = []
+            for chunk in self._tmpdir.iterdir():
+                chunks.append(chunkstack.enter_context(open(chunk)))
+
+            logger.info("Merging chunks")
+            for entry in heapq.merge(*chunks, key=lambda x: int(x.split(self._chunk_sep)[0])):
+                yield entry.split(self._chunk_sep)
 
 
 def add_arguments(parser):
