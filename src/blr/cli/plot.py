@@ -129,13 +129,16 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
         ax.set_ylabel("Reads per molecule")
 
-    # Histogram of molecule read coverage
-    # - x = molecule read coverage rate
-    # - y = frequency
-    coverage = data["BpCovered"] / data["Length"]
-    with Plot("Molecule read coverage histogram", output_dir=directory) as (fig, ax):
-        coverage.plot(ax=ax, kind="hist", xlim=(0, 1))
-        ax.set_xlabel("Molecule read coverage")
+    # Molecule read coverage
+    data["Coverage"] = data["BpCovered"] / data["Length"]
+    coverage_bins = np.array(range(0, 101)) / 100
+    data["Bin"] = pd.cut(data["Coverage"], bins=coverage_bins, labels=coverage_bins[:-1])
+    binned_coverage = data.groupby("Bin", as_index=False)["Coverage"].count()
+    binned_coverage = binned_coverage[binned_coverage["Coverage"] > 0]  # Remove zero entries
+    print("# Molecule coverage. Use `grep ^MC | cut -f 2-` to extrat this part. Columns are: Molecule coverage bin "
+          "(numbers refer to lower threshold), Count.")
+    for row in binned_coverage.itertuples():
+        print("MC", row.Bin, row.Coverage, sep="\t")
 
     # Molecule coverage vs length
     # - x = molecule length in kbp

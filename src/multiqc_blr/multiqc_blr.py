@@ -57,7 +57,7 @@ def execution_start():
     if 'stats/general_stats' not in config.sp:
         config.update_dict(config.sp,
                            {'stats/general_stats': {'fn': '*.stats.txt',
-                                                    'contents_re': '^# Stats complied from blr.cli.plot*',
+                                                    'contents_re': '^# Stats compiled from blr.cli.plot*',
                                                     'num_lines': 1}})
 
     if 'hapcut2/phasing_stats' not in config.sp:

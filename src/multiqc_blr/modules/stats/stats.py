@@ -2,7 +2,7 @@
 """ BLR MultiQC plugin module for general stats"""
 
 from __future__ import print_function
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import logging
 import pandas as pd
 
@@ -288,45 +288,69 @@ class MultiqcModule(BaseMultiqcModule):
         return len(data_lengths)
 
     def gather_stats(self):
-        data = dict()
+        names = ["MB", "MC"]
+        data = {name: dict() for name in names}
         for f in self.find_log_files('stats/general_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
-            data[sample_name] = {}
-            sample_data = []
+
+            sample_data = defaultdict(list)
             for line in f["f"]:
                 if line.startswith("MB"):
                     _, mol_per_bc, count = line.split("\t")
-                    sample_data.append((int(mol_per_bc), int(count)))
+                    sample_data["MB"].append((int(mol_per_bc), int(count)))
 
-            total_count = sum(s[1] for s in sample_data)
-            data[sample_name] = {mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data}
+                if line.startswith("MC"):
+                    _, coverage_bin, count = line.split("\t")
+                    sample_data["MC"].append((float(coverage_bin), int(count)))
 
+            total_count = sum(s[1] for s in sample_data["MB"])
+            data["MB"][sample_name] = {
+                mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
+            }
+
+            total_count = sum(s[1] for s in sample_data["MC"])
+            data["MC"][sample_name] = {
+                coverage_bin: 100 * count / total_count for coverage_bin, count in sample_data["MC"]
+            }
         # Filter out samples to ignore
-        data = self.ignore_samples(data)
-
-        if len(data) == 0:
-            log.debug("Could not find any stats in {}".format(config.analysis_dir))
+        data = {name: self.ignore_samples(d) for name, d in data.items()}
+        if any(len(d) == 0 for d in data.values()):
+            log.debug("Could not find any stats reports in {}".format(config.analysis_dir))
             return 0
 
-        pconfig = {
-            'id': 'molecules_per_barcode',
-            'title': "Stats: Molecules per barcode",
-            'xlab': "Molecules per barcode",
-            'ylab': 'Fraction of total',
-            'yCeiling': 100,
-            'yLabelFormat': '{value}%',
-            'tt_label': '{point.x} molecules: {point.y:.1f}%',
-        }
-        plot_html = linegraph.plot(data, pconfig)
-
-        # Add a report section with plot
         self.add_section(
             name="Molecules per barcode",
             description="Molecule per barcode",
-            plot=plot_html
+            plot=linegraph.plot(
+                data["MB"],
+                {
+                    'id': 'molecules_per_barcode',
+                    'title': "Stats: Molecules per barcode",
+                    'xlab': "Molecules per barcode",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': '{point.x} molecules: {point.y:.1f}%',
+                })
         )
 
-        return len(data)
+        self.add_section(
+            name="Molecule coverage",
+            description="Molecule coverage",
+            plot=linegraph.plot(
+                data["MC"],
+                {
+                    'id': 'molecule_coverage',
+                    'title': "Stats: Molecule coverage",
+                    'xlab': "Molecules coverage",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': 'Coverage {point.x}: {point.y:.1f}%',
+                })
+        )
+
+        return len(data.popitem()[1])
 
     @staticmethod
     def get_tool_name(file):
