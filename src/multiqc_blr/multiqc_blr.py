@@ -54,6 +54,12 @@ def execution_start():
         config.update_dict(config.sp,
                            {'stats/molecule_lengths': {'fn': '*.molecule_lengths.tsv'}})
 
+    if 'stats/sv_sizes' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/sv_sizes': {'fn': '*.sv_sizes.tsv',
+                                               'contents': 'Size	DEL	INV	DUP',
+                                               'num_lines': 1}})
+
     if 'hapcut2/phasing_stats' not in config.sp:
         # Current looking for file containing the string "switch rate:" on the first line.
         config.update_dict(config.sp,
