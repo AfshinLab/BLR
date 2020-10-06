@@ -227,8 +227,8 @@ def test_plot_figures(workdir):
     target = "figures"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_dir()
-    # Check that folder contains 6 PNG images for multiqc.
-    assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 6
+    # Check that folder contains 5 PNG images for multiqc.
+    assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 5
 
 
 @pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])

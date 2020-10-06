@@ -119,18 +119,6 @@ def process_molecule_stats_file(file, nr=None):
 
 
 def plot_molecule_stats(data: pd.DataFrame, directory: Path):
-    # Histogram of molecule length distribution
-    # - x = molecule length in kbp
-    # - y = sum of lengths in bin
-    with Plot("Molecule length histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        bins, weights = bin_sum(data["Length"], binsize=2000)
-
-        plt.hist(bins[:-1], bins, weights=list(weights))
-        ax.set_ylabel("Total DNA mass")
-        ax.set_yticklabels([])
-        ax.set_xlabel("Molecule length (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
-
     # Read count per molecule vs molecule length
     # - x = molecule length in kbp
     # - y = read count for molecule
