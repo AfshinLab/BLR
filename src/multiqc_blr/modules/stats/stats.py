@@ -43,6 +43,10 @@ class MultiqcModule(BaseMultiqcModule):
         if n_molecule_length_reports > 0:
             log.info("Found {} molecule length reports".format(n_molecule_length_reports))
 
+        n_stats = self.gather_stats()
+        if n_stats > 0:
+            log.info("Found {} stats reports".format(n_stats))
+
     def gather_stats_logs(self):
         # Find and load any input files for this module
         headers = dict()
@@ -282,6 +286,47 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(lengths_writable, "stats_molecule_lengths")
 
         return len(data_lengths)
+
+    def gather_stats(self):
+        data = dict()
+        for f in self.find_log_files('stats/general_stats', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
+            data[sample_name] = {}
+            sample_data = []
+            for line in f["f"]:
+                if line.startswith("MB"):
+                    _, mol_per_bc, count = line.split("\t")
+                    sample_data.append((int(mol_per_bc), int(count)))
+
+            total_count = sum(s[1] for s in sample_data)
+            data[sample_name] = {mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data}
+
+        # Filter out samples to ignore
+        data = self.ignore_samples(data)
+
+        if len(data) == 0:
+            log.debug("Could not find any stats in {}".format(config.analysis_dir))
+            return 0
+
+        pconfig = {
+            'id': 'molecules_per_barcode',
+            'title': "Stats: Molecules per barcode",
+            'xlab': "Molecules per barcode",
+            'ylab': 'Fraction of total',
+            'yCeiling': 100,
+            'yLabelFormat': '{value}%',
+            'tt_label': '{point.x} molecules: {point.y:.1f}%',
+        }
+        plot_html = linegraph.plot(data, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Molecules per barcode",
+            description="Molecule per barcode",
+            plot=plot_html
+        )
+
+        return len(data)
 
     @staticmethod
     def get_tool_name(file):

@@ -12,6 +12,7 @@ from pathlib import Path
 import os
 
 from blr.utils import print_stats, calculate_N50
+from blr import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def main(args):
 
         logger.info(f"File '{filename}' does not match possible inputs. Skipping from analysis.")
 
+    print(f"# Stats compiled from {__name__} ({__version__})")
     for func_name, files in matched.items():
         proc_func = name_to_function.get(func_name)
         proc_func(files, args.output_dir, summary)
@@ -159,13 +161,11 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_yticklabels(map(int, plt.yticks()[0] / 1000))
 
     # Molecules per barcode
-    # - x = molecules per barcode
-    # - y = log frequency
-    barcode_mols = data.groupby("Barcode")["Barcode"].count()
-    with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+2), kind="hist")
-        ax.set_xlabel("Molecules per barcode")
-        ax.set_yscale('log')
+    mols_per_bc = list(Counter(data.groupby("Barcode")["Barcode"].count().values).items())
+    print("# Molecules per barcode. Use `grep ^MB | cut -f 2-` to extrat this part. Columns are: Molecules per "
+          "barcode, Count.")
+    for count, freq in sorted(mols_per_bc):
+        print("MB", count, freq, sep="\t")
 
 
 def bin_sum(data, binsize=2000):

@@ -139,13 +139,15 @@ def plot_figures_input(wildcards):
 
 rule plot_figures:
     """Generate plots for final report."""
-    output: directory("figures")
+    output:
+        images = directory("figures"),
+        stats = "final.stats.txt"
     input: plot_figures_input
     log: "final.plot.log"
     shell:
         "blr plot"
         " {input}"
-        " -o {output} 2> {log}"
+        " -o {output.images} 2> {log} > {output.stats}"
 
 
 rule map_sort:
