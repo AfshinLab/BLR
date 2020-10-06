@@ -12,6 +12,7 @@ from pathlib import Path
 import os
 
 from blr.utils import print_stats, calculate_N50
+from blr import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def main(args):
 
         logger.info(f"File '{filename}' does not match possible inputs. Skipping from analysis.")
 
+    print(f"# Stats compiled from {__name__} ({__version__})")
     for func_name, files in matched.items():
         proc_func = name_to_function.get(func_name)
         proc_func(files, args.output_dir, summary)
@@ -117,18 +119,6 @@ def process_molecule_stats_file(file, nr=None):
 
 
 def plot_molecule_stats(data: pd.DataFrame, directory: Path):
-    # Histogram of molecule length distribution
-    # - x = molecule length in kbp
-    # - y = sum of lengths in bin
-    with Plot("Molecule length histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        bins, weights = bin_sum(data["Length"], binsize=2000)
-
-        plt.hist(bins[:-1], bins, weights=list(weights))
-        ax.set_ylabel("Total DNA mass")
-        ax.set_yticklabels([])
-        ax.set_xlabel("Molecule length (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
-
     # Read count per molecule vs molecule length
     # - x = molecule length in kbp
     # - y = read count for molecule
@@ -139,13 +129,16 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
         ax.set_ylabel("Reads per molecule")
 
-    # Histogram of molecule read coverage
-    # - x = molecule read coverage rate
-    # - y = frequency
-    coverage = data["BpCovered"] / data["Length"]
-    with Plot("Molecule read coverage histogram", output_dir=directory) as (fig, ax):
-        coverage.plot(ax=ax, kind="hist", xlim=(0, 1))
-        ax.set_xlabel("Molecule read coverage")
+    # Molecule read coverage
+    data["Coverage"] = data["BpCovered"] / data["Length"]
+    coverage_bins = np.array(range(0, 101)) / 100
+    data["Bin"] = pd.cut(data["Coverage"], bins=coverage_bins, labels=coverage_bins[:-1])
+    binned_coverage = data.groupby("Bin", as_index=False)["Coverage"].count()
+    binned_coverage = binned_coverage[binned_coverage["Coverage"] > 0]  # Remove zero entries
+    print("# Molecule coverage. Use `grep ^MC | cut -f 2-` to extrat this part. Columns are: Molecule coverage bin "
+          "(numbers refer to lower threshold), Count.")
+    for row in binned_coverage.itertuples():
+        print("MC", row.Bin, row.Coverage, sep="\t")
 
     # Molecule coverage vs length
     # - x = molecule length in kbp
@@ -159,13 +152,11 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_yticklabels(map(int, plt.yticks()[0] / 1000))
 
     # Molecules per barcode
-    # - x = molecules per barcode
-    # - y = log frequency
-    barcode_mols = data.groupby("Barcode")["Barcode"].count()
-    with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+2), kind="hist")
-        ax.set_xlabel("Molecules per barcode")
-        ax.set_yscale('log')
+    mols_per_bc = list(Counter(data.groupby("Barcode")["Barcode"].count().values).items())
+    print("# Molecules per barcode. Use `grep ^MB | cut -f 2-` to extrat this part. Columns are: Molecules per "
+          "barcode, Count.")
+    for count, freq in sorted(mols_per_bc):
+        print("MB", count, freq, sep="\t")
 
 
 def bin_sum(data, binsize=2000):

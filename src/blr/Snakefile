@@ -141,29 +141,15 @@ def plot_figures_input(wildcards):
 
 rule plot_figures:
     """Generate plots for final report."""
-    output: directory("figures")
+    output:
+        images = directory("figures"),
+        stats = "final.stats.txt"
     input: plot_figures_input
     log: "final.plot.log"
     shell:
         "blr plot"
         " {input}"
-        " -o {output} 2> {log}"
-
-
-rule barcode_sort_fastq:
-    """Assumes barcode read name is followed by barcode sequence. Required for EMA aligner.
-    Exmaple: @ST-E00269:339:H27G2CCX2:7:1102:21186:8060:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-    """
-    output:
-        fastq = "sorted.{nr}.fastq.gz"
-    input:
-        fastq = "trimmed.barcoded.{nr}.fastq.gz"
-    shell:
-        "pigz -cd -p 1 {input.fastq} |"
-        " paste - - - - |"
-        " sort -t ' ' -k2 |"
-        " tr '\t' '\n' |"
-        " pigz > {output.fastq}"
+        " -o {output.images} 2> {log} > {output.stats}"
 
 
 rule map_sort:
@@ -171,8 +157,8 @@ rule map_sort:
     output:
         bam = "initialmapping.bam"
     input:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "ema" else "sorted.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
+        r1_fastq = "trimmed.barcoded.1.fastq.gz",
+        r2_fastq = "trimmed.barcoded.2.fastq.gz"
     threads: 20
     log:
         map = "read_mapping.log",
@@ -288,6 +274,9 @@ rule find_clusterdups:
         " {input.bam}"
         " --output-pickle {output.pickle}"
         " --min-mapq {config[min_mapq]}"
+        " --library-type {config[library_type]}"
+        " --window {config[window_size]}"
+        " --quantile-threshold 0.99"
         " -b {config[cluster_tag]} 2> {log}"
 
 
