@@ -141,12 +141,11 @@ rule build_config:
     Builds a config file required for running NAIBR.
     """
     output:
-        config = "naibr.config"
+        config = "{base}.naibr.config"
     input:
-        bam = "final.phased.bam",
-        index = "final.phased.bam.bai"
-    log: "build_config.log"
-    threads: workflow.cores * 0.75
+        bam = "{base}.calling.phased.bam",
+        index = "{base}.calling.phased.bam.bai"
+    log: "{base}.build_config.log"
     params:
         cwd = os.getcwd()
     shell:
@@ -156,7 +155,7 @@ rule build_config:
         " --distance {config[window_size]}"
         " --min-mapq {config[naibr_min_mapq]}"
         " --min-sv 1000"
-        " --threads {threads}"
+        " --threads 1"
         " --min-overlaps 3"
         " --output {output.config}"
         " 2> {log}"
@@ -179,11 +178,11 @@ rule lsv_calling:
     env.
     """
     output:
-        results = "final.naibr_sv_calls.tsv"
+        results = "{base}.naibr_sv_calls.tsv"
     input:
-        config = "naibr.config",
+        config = "{base}.naibr.config",
         naibr_path = "NAIBR"
-    log: "lsv_calling.log"
+    log: "{base}.lsv_calling.log"
     threads: 20
     conda: "../naibr-environment.yml"
     params:

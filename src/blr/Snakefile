@@ -824,3 +824,20 @@ rule collect_alignment_summary_metrics:
         " O={output.metrics}"
         " MAX_INSERT_SIZE=2000"
         " ASSUME_SORTED=true 2> {log}"
+
+
+rule concat_lsv_calls:
+    output:
+        tsv = "final.naibr_sv_calls.tsv"
+    input:
+        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks)
+    run:
+        dfs = list()
+        for file in input.tsv:
+            try:
+                dfs.append(pd.read_csv(file, sep="\t"))
+            except pd.errors.EmptyDataError:
+                continue
+
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t", index=False)
