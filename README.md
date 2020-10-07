@@ -114,6 +114,11 @@ To enable DeepVariant, install it separately to your environment.
 
 This will enable the `variant_caller: deepvariant` option in the analysis config file.    
 
+#### 2.3 Lariat aligner
+
+To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to manually install it within your 
+environment. For help on installation see [the following instructions](doc/lariat_install.rst). 
+
 ### 3. Updating
 
 Change working directory to your blr git folder and update.

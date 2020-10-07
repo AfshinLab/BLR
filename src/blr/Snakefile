@@ -90,16 +90,8 @@ rule fastqc_raw_reads:
         " 2> {log}"
 
 
-rule multiqc_summarize:
-    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
-    more input files it controls when snakemake runs the multiqc summary.
-    """
-    output:
-        multiqc_data_dir = directory("multiqc_data"),
-        summarized_reports = "multiqc_report.html"
-    input:
-        "trimmed.barcoded.1_fastqc.html",
-        "trimmed.barcoded.2_fastqc.html",
+def get_multiqc_input(wildcards):
+    inputs = [
         "figures",
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
@@ -114,6 +106,21 @@ rule multiqc_summarize:
         "final.duplicate_metrics.txt",
         "final.molecule_lengths.tsv",
         "final.alignment_summary_metrics.txt"
+    ]
+    if config["read_mapper"] != "lariat":
+        inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
+    return inputs
+
+
+rule multiqc_summarize:
+    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
+    more input files it controls when snakemake runs the multiqc summary.
+    """
+    output:
+        multiqc_data_dir = directory("multiqc_data"),
+        summarized_reports = "multiqc_report.html"
+    input:
+        get_multiqc_input
     log:
         "multiqc.log"
     shell:
@@ -198,7 +205,36 @@ rule map_sort:
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
-                " -p 10x"
+                " -p 10x",
+            "lariat":
+                # Experimental addition!
+                # Lariat creates a output directory with three files:
+                #  - 000000-chrA_0000000000_pos_bucketed.bam -> Mapped barcode tagged reads for chunk (multiple if run
+                #    on several chunks)
+                #  - ZZZ_unmapped_pos_bucketed.bam --> Unmapped reads
+                #  - bc_sorted_bam.bam --> Concatenated BAM with all reads.
+                # Only the `bc_sorted_bam.bam` is used currently and the rest deleted on step completion. Lariat does not
+                # add read groups (or I cannot figure out how) so this is done separately.
+                "mkdir -p lariat_tmp"
+                " && "
+                "trap 'rm -rf lariat_tmp' EXIT"
+                " && "
+                "lariat"
+                " -reads={input.r1_fastq}"
+                " -genome={config[genome_reference]}"
+                " -threads={threads}"
+                " -trim_length=0"
+                " -first_chunk=True"
+                " -output=lariat_tmp"
+                " -sample_id={readgroup.sample} &> {log.map}"
+                " && "  
+                "samtools addreplacerg"  
+                " -r {readgroup.ID}"
+                " -r {readgroup.LB}"
+                " -r {readgroup.SM}"
+                " -r {readgroup.PL}"
+                " -r {readgroup.PU}"
+                " lariat_tmp/bc_sorted_bam.bam"
         }
         command = commands[config["read_mapper"]]
 
@@ -206,7 +242,7 @@ rule map_sort:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
 
         shell(
-            command + " 2> {log.map} | "
+            command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam}" +
