@@ -288,7 +288,7 @@ class MultiqcModule(BaseMultiqcModule):
         return len(data_lengths)
 
     def gather_stats(self):
-        names = ["MB", "MC"]
+        names = ["MB", "MC", "RB"]
         data = {name: dict() for name in names}
         for f in self.find_log_files('stats/general_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
@@ -303,6 +303,10 @@ class MultiqcModule(BaseMultiqcModule):
                     _, coverage_bin, count = line.split("\t")
                     sample_data["MC"].append((float(coverage_bin), int(count)))
 
+                if line.startswith("RB"):
+                    _, reads_bin, count = line.split("\t")
+                    sample_data["RB"].append((int(reads_bin), int(count)))
+
             total_count = sum(s[1] for s in sample_data["MB"])
             data["MB"][sample_name] = {
                 mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
@@ -312,6 +316,12 @@ class MultiqcModule(BaseMultiqcModule):
             data["MC"][sample_name] = {
                 coverage_bin: 100 * count / total_count for coverage_bin, count in sample_data["MC"]
             }
+
+            total_count = sum(s[1] for s in sample_data["RB"])
+            data["RB"][sample_name] = {
+                reads_bin: 100 * count / total_count for reads_bin, count in sample_data["RB"]
+            }
+
         # Filter out samples to ignore
         data = {name: self.ignore_samples(d) for name, d in data.items()}
         if any(len(d) == 0 for d in data.values()):
@@ -347,6 +357,24 @@ class MultiqcModule(BaseMultiqcModule):
                     'yCeiling': 100,
                     'yLabelFormat': '{value}%',
                     'tt_label': 'Coverage {point.x}: {point.y:.1f}%',
+                })
+        )
+
+        self.add_section(
+            name="Reads per barcode",
+            description="Graph showing reads per barcode. Reads are counted for each barcode and then binned and the "
+                        "total nr of barcodes counted for each bin. The number for each bin relates to the lower bin "
+                        "threshold.",
+            plot=linegraph.plot(
+                data["RB"],
+                {
+                    'id': 'reads_per_barcode',
+                    'title': "Stats: Reads per barcode",
+                    'xlab': "Read count bin",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': 'Read count {point.x}: {point.y:.1f}%',
                 })
         )
 
