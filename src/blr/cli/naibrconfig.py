@@ -48,6 +48,10 @@ def add_arguments(parser):
         "--min-discs", type=int, default=2,
         help="Minimum number of discordant reads. Default: %(default)s")
     parser.add_argument(
+        "-b", "--blacklist", type=Path,
+        help="Path to blacklist. Default: %(default)s"
+    )
+    parser.add_argument(
         "-o", "--output", type=Path, required=True,
         help="Name of output config file.")
 
@@ -63,7 +67,8 @@ def main(args):
         "k": args.min_overlaps,
         "min_len": args.min_len,
         "min_reads": args.min_reads,
-        "min_discs": args.min_discs
+        "min_discs": args.min_discs,
+        "blacklist": args.blacklist
     }
 
     copy_and_mod_config(CONFIGURATION_FILE_NAME, args.output, parameters)

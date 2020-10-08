@@ -147,7 +147,8 @@ rule build_config:
         index = "{base}.calling.phased.bam.bai"
     log: "{base}.build_config.log"
     params:
-        cwd = os.getcwd()
+        cwd = os.getcwd(),
+        blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
     shell:
         "blr naibrconfig"
         " --bam-file {input.bam}"
@@ -157,6 +158,7 @@ rule build_config:
         " --min-sv 1000"
         " --threads 1"
         " --min-overlaps 3"
+        " {params.blacklist}"
         " --output {output.config}"
         " 2> {log}"
 

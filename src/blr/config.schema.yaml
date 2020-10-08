@@ -127,3 +127,6 @@ properties:
   naibr_min_mapq:
     type: integer
     description: Minimum mapping quality for NAIBR SV calling
+  naibr_blacklist:
+    type: ["string", "null"]
+    description: Bed file containing region to skip

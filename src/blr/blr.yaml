@@ -57,3 +57,4 @@ coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage s
 min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
 naibr_min_mapq: 20 # Minimum mapping quality for NAIBR SV calling
+naibr_blacklist: # Bed file containing region to skip
