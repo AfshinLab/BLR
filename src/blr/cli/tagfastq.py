@@ -317,7 +317,7 @@ class ChunkHandler:
             self._tmp_writer = self.create_writer()
 
     def write_chunk(self):
-        self._output_chunk.sort(key=lambda x: int(x.split(self._chunk_sep)[0]))
+        self._output_chunk.sort(key=self._get_heap)
         self._tmp_writer.writelines(self._output_chunk)
         self._output_chunk.clear()
 
@@ -327,8 +327,11 @@ class ChunkHandler:
             chunks = [chunkstack.enter_context(open(chunk)) for chunk in self._tmpdir.iterdir()]
 
             logger.info("Merging chunks")
-            for entry in heapq.merge(*chunks, key=lambda x: int(x.split(self._chunk_sep)[0])):
+            for entry in heapq.merge(*chunks, key=self._get_heap):
                 yield entry.split(self._chunk_sep)
+
+    def _get_heap(self, x):
+        return int(x.split(self._chunk_sep, maxsplit=1)[0])
 
 
 def add_arguments(parser):
