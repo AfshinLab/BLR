@@ -306,7 +306,7 @@ class MultiqcModule(BaseMultiqcModule):
                 data[3][sample_name][row.Size] = row.DUP
 
         # Filter out samples to ignore
-        data = self.ignore_samples(data)
+        data = [self.ignore_samples(d) for d in data]
 
         if len(data[0]) == 0:
             log.debug("Could not find any molecule lengths data in {}".format(config.analysis_dir))
@@ -333,6 +333,18 @@ class MultiqcModule(BaseMultiqcModule):
             description="Size distrobution of called structural variants (SV).",
             plot=plot_html
         )
+
+        general_stats_data = {name: {"svs": sum(total_data.values())} for name, total_data in data[0].items()}
+        general_stats_header = OrderedDict({
+            "svs": {
+                'title': 'SVs',
+                'description': 'Total number of detected structural variants',
+                'scale': 'Blues',
+                'format': '{:,}'
+            },
+        })
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
 
         return len(data[0])
 
