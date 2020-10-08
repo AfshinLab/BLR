@@ -1,4 +1,4 @@
-![CI](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)
+[![CI](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions?query=branch%3Amaster)
 
 :exclamation:**NB! This is currently under heavy development.**:exclamation:
 
