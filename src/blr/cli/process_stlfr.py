@@ -162,9 +162,11 @@ def translate_indeces(indeces, index_to_barcode, summary):
     else:
         # Translate index to barcode sequence, index could be missing e.g. "12_213_" which leades to a empty string
         barcodes = [index_to_barcode[int(i)] for i in indeces.split("_") if i != ""]
-        summary[f"Barcodes of length {len(barcodes)}"] += 1
-        # TODO Currently partial barcodes are kept, possibly only full 3-part barcodes should be included.
-        return "".join(barcodes) if barcodes else None
+        if len(barcodes) != 3:
+            summary[f"Skipped barcode of incorrect length"] += 1
+            return None
+        else:
+            return "".join(barcodes)
 
 
 def parse_barcodes(file):
