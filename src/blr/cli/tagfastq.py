@@ -312,7 +312,7 @@ class ChunkHandler:
         """Add entry to write to temporary file, first argument should be the heap index"""
         self._output_chunk.append(self._chunk_sep.join(list(args) + ["\n"]))
 
-        if len(self._output_chunk) % self._chunk_size == 0:
+        if len(self._output_chunk) == self._chunk_size:
             self.write_chunk()
             self._tmp_writer = self.create_writer()
 
@@ -324,9 +324,7 @@ class ChunkHandler:
     def parse_chunks(self):
         with ExitStack() as chunkstack:
             logger.info("Opening chunks for merge")
-            chunks = []
-            for chunk in self._tmpdir.iterdir():
-                chunks.append(chunkstack.enter_context(open(chunk)))
+            chunks = [chunkstack.enter_context(open(chunk)) for chunk in self._tmpdir.iterdir()]
 
             logger.info("Merging chunks")
             for entry in heapq.merge(*chunks, key=lambda x: int(x.split(self._chunk_sep)[0])):
