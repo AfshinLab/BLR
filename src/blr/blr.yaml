@@ -56,5 +56,5 @@ window_size: 30000 # blr: Window size used for linking reads by barcodes.
 coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
 min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
-naibr_min_mapq: 20 # Minimum mapping quality for NAIBR SV calling
+naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling
 naibr_blacklist: # Bed file containing region to skip

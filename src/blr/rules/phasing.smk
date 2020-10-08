@@ -153,7 +153,7 @@ rule build_config:
         "blr naibrconfig"
         " --bam-file {input.bam}"
         " --outdir {params.cwd}"
-        " --distance {config[window_size]}"
+        " --distance 10000"
         " --min-mapq {config[naibr_min_mapq]}"
         " --min-sv 1000"
         " --threads 1"
