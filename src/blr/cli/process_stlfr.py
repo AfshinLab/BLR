@@ -54,6 +54,9 @@ def run_process_stlfr(
 
     summary = Counter()
 
+    # TODO This translation might not acctually be true since its unsure how the barcode file relates to the tagged
+    #  indeces on the FASTQs. Instead one could generate unique barcodes in for each index combo. This would aslo solve
+    #  https://github.com/FrickTobias/BLR/issues/219 for stLFR reads
     index_to_barcode = {index: barcode for barcode, index in parse_barcodes(barcodes)}
 
     in_interleaved = not input2
