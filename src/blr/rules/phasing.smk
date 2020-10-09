@@ -185,7 +185,7 @@ rule lsv_calling:
         config = "{base}.naibr.config",
         naibr_path = "NAIBR"
     log: "{base}.lsv_calling.log"
-    threads: 20
+    threads: 2
     conda: "../naibr-environment.yml"
     params:
         cwd = os.getcwd()
