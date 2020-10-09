@@ -103,6 +103,11 @@ class MultiqcModule(BaseMultiqcModule):
             )
 
     def parse_stats(self):
+        phased_chroms = []
+        if hasattr(config, "whatshap_config") and "phased_chromosomes" in config.whatshap_config:
+            if config.whatshap_config["phased_chromosomes"] is not None:
+                phased_chroms = config.whatshap_config["phased_chromosomes"].split(",")
+
         table_data = dict()
         snvs_phased_data = dict()
         for f in self.find_log_files('whatshap/stats', filehandles=True):
@@ -127,6 +132,8 @@ class MultiqcModule(BaseMultiqcModule):
 
             snvs_phased_data[s_name] = dict()
             for row in s_data.itertuples():
+                if phased_chroms and row.chromosome not in phased_chroms:
+                    continue
                 snvs_phased_data[s_name][row.chromosome] = row.percent_SNVs_phased
 
         # Filter out samples to ignore
