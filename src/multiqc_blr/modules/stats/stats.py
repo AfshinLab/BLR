@@ -137,34 +137,34 @@ class MultiqcModule(BaseMultiqcModule):
                     "n50_lpm": {
                         'title': 'N50 LPM',
                         'description': 'N50 linked-reads per molecule',
-                        'scale': 'Blues',
+                        'scale': 'OrRd',
                         'format': '{:,}'
                     },
                     "mean_molecule_length_kbp": {
                         'title': 'Mean len',
                         'description': 'Mean molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'PuBu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "median_molecule_length_kbp": {
                         'title': 'Median len',
                         'description': 'Median molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'BuPu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "dna_in_molecules_20_kbp_percent": {
                         'title': '>20kbp',
                         'description': 'Percent of DNA in molecules longer than 20 kbp',
-                        'scale': 'Blues',
+                        'scale': 'Oranges',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "dna_in_molecules_100_kbp_percent": {
                         'title': '>100kbp',
                         'description': 'Percent of DNA in molecules longer than 100 kbp',
-                        'scale': 'Blues',
+                        'scale': 'YlOrBr',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
@@ -172,7 +172,7 @@ class MultiqcModule(BaseMultiqcModule):
                         'title': '# Bc',
                         'description': 'Number of barcodes in final data.',
                         'suffix': 'M',
-                        'scale': 'Blues',
+                        'scale': 'BuGn',
                         'format': '{:,.1f}'
                     },
 
@@ -212,7 +212,7 @@ class MultiqcModule(BaseMultiqcModule):
             "longest_phaseblock": {
                 'title': 'Top block',
                 'description': 'Longest phaseblock created',
-                'scale': 'Blues',
+                'scale': 'YlGn',
                 'suffix': ' Mbp',
                 'format': '{:,.3f}'
             }})
