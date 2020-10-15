@@ -60,7 +60,7 @@ class MultiqcModule(BaseMultiqcModule):
 
             general_stats_header = OrderedDict({
                 "percent_SNVs_phased": {
-                    'title': 'SNVs phased',
+                    'title': '% phased',
                     'description': 'Percentage of heterozygous SNVs that are phased',
                     'scale': 'Blues',
                     'suffix': '%',

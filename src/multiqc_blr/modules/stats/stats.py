@@ -155,22 +155,22 @@ class MultiqcModule(BaseMultiqcModule):
                         'format': '{:,.1f}'
                     },
                     "dna_in_molecules_20_kbp_percent": {
-                        'title': 'DNA>20kbp',
+                        'title': '>20kbp',
                         'description': 'Percent of DNA in molecules longer than 20 kbp',
                         'scale': 'Blues',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "dna_in_molecules_100_kbp_percent": {
-                        'title': 'DNA>100kbp',
+                        'title': '>100kbp',
                         'description': 'Percent of DNA in molecules longer than 100 kbp',
                         'scale': 'Blues',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "nr_barcodes_final_millions": {
-                        'title': '# barcodes',
-                        'description': 'Number of barcode in final data.',
+                        'title': '# Bc',
+                        'description': 'Number of barcodes in final data.',
                         'suffix': 'M',
                         'scale': 'Blues',
                         'format': '{:,.1f}'
@@ -210,7 +210,7 @@ class MultiqcModule(BaseMultiqcModule):
         }
         general_stats_header = OrderedDict({
             "longest_phaseblock": {
-                'title': 'Longest phaseblock',
+                'title': 'Top block',
                 'description': 'Longest phaseblock created',
                 'scale': 'Blues',
                 'suffix': ' Mbp',

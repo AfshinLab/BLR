@@ -129,7 +129,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         general_stats_header = OrderedDict({
             "N50_phaseblock": {
-                'title': 'N50 phaseblock',
+                'title': 'N50 block',
                 'description': 'N50 statistic for phaseblock lengths',
                 'scale': 'Blues',
                 'suffix': ' Mbp',
