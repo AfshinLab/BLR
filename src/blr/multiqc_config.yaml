@@ -10,6 +10,8 @@ table_columns_visible:
         overall_alignment_rate: False
     Cutadapt:
         percent_trimmed: False
+    FastQC:
+        percent_duplicates: False
 
 extra_fn_clean_exts:
     - type: remove
