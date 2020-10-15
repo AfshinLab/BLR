@@ -80,7 +80,7 @@ class MultiqcModule(BaseMultiqcModule):
                     'xlab': 'Chromosome',
                     'ylab': '% SNVs phased',
                     'ymax': 100,
-                    'ymin': 80,
+                    'ymin': 95,
                     'categories': True,
                     'tt_label': '<b>{point.x}</b>: {point.y:.3f}%',
                 })
