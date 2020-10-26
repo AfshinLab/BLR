@@ -205,7 +205,7 @@ def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
 
         # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours for ema.
         if mapper == "ema":
-            scramble(canonical_seqs)
+            scramble(canonical_seqs, maxiter=100)
 
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
 
@@ -216,17 +216,26 @@ def scramble(seqs, maxiter=10):
     """Scramble sequences by moving pairs with similar prefix appart. Loosely based on bubble sort"""
     swapped = True
     iteration = 1
+    start_from = 0
     while swapped and iteration < maxiter:
         iteration += 1
         swapped = False
-        for i in range(len(seqs) - 2):
+        swap_pos = []
+        for i in range(start_from, len(seqs) - 2):
             # Compare 16 first bases of both seqs
             if seqs[i][:16] == seqs[i + 1][:16]:
+                swap_pos.append(i)
                 # Swap the next-comming elements
                 seqs[i + 2], seqs[i + 1] = seqs[i + 1], seqs[i + 2]
                 # Set the flag to True so we'll loop again
                 swapped = True
-        logger.info("Iteration " + str(iteration))
+
+        start_from = min(swap_pos) if swap_pos else 0
+
+    if not swapped:
+        logger.info("Scrambling done!")
+    else:
+        logger.warning("Scrambling reached maxiter")
 
 
 class BarcodeReader:
