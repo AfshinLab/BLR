@@ -618,7 +618,7 @@ rule call_variants:
 rule extract_called:
     """Extract SNPs and INDELs from called varinats"""
     output:
-        vcf = "{base}.variants.called.{type,(SNP|INDEL)}.vcf"
+        vcf = temporary("{base}.variants.called.{type,(SNP|INDEL)}.vcf")
     input:
         vcf = "{base}.variants.called.vcf"
     log: "{base}.variants.called.{type,(SNP|INDEL)}.log"
@@ -633,7 +633,7 @@ rule extract_called:
 rule filter_called_snps:
     """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = "{base}.variants.called.SNP.filtered.vcf"
+        vcf = temporary("{base}.variants.called.SNP.filtered.vcf")
     input:
         vcf = "{base}.variants.called.SNP.vcf"
     log: "{base}.variants.called.SNP.filtered.log"
@@ -655,7 +655,7 @@ rule filter_called_snps:
 rule filter_called_indels:
     """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = "{base}.variants.called.INDEL.filtered.vcf"
+        vcf = temporary("{base}.variants.called.INDEL.filtered.vcf")
     input:
         vcf = "{base}.variants.called.INDEL.vcf"
     log: "{base}.variants.called.INDEL.filtered.log"
