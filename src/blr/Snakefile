@@ -626,6 +626,7 @@ rule extract_called:
         "gatk SelectVariants"
         " -V {input.vcf}"
         " -select-type {wildcards.type}"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
@@ -647,6 +648,7 @@ rule filter_called_snps:
         " --genotype-filter-expression 'AD < 2.0'"
         " --filter-name 'lowAF'"
         " --filter-expression 'AF < 0.15'"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
@@ -668,6 +670,7 @@ rule filter_called_indels:
         " --genotype-filter-expression 'AD < 4.0'"
         " --filter-name 'lowAF'"
         " --filter-expression 'AF < 0.25'"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
@@ -680,6 +683,7 @@ rule merge_filtered_snps_indels:
     log: "{base}.variants.called.filtered.log"
     shell:
         "picard MergeVcfs"
+        " --CREATE_INDEX false"
         " -O {output.vcf}"
         " -I {input.vcf_snps}"
         " -I {input.vcf_indels} 2> {log}"
