@@ -105,7 +105,8 @@ def get_multiqc_input(wildcards):
         "final.phasing_stats.txt",
         "final.duplicate_metrics.txt",
         "final.molecule_lengths.tsv",
-        "final.alignment_summary_metrics.txt"
+        "final.alignment_summary_metrics.txt",
+        "blr_mqc.yaml"
     ]
     if config["read_mapper"] != "lariat":
         inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
@@ -135,6 +136,23 @@ rule multiqc_summarize:
         " -m cutadapt"
         " -m custom_content"
         " 2> {log}"
+
+
+rule report_configs:
+    """Translate configs to HTML to include in MultiQC report"""
+    output:
+        yaml = temp("blr_mqc.yaml")
+    run:
+        with open(output.yaml, "w") as configs:
+            print("""id: 'run_configs'
+section_name: 'Run configs'
+plot_type: 'html'
+description: ' for current analysis. Describes which parameter values was used.'
+data: |
+    <dl class="dl-horizontal">""", file=configs)
+            for param, value in config.items():
+                print(f"        <dt>{param}</dt><dd><samp>{value}</samp></dd>", file=configs)
+            print ("    </dl>", file=configs)
 
 
 def plot_figures_input(wildcards):
