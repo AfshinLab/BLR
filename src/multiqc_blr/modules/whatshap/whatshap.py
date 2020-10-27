@@ -33,7 +33,7 @@ class MultiqcModule(BaseMultiqcModule):
              """
         )
 
-        table_data, snvs_phased_data = self.parse_stats()
+        table_data, snvs_phased_data, general_stats_data = self.parse_stats()
 
         if table_data:
             table_headers = self.get_stats_table_headers()
@@ -52,11 +52,6 @@ class MultiqcModule(BaseMultiqcModule):
                     'share_key': False
                 })
             )
-
-            # Add N50 to general stats table
-            general_stats_data = {
-                sample: {"percent_SNVs_phased": data["percent_SNVs_phased"]} for sample, data in table_data.items()
-            }
 
             general_stats_header = OrderedDict({
                 "percent_SNVs_phased": {
@@ -110,6 +105,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         table_data = dict()
         snvs_phased_data = dict()
+        general_stats_data = dict()
         for f in self.find_log_files('whatshap/stats', filehandles=True):
             s_name = self.clean_s_name(f["fn"], f["root"]).replace(".whatshap_stats", "")
             s_data = pd.read_csv(f["f"], sep="\t")
@@ -131,14 +127,23 @@ class MultiqcModule(BaseMultiqcModule):
                 table_data[s_name][parameter] = value
 
             snvs_phased_data[s_name] = dict()
+            general_stats_data[s_name] = dict()
+            phased_snvs = 0
+            snvs = 0
             for row in s_data.itertuples():
                 if phased_chroms and row.chromosome not in phased_chroms:
                     continue
                 snvs_phased_data[s_name][row.chromosome] = row.percent_SNVs_phased
+                phased_snvs += row.phased_snvs
+                snvs += row.heterozygous_snvs
+
+            # Calculate SNVs phased for general stats separately to only include phased chromosomes
+            general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs
 
         # Filter out samples to ignore
         table_data = self.ignore_samples(table_data)
         snvs_phased_data = self.ignore_samples(snvs_phased_data)
+        general_stats_data = self.ignore_samples(general_stats_data)
 
         if len(table_data) == 0:
             log.debug("Could not find any whatshap stats in {}".format(config.analysis_dir))
@@ -148,7 +153,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(table_data, "whatshap_stats")
         self.write_data_file(snvs_phased_data, "whatshap_stats_snvs_phased")
 
-        return table_data, snvs_phased_data
+        return table_data, snvs_phased_data, general_stats_data
 
     def parse_haplotag(self):
         data = defaultdict(dict)
@@ -316,7 +321,8 @@ class MultiqcModule(BaseMultiqcModule):
         # Custom headers added below
         headers['percent_SNVs_phased'] = {
             'title': 'SNVs phased',
-            'description': 'Percentage of heterozygous SNVs that are phased.',
+            'description': 'Percentage of heterozygous SNVs phased. Note that this value can differ from the one in '
+                           'the general stats table which is only calculated for chromosomes specified as phased.',
             'format': '{:,.3f}%',
             'hidden': False,
             'placement': 0,
