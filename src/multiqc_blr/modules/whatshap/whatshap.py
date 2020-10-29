@@ -191,12 +191,14 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Variants',
             'description': 'The total number of variants.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 1
             }
         headers['phased'] = {
             'title': 'Phased variants',
             'description': 'The number of variants that are phased.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 4
         }
         headers['unphased'] = {
@@ -204,6 +206,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The number of variants that are not phased',
             'format': '{:,}',
             'placement': 6,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['singletons'] = {
@@ -211,12 +214,14 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The number of phaseblocks covering only a single variant.',
             'format': '{:,}',
             'placement': 7,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['blocks'] = {
             'title': 'Phaseblocks',
             'description': 'The total number of phaseblocks',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 8,
         }
         headers['variant_per_block_median'] = {
@@ -224,6 +229,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The median number of variants covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 9,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_avg'] = {
@@ -231,6 +237,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The average number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 10,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_min'] = {
@@ -238,6 +245,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The minimum of variants covered by a phaseblock.',
             'format': '{:,}',
             'placement': 11,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_max'] = {
@@ -245,6 +253,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The maximum of variants covered by a phaseblock i.e. the shortest phaseblock.',
             'format': '{:,}',
             'placement': 12,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_sum'] = {
@@ -252,6 +261,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The total sum of variants covered by phaseblocks.',
             'format': '{:,}',
             'placement': 13,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_median'] = {
@@ -259,6 +269,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The median number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 14,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_avg'] = {
@@ -266,6 +277,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The average number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 15,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_min'] = {
@@ -273,6 +285,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The minimum of basepairs covered by a phaseblock i.e. the shortest phaseblock.',
             'format': '{:,}',
             'placement': 16,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_max'] = {
@@ -280,6 +293,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The maximum of basepairs covered by a phaseblock i.e. the longest phaseblock.',
             'format': '{:,}',
             'placement': 17,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_sum'] = {
@@ -287,6 +301,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The total sum of basepairs covered by phaseblocks',
             'format': '{:,}',
             'placement': 18,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['heterozygous_variants'] = {
@@ -294,12 +309,14 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'Number of heterozygous variants',
             'format': '{:,}',
             'placement': 2,
+            'scale': 'Blues',
             'hidden': False,
         }
         headers['heterozygous_snvs'] = {
             'title': 'Heterozygous SNVs',
             'description': 'Number of heterozygous SNVs',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 3,
             'hidden': False,
         }
@@ -307,6 +324,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Phased SNVs',
             'description': 'Number of phased SNVs',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 5,
             'hidden': False,
         }
@@ -314,6 +332,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Phaseblock N50',
             'description': 'Phaseblock N50 related to genome length.',
             'format': '{:,.3f}',
+            'scale': 'Blues',
             'hidden': True,
             'placement': 19,
         }
@@ -325,6 +344,7 @@ class MultiqcModule(BaseMultiqcModule):
                            'the general stats table which is only calculated for chromosomes specified as phased.',
             'format': '{:,.3f}%',
             'hidden': False,
+            'scale': 'Blues',
             'placement': 0,
         }
         headers['percent_variants_phased'] = {
@@ -332,6 +352,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'Percentage of heterozygous variants that are phased.',
             'format': '{:,.3f}%',
             'hidden': False,
+            'scale': 'Blues',
             'placement': 1,
         }
         return headers
@@ -343,24 +364,28 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Total alignments',
             'description': 'The total number of alignments processed.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 2
             }
         headers['Alignments that could be tagged'] = {
             'title': 'Alignments tagged',
             'description': 'The number of alignments that could be assigned to a haplotype',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 3
             }
         headers['Alignments spanning multiple phase sets'] = {
             'title': 'Multiple PS',
             'description': 'The number of alignments spanning multiple phase sets.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 4
             }
         headers["% tagged"] = {
             'title': 'Tagged',
             'description': 'The percentage of alignments that were assigned to a haplotype.',
             'format': '{:.2f}',
+            'scale': 'Blues',
             'suffix': "%",
             'placement': 1
             }
