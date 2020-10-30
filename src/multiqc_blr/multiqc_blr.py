@@ -5,7 +5,6 @@ We can add any custom Python functions here and call them
 using the setuptools plugin hooks.
 """
 
-from __future__ import print_function
 import logging
 
 from multiqc.utils import config

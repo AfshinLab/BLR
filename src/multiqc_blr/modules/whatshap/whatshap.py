@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for whatshap stats"""
 
-from __future__ import print_function
 import logging
 import pandas as pd
 from collections import OrderedDict, defaultdict
