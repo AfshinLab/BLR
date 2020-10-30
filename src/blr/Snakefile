@@ -294,10 +294,11 @@ rule get_unmapped_reads:
     output:
         bam = temp("unmapped.bam")
     input:
-        bam = "initialmapping.bam"
+        bam = "initialmapping.bam",
+        bai = "initialmapping.bam.bai"
     log: "unmapped.log"
     shell:
-        "samtools view -hf 0x4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view -h {input.bam} '*' | blr tagbam -o {output.bam} - 2> {log}"
 
 
 rule tagbam:

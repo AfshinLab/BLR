@@ -72,9 +72,10 @@ rule get_unmapped_reads_from_input:
     output:
         bam = "unmapped.bam"
     input:
-        bam = "final.bam"
+        bam = "final.bam",
+        bai = "final.bam.bai"
     shell:
-        "samtools view -bhf 13 {input.bam} > {output.bam}"
+        "samtools view -bh {input.bam} '*' > {output.bam}"
 
 
 rule touch_files:
