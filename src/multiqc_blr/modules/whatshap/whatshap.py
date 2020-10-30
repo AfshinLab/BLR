@@ -147,7 +147,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         if len(table_data) == 0:
             log.debug("Could not find any whatshap stats in {}".format(config.analysis_dir))
-            return table_data, snvs_phased_data
+            return table_data, snvs_phased_data, general_stats_data
 
         # Write parsed report data to a file
         self.write_data_file(table_data, "whatshap_stats")
