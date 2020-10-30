@@ -297,7 +297,7 @@ rule get_unmapped_reads:
         bam = "initialmapping.bam"
     log: "unmapped.log"
     shell:
-        "samtools view -hf 13 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view -hf 0x4 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
 
 
 rule tagbam:
@@ -317,7 +317,7 @@ rule tagbam:
 rule find_clusterdups:
     """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
     output:
-        pickle = "{base}.sorted.tag.clusterdups.pickle"
+        pickle = temporary("{base}.sorted.tag.clusterdups.pickle")
     input:
         bam = "{base}.sorted.tag.bam"
     log: "{base}.find_clusterdups.log"
