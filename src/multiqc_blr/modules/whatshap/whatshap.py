@@ -57,6 +57,8 @@ class MultiqcModule(BaseMultiqcModule):
                     'title': '% phased',
                     'description': 'Percentage of heterozygous SNVs that are phased',
                     'scale': 'Blues',
+                    'max': 100,
+                    'min': 95,
                     'suffix': '%',
                     'format': '{:,.3f}'
                 }})
