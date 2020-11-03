@@ -111,6 +111,7 @@ def run(
             printfilegraph=printfilegraph,
             targets=targets,
             workdir=workdir,
+            printreason=dryrun
         )
     if not success:
         raise SnakemakeError()
