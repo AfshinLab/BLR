@@ -95,6 +95,10 @@ class MultiqcModule(BaseMultiqcModule):
         phasing_data = dict()
         for f in self.find_log_files('hapcut2/phasing_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phasing_stats", "")
+
+            if sample_name in phasing_data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
             phasing_data[sample_name] = dict()
 
             for parameter, value in self.parse_phasing_stats(f["f"]):

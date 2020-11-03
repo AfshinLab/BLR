@@ -183,6 +183,10 @@ class MultiqcModule(BaseMultiqcModule):
         data_lengths = dict()
         for f in self.find_log_files('stats/phaseblock_data', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phaseblock_data", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             data_lengths[sample_name] = sample_data["Length"].to_list()
 
@@ -249,6 +253,10 @@ class MultiqcModule(BaseMultiqcModule):
         data_lengths = dict()
         for f in self.find_log_files('stats/molecule_lengths', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_lengths", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
             data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
@@ -291,6 +299,9 @@ class MultiqcModule(BaseMultiqcModule):
         data = {name: dict() for name in names}
         for f in self.find_log_files('stats/general_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
+
+            if sample_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
 
             sample_data = defaultdict(list)
             for line in f["f"]:
