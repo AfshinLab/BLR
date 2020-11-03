@@ -61,7 +61,22 @@ class MultiqcModule(BaseMultiqcModule):
                     'min': 95,
                     'suffix': '%',
                     'format': '{:,.3f}'
-                }})
+                },
+                "million_phased_SNVs": {
+                    'title': 'phased',
+                    'description': 'Million of heterozygous SNVs that are phased',
+                    'scale': 'PuRd',
+                    'suffix': 'M',
+                    'format': '{:,.3f}'
+                },
+                "million_SNVs": {
+                    'title': 'SNVs',
+                    'description': 'Million of heterozygous SNVs called',
+                    'scale': 'PuBuGn',
+                    'suffix': 'M',
+                    'format': '{:,.3f}'
+                }
+            })
 
             self.general_stats_addcols(general_stats_data, general_stats_header)
 
@@ -140,6 +155,8 @@ class MultiqcModule(BaseMultiqcModule):
 
             # Calculate SNVs phased for general stats separately to only include phased chromosomes
             general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs
+            general_stats_data[s_name]["million_SNVs"] = snvs / 1_000_000
+            general_stats_data[s_name]["million_phased_SNVs"] = phased_snvs / 1_000_000
 
         # Filter out samples to ignore
         table_data = self.ignore_samples(table_data)
