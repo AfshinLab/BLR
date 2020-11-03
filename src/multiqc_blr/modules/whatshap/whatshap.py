@@ -128,6 +128,8 @@ class MultiqcModule(BaseMultiqcModule):
             if any(s_name in data for data in [table_data, snvs_phased_data, general_stats_data]):
                 log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
 
+            self.add_data_source(f)
+
             s_data = pd.read_csv(f["f"], sep="\t")
 
             # Add custom columns
@@ -184,6 +186,8 @@ class MultiqcModule(BaseMultiqcModule):
 
             if s_name in data:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
+
+            self.add_data_source(f)
 
             s_data = dict()
             collect_data = False

@@ -99,6 +99,8 @@ class MultiqcModule(BaseMultiqcModule):
             if sample_name in phasing_data:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
 
+            self.add_data_source(f)
+
             phasing_data[sample_name] = dict()
 
             for parameter, value in self.parse_phasing_stats(f["f"]):

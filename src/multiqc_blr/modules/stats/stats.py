@@ -68,6 +68,8 @@ class MultiqcModule(BaseMultiqcModule):
             if sample_name in data[tool_name]:
                 log.debug(f"Duplicate sample name found for tool {tool_name}! Overwriting: {sample_name}")
 
+            self.add_data_source(f)
+
             data[tool_name][sample_name] = dict()
 
             for parameter, value in self.parse(f["f"]):
@@ -187,6 +189,8 @@ class MultiqcModule(BaseMultiqcModule):
             if sample_name in data_lengths:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
 
+            self.add_data_source(f)
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             data_lengths[sample_name] = sample_data["Length"].to_list()
 
@@ -257,6 +261,8 @@ class MultiqcModule(BaseMultiqcModule):
             if sample_name in data_lengths:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
 
+            self.add_data_source(f)
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
             data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
@@ -302,6 +308,8 @@ class MultiqcModule(BaseMultiqcModule):
 
             if sample_name in data:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
 
             sample_data = defaultdict(list)
             for line in f["f"]:
