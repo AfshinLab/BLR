@@ -739,8 +739,8 @@ rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks),
-        bam_unmapped = "unmapped.bam"
+        bam = ancient(expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks)),
+        bam_unmapped = ancient("unmapped.bam")
     shell:
         "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
 
