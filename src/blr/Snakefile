@@ -822,7 +822,8 @@ rule whatshap_stats:
     output:
         tsv = "final.whatshap_stats.tsv"
     input:
-        phased_vcf = "final.phased.vcf.gz"
+        phased_vcf = "final.phased.vcf.gz",
+        phased_vcf_index = "final.phased.vcf.gz.tbi"
     log: "whatshap_stats.log"
     shell:
          "whatshap stats"
