@@ -125,17 +125,7 @@ rule multiqc_summarize:
     log:
         "multiqc.log"
     shell:
-        "multiqc"
-        " ."
-        " -m mosdepth"
-        " -m fastqc"
-        " -m picard"
-        " -m whatshap"
-        " -m stats"
-        " -m hapcut2"
-        " -m cutadapt"
-        " -m custom_content"
-        " 2> {log}"
+        "multiqc . 2> {log}"
 
 
 rule report_configs:
