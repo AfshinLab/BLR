@@ -71,3 +71,9 @@ sp:
         fn: "cutadapt_trim.log"
     whatshap/stats:
         fn: "final.whatshap_stats.tsv"
+    whatshap/haplotag:
+        fn: "*.haplotag.log"
+    fastqc:
+        fn_re: "trimmed.barcoded.[1|2].fastq.gz"
+    hapcut2/phasing_stats:
+        fn: "final.phasing_stats.txt"
