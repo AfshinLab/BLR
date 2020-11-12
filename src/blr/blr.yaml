@@ -9,7 +9,7 @@ haplotype_tag: HP # Used to store haplotype, same as 10x default. Combined with 
 genome_reference:  # Path to indexed reference
 dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
-read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2 or ema
+read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2, ema or lariat
 library_type: # Library type. Chose blr, 10x, stlfr or tellseq
 sample_nr: 1 # Integer used as RG idetifier and to distiguish barcodes when merging BAM files.
 
@@ -32,6 +32,7 @@ stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from
 
 # TELL-Seq libraries
 tellseq_index: # Path to index 1 file containing the associated 18 bp barcode sequences.
+tellseq_correction: correct_singles # Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
 
 ####################
 # Phasing settings #

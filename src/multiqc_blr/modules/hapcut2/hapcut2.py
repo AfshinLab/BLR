@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for general stats"""
 
-from __future__ import print_function
 from collections import OrderedDict
 import logging
 
@@ -40,6 +39,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Switch rate',
             'description': 'switch errors as a fraction of possible positions for switch errors',
             'format': '{:,.7f}',
+            'scale': 'Blues',
             'placement': 1
             }
 
@@ -47,6 +47,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Mismatch rate',
             'description': 'mismatch errors as a fraction of possible positions for mismatch errors',
             'format': '{:,.7f}',
+            'scale': 'Blues',
             'placement': 2
         }
 
@@ -54,6 +55,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Flat rate',
             'description': 'flat errors as a fraction of possible positions for flat errors',
             'format': '{:,.7f}',
+            'scale': 'Blues',
             'hidden': True,
         }
 
@@ -61,6 +63,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Phased count',
             'description': 'count of total SNVs phased in the test haplotype',
             'format': '{:,.0f}',
+            'scale': 'Blues',
             'placement': 3
         }
 
@@ -68,6 +71,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'AN50 (Mbp)',
             'description': 'the AN50 metric of haplotype completeness',
             'format': '{:,.3f}',
+            'scale': 'Blues',
             'hidden': True
         }
 
@@ -75,6 +79,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'N50 (Mbp)',
             'description': 'the N50 metric of haplotype completeness',
             'format': '{:,.3f}',
+            'scale': 'Blues',
             'placement': 4
         }
 
@@ -82,6 +87,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'SNPs in max blk',
             'description': 'the fraction of SNVs in the largest (most variants phased) block',
             'format': '{:,.0f}',
+            'scale': 'Blues',
             'placement': 5
         }
 
@@ -89,6 +95,12 @@ class MultiqcModule(BaseMultiqcModule):
         phasing_data = dict()
         for f in self.find_log_files('hapcut2/phasing_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phasing_stats", "")
+
+            if sample_name in phasing_data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
             phasing_data[sample_name] = dict()
 
             for parameter, value in self.parse_phasing_stats(f["f"]):
@@ -129,7 +141,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         general_stats_header = OrderedDict({
             "N50_phaseblock": {
-                'title': 'N50 phaseblock',
+                'title': 'N50 block',
                 'description': 'N50 statistic for phaseblock lengths',
                 'scale': 'Blues',
                 'suffix': ' Mbp',

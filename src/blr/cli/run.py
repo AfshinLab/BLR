@@ -112,6 +112,7 @@ def run(
             targets=targets,
             workdir=workdir,
             use_conda=True
+            printreason=dryrun
         )
     if not success:
         raise SnakemakeError()

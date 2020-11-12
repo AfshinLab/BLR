@@ -18,7 +18,7 @@ from copy import deepcopy
 import numpy as np
 from math import ceil
 
-from blr.utils import get_bamtag, print_stats, tqdm
+from blr.utils import get_bamtag, print_stats, tqdm, ACCEPTED_LIBRARY_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -385,6 +385,6 @@ def add_arguments(parser):
         help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s"
     )
     parser.add_argument(
-        "-l", "--library-type", default="blr", choices=["blr", "10x", "stlfr"],
+        "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
         help="Library type of data. Default: %(default)s"
     )

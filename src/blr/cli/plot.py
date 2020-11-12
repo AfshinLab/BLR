@@ -158,6 +158,17 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
     for count, freq in sorted(mols_per_bc):
         print("MB", count, freq, sep="\t")
 
+    # Reads per barcode
+    readcounts = data.groupby("Barcode", as_index=False)["Reads"].sum()
+    read_bins = list(range(0, 4)) + list(range(4, max(readcounts["Reads"])+4, 4))
+    readcounts["Bin"] = pd.cut(readcounts["Reads"], bins=read_bins, labels=read_bins[:-1], right=False)
+    binned_counts = readcounts.groupby("Bin", as_index=False)["Reads"].count()
+    binned_counts = binned_counts[binned_counts["Reads"] > 0]  # Remove zero entries
+    print("# Reads per barcode. Use `grep ^RB | cut -f 2-` to extract this part. Columns are: Reads bin (numbers "
+          "relate to the lower threshold for the bin), Nr of barcodes")
+    for row in binned_counts.itertuples():
+        print("RB", row.Bin, row.Reads, sep="\t")
+
 
 def bin_sum(data, binsize=2000):
     bins = range(0, max(data) + binsize, binsize)

@@ -92,16 +92,8 @@ rule fastqc_raw_reads:
         " 2> {log}"
 
 
-rule multiqc_summarize:
-    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
-    more input files it controls when snakemake runs the multiqc summary.
-    """
-    output:
-        multiqc_data_dir = directory("multiqc_data"),
-        summarized_reports = "multiqc_report.html"
-    input:
-        "trimmed.barcoded.1_fastqc.html",
-        "trimmed.barcoded.2_fastqc.html",
+def get_multiqc_input(wildcards):
+    inputs = [
         "figures",
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
@@ -115,21 +107,44 @@ rule multiqc_summarize:
         "final.phasing_stats.txt",
         "final.duplicate_metrics.txt",
         "final.molecule_lengths.tsv",
-        "final.alignment_summary_metrics.txt"
+        "final.alignment_summary_metrics.txt",
+        "blr_mqc.yaml"
+    ]
+    if config["read_mapper"] != "lariat":
+        inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
+    return inputs
+
+
+rule multiqc_summarize:
+    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
+    more input files it controls when snakemake runs the multiqc summary.
+    """
+    output:
+        multiqc_data_dir = directory("multiqc_data"),
+        summarized_reports = "multiqc_report.html"
+    input:
+        get_multiqc_input
     log:
         "multiqc.log"
     shell:
-        "multiqc"
-        " ."
-        " -m mosdepth"
-        " -m fastqc"
-        " -m picard"
-        " -m whatshap"
-        " -m stats"
-        " -m hapcut2"
-        " -m cutadapt"
-        " -m custom_content"
-        " 2> {log}"
+        "multiqc . 2> {log}"
+
+
+rule report_configs:
+    """Translate configs to HTML to include in MultiQC report"""
+    output:
+        yaml = temp("blr_mqc.yaml")
+    run:
+        with open(output.yaml, "w") as configs:
+            print("""id: 'run_configs'
+section_name: 'Run configs'
+plot_type: 'html'
+description: ' for current analysis. Describes which parameter values was used.'
+data: |
+    <dl class="dl-horizontal">""", file=configs)
+            for param, value in config.items():
+                print(f"        <dt>{param}</dt><dd><samp>{value}</samp></dd>", file=configs)
+            print ("    </dl>", file=configs)
 
 
 def plot_figures_input(wildcards):
@@ -200,7 +215,36 @@ rule map_sort:
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
-                " -p 10x"
+                " -p 10x",
+            "lariat":
+                # Experimental addition!
+                # Lariat creates a output directory with three files:
+                #  - 000000-chrA_0000000000_pos_bucketed.bam -> Mapped barcode tagged reads for chunk (multiple if run
+                #    on several chunks)
+                #  - ZZZ_unmapped_pos_bucketed.bam --> Unmapped reads
+                #  - bc_sorted_bam.bam --> Concatenated BAM with all reads.
+                # Only the `bc_sorted_bam.bam` is used currently and the rest deleted on step completion. Lariat does not
+                # add read groups (or I cannot figure out how) so this is done separately.
+                "mkdir -p lariat_tmp"
+                " && "
+                "trap 'rm -rf lariat_tmp' EXIT"
+                " && "
+                "lariat"
+                " -reads={input.r1_fastq}"
+                " -genome={config[genome_reference]}"
+                " -threads={threads}"
+                " -trim_length=0"
+                " -first_chunk=True"
+                " -output=lariat_tmp"
+                " -sample_id={readgroup.sample} &> {log.map}"
+                " && "  
+                "samtools addreplacerg"  
+                " -r {readgroup.ID}"
+                " -r {readgroup.LB}"
+                " -r {readgroup.SM}"
+                " -r {readgroup.PL}"
+                " -r {readgroup.PU}"
+                " lariat_tmp/bc_sorted_bam.bam"
         }
         command = commands[config["read_mapper"]]
 
@@ -208,7 +252,7 @@ rule map_sort:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
 
         shell(
-            command + " 2> {log.map} | "
+            command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam}" +
@@ -242,10 +286,11 @@ rule get_unmapped_reads:
     output:
         bam = temp("unmapped.bam")
     input:
-        bam = "initialmapping.bam"
+        bam = "initialmapping.bam",
+        bai = "initialmapping.bam.bai"
     log: "unmapped.log"
     shell:
-        "samtools view -hf 13 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view -h {input.bam} '*' | blr tagbam -o {output.bam} - 2> {log}"
 
 
 rule tagbam:
@@ -265,7 +310,7 @@ rule tagbam:
 rule find_clusterdups:
     """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
     output:
-        pickle = "{base}.sorted.tag.clusterdups.pickle"
+        pickle = temporary("{base}.sorted.tag.clusterdups.pickle")
     input:
         bam = "{base}.sorted.tag.bam"
     log: "{base}.find_clusterdups.log"
@@ -584,7 +629,7 @@ rule call_variants:
 rule extract_called:
     """Extract SNPs and INDELs from called varinats"""
     output:
-        vcf = "{base}.variants.called.{type,(SNP|INDEL)}.vcf"
+        vcf = temporary("{base}.variants.called.{type,(SNP|INDEL)}.vcf")
     input:
         vcf = "{base}.variants.called.vcf"
     log: "{base}.variants.called.{type,(SNP|INDEL)}.log"
@@ -592,13 +637,14 @@ rule extract_called:
         "gatk SelectVariants"
         " -V {input.vcf}"
         " -select-type {wildcards.type}"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
 rule filter_called_snps:
     """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = "{base}.variants.called.SNP.filtered.vcf"
+        vcf = temporary("{base}.variants.called.SNP.filtered.vcf")
     input:
         vcf = "{base}.variants.called.SNP.vcf"
     log: "{base}.variants.called.SNP.filtered.log"
@@ -613,13 +659,14 @@ rule filter_called_snps:
         " --genotype-filter-expression 'AD < 2.0'"
         " --filter-name 'lowAF'"
         " --filter-expression 'AF < 0.15'"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
 rule filter_called_indels:
     """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = "{base}.variants.called.INDEL.filtered.vcf"
+        vcf = temporary("{base}.variants.called.INDEL.filtered.vcf")
     input:
         vcf = "{base}.variants.called.INDEL.vcf"
     log: "{base}.variants.called.INDEL.filtered.log"
@@ -634,6 +681,7 @@ rule filter_called_indels:
         " --genotype-filter-expression 'AD < 4.0'"
         " --filter-name 'lowAF'"
         " --filter-expression 'AF < 0.25'"
+        " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
@@ -646,6 +694,7 @@ rule merge_filtered_snps_indels:
     log: "{base}.variants.called.filtered.log"
     shell:
         "picard MergeVcfs"
+        " --CREATE_INDEX false"
         " -O {output.vcf}"
         " -I {input.vcf_snps}"
         " -I {input.vcf_indels} 2> {log}"
@@ -682,8 +731,8 @@ rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks),
-        bam_unmapped = "unmapped.bam"
+        bam = ancient(expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks)),
+        bam_unmapped = ancient("unmapped.bam")
     shell:
         "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
 
@@ -765,7 +814,8 @@ rule whatshap_stats:
     output:
         tsv = "final.whatshap_stats.tsv"
     input:
-        phased_vcf = "final.phased.vcf"
+        phased_vcf = "final.phased.vcf.gz",
+        phased_vcf_index = "final.phased.vcf.gz.tbi"
     log: "whatshap_stats.log"
     shell:
          "whatshap stats"

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for whatshap stats"""
 
-from __future__ import print_function
 import logging
 import pandas as pd
 from collections import OrderedDict, defaultdict
@@ -33,7 +32,7 @@ class MultiqcModule(BaseMultiqcModule):
              """
         )
 
-        table_data, snvs_phased_data = self.parse_stats()
+        table_data, snvs_phased_data, general_stats_data = self.parse_stats()
 
         if table_data:
             table_headers = self.get_stats_table_headers()
@@ -53,19 +52,31 @@ class MultiqcModule(BaseMultiqcModule):
                 })
             )
 
-            # Add N50 to general stats table
-            general_stats_data = {
-                sample: {"percent_SNVs_phased": data["percent_SNVs_phased"]} for sample, data in table_data.items()
-            }
-
             general_stats_header = OrderedDict({
                 "percent_SNVs_phased": {
-                    'title': 'SNVs phased',
+                    'title': '% phased',
                     'description': 'Percentage of heterozygous SNVs that are phased',
                     'scale': 'Blues',
+                    'max': 100,
+                    'min': 95,
                     'suffix': '%',
                     'format': '{:,.3f}'
-                }})
+                },
+                "million_phased_SNVs": {
+                    'title': 'phased',
+                    'description': 'Million of heterozygous SNVs that are phased',
+                    'scale': 'PuRd',
+                    'suffix': 'M',
+                    'format': '{:,.3f}'
+                },
+                "million_SNVs": {
+                    'title': 'SNVs',
+                    'description': 'Million of heterozygous SNVs called',
+                    'scale': 'PuBuGn',
+                    'suffix': 'M',
+                    'format': '{:,.3f}'
+                }
+            })
 
             self.general_stats_addcols(general_stats_data, general_stats_header)
 
@@ -80,7 +91,7 @@ class MultiqcModule(BaseMultiqcModule):
                     'xlab': 'Chromosome',
                     'ylab': '% SNVs phased',
                     'ymax': 100,
-                    'ymin': 80,
+                    'ymin': 95,
                     'categories': True,
                     'tt_label': '<b>{point.x}</b>: {point.y:.3f}%',
                 })
@@ -103,10 +114,22 @@ class MultiqcModule(BaseMultiqcModule):
             )
 
     def parse_stats(self):
+        phased_chroms = []
+        if hasattr(config, "whatshap_config") and "phased_chromosomes" in config.whatshap_config:
+            if config.whatshap_config["phased_chromosomes"] is not None:
+                phased_chroms = config.whatshap_config["phased_chromosomes"].split(",")
+
         table_data = dict()
         snvs_phased_data = dict()
+        general_stats_data = dict()
         for f in self.find_log_files('whatshap/stats', filehandles=True):
             s_name = self.clean_s_name(f["fn"], f["root"]).replace(".whatshap_stats", "")
+
+            if any(s_name in data for data in [table_data, snvs_phased_data, general_stats_data]):
+                log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
+
+            self.add_data_source(f)
+
             s_data = pd.read_csv(f["f"], sep="\t")
 
             # Add custom columns
@@ -126,27 +149,45 @@ class MultiqcModule(BaseMultiqcModule):
                 table_data[s_name][parameter] = value
 
             snvs_phased_data[s_name] = dict()
+            general_stats_data[s_name] = dict()
+            phased_snvs = 0
+            snvs = 0
             for row in s_data.itertuples():
+                if phased_chroms and row.chromosome not in phased_chroms:
+                    continue
                 snvs_phased_data[s_name][row.chromosome] = row.percent_SNVs_phased
+                phased_snvs += row.phased_snvs
+                snvs += row.heterozygous_snvs
+
+            # Calculate SNVs phased for general stats separately to only include phased chromosomes
+            general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs
+            general_stats_data[s_name]["million_SNVs"] = snvs / 1_000_000
+            general_stats_data[s_name]["million_phased_SNVs"] = phased_snvs / 1_000_000
 
         # Filter out samples to ignore
         table_data = self.ignore_samples(table_data)
         snvs_phased_data = self.ignore_samples(snvs_phased_data)
+        general_stats_data = self.ignore_samples(general_stats_data)
 
         if len(table_data) == 0:
             log.debug("Could not find any whatshap stats in {}".format(config.analysis_dir))
-            return table_data, snvs_phased_data
+            return table_data, snvs_phased_data, general_stats_data
 
         # Write parsed report data to a file
         self.write_data_file(table_data, "whatshap_stats")
         self.write_data_file(snvs_phased_data, "whatshap_stats_snvs_phased")
 
-        return table_data, snvs_phased_data
+        return table_data, snvs_phased_data, general_stats_data
 
     def parse_haplotag(self):
         data = defaultdict(dict)
         for f in self.find_log_files("whatshap/haplotag", filehandles=True):
             s_name = self.clean_s_name(f["fn"], f["root"]).replace(".haplotag", "")
+
+            if s_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
+
+            self.add_data_source(f)
 
             s_data = dict()
             collect_data = False
@@ -179,12 +220,14 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Variants',
             'description': 'The total number of variants.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 1
             }
         headers['phased'] = {
             'title': 'Phased variants',
             'description': 'The number of variants that are phased.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 4
         }
         headers['unphased'] = {
@@ -192,6 +235,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The number of variants that are not phased',
             'format': '{:,}',
             'placement': 6,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['singletons'] = {
@@ -199,12 +243,14 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The number of phaseblocks covering only a single variant.',
             'format': '{:,}',
             'placement': 7,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['blocks'] = {
             'title': 'Phaseblocks',
             'description': 'The total number of phaseblocks',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 8,
         }
         headers['variant_per_block_median'] = {
@@ -212,6 +258,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The median number of variants covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 9,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_avg'] = {
@@ -219,6 +266,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The average number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 10,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_min'] = {
@@ -226,6 +274,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The minimum of variants covered by a phaseblock.',
             'format': '{:,}',
             'placement': 11,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_max'] = {
@@ -233,6 +282,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The maximum of variants covered by a phaseblock i.e. the shortest phaseblock.',
             'format': '{:,}',
             'placement': 12,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['variant_per_block_sum'] = {
@@ -240,6 +290,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The total sum of variants covered by phaseblocks.',
             'format': '{:,}',
             'placement': 13,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_median'] = {
@@ -247,6 +298,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The median number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 14,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_avg'] = {
@@ -254,6 +306,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The average number of basepairs covered by phaseblocks.',
             'format': '{:,.3f}',
             'placement': 15,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_min'] = {
@@ -261,6 +314,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The minimum of basepairs covered by a phaseblock i.e. the shortest phaseblock.',
             'format': '{:,}',
             'placement': 16,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_max'] = {
@@ -268,6 +322,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The maximum of basepairs covered by a phaseblock i.e. the longest phaseblock.',
             'format': '{:,}',
             'placement': 17,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['bp_per_block_sum'] = {
@@ -275,6 +330,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'The total sum of basepairs covered by phaseblocks',
             'format': '{:,}',
             'placement': 18,
+            'scale': 'Blues',
             'hidden': True,
         }
         headers['heterozygous_variants'] = {
@@ -282,12 +338,14 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'Number of heterozygous variants',
             'format': '{:,}',
             'placement': 2,
+            'scale': 'Blues',
             'hidden': False,
         }
         headers['heterozygous_snvs'] = {
             'title': 'Heterozygous SNVs',
             'description': 'Number of heterozygous SNVs',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 3,
             'hidden': False,
         }
@@ -295,6 +353,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Phased SNVs',
             'description': 'Number of phased SNVs',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 5,
             'hidden': False,
         }
@@ -302,6 +361,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Phaseblock N50',
             'description': 'Phaseblock N50 related to genome length.',
             'format': '{:,.3f}',
+            'scale': 'Blues',
             'hidden': True,
             'placement': 19,
         }
@@ -309,9 +369,11 @@ class MultiqcModule(BaseMultiqcModule):
         # Custom headers added below
         headers['percent_SNVs_phased'] = {
             'title': 'SNVs phased',
-            'description': 'Percentage of heterozygous SNVs that are phased.',
+            'description': 'Percentage of heterozygous SNVs phased. Note that this value can differ from the one in '
+                           'the general stats table which is only calculated for chromosomes specified as phased.',
             'format': '{:,.3f}%',
             'hidden': False,
+            'scale': 'Blues',
             'placement': 0,
         }
         headers['percent_variants_phased'] = {
@@ -319,6 +381,7 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'Percentage of heterozygous variants that are phased.',
             'format': '{:,.3f}%',
             'hidden': False,
+            'scale': 'Blues',
             'placement': 1,
         }
         return headers
@@ -330,24 +393,28 @@ class MultiqcModule(BaseMultiqcModule):
             'title': 'Total alignments',
             'description': 'The total number of alignments processed.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 2
             }
         headers['Alignments that could be tagged'] = {
             'title': 'Alignments tagged',
             'description': 'The number of alignments that could be assigned to a haplotype',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 3
             }
         headers['Alignments spanning multiple phase sets'] = {
             'title': 'Multiple PS',
             'description': 'The number of alignments spanning multiple phase sets.',
             'format': '{:,}',
+            'scale': 'Blues',
             'placement': 4
             }
         headers["% tagged"] = {
             'title': 'Tagged',
             'description': 'The percentage of alignments that were assigned to a haplotype.',
             'format': '{:.2f}',
+            'scale': 'Blues',
             'suffix': "%",
             'placement': 1
             }

@@ -23,7 +23,7 @@ properties:
     default: HP
   read_mapper:
     type: string
-    pattern: "bwa|bowtie2|minimap2|ema"
+    pattern: "bwa|bowtie2|minimap2|ema|lariat"
     description: Which read mapper to use
   genome_reference:
     type: [ "string", "null" ]
@@ -105,6 +105,10 @@ properties:
   tellseq_index:
     type: [ "string", "null" ]
     description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
+  tellseq_correction:
+    type: "string"
+    description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
+    pattern: "cluster|correct_singles"
   sample_nr:
     type: integer
     default: 1

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for general stats"""
 
-from __future__ import print_function
 from collections import OrderedDict, defaultdict
 import logging
 import pandas as pd
@@ -73,6 +72,8 @@ class MultiqcModule(BaseMultiqcModule):
             if sample_name in data[tool_name]:
                 log.debug(f"Duplicate sample name found for tool {tool_name}! Overwriting: {sample_name}")
 
+            self.add_data_source(f)
+
             data[tool_name][sample_name] = dict()
 
             for parameter, value in self.parse(f["f"]):
@@ -141,42 +142,42 @@ class MultiqcModule(BaseMultiqcModule):
                     "n50_lpm": {
                         'title': 'N50 LPM',
                         'description': 'N50 linked-reads per molecule',
-                        'scale': 'Blues',
+                        'scale': 'OrRd',
                         'format': '{:,}'
                     },
                     "mean_molecule_length_kbp": {
                         'title': 'Mean len',
                         'description': 'Mean molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'PuBu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "median_molecule_length_kbp": {
                         'title': 'Median len',
                         'description': 'Median molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'BuPu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "dna_in_molecules_20_kbp_percent": {
-                        'title': 'DNA>20kbp',
+                        'title': '>20kbp',
                         'description': 'Percent of DNA in molecules longer than 20 kbp',
-                        'scale': 'Blues',
+                        'scale': 'Oranges',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "dna_in_molecules_100_kbp_percent": {
-                        'title': 'DNA>100kbp',
+                        'title': '>100kbp',
                         'description': 'Percent of DNA in molecules longer than 100 kbp',
-                        'scale': 'Blues',
+                        'scale': 'YlOrBr',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "nr_barcodes_final_millions": {
-                        'title': '# barcodes',
-                        'description': 'Number of barcode in final data.',
+                        'title': '# Bc',
+                        'description': 'Number of barcodes in final data.',
                         'suffix': 'M',
-                        'scale': 'Blues',
+                        'scale': 'BuGn',
                         'format': '{:,.1f}'
                     },
 
@@ -188,6 +189,12 @@ class MultiqcModule(BaseMultiqcModule):
         data_lengths = dict()
         for f in self.find_log_files('stats/phaseblock_data', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phaseblock_data", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             data_lengths[sample_name] = sample_data["Length"].to_list()
 
@@ -214,9 +221,9 @@ class MultiqcModule(BaseMultiqcModule):
         }
         general_stats_header = OrderedDict({
             "longest_phaseblock": {
-                'title': 'Longest phaseblock',
+                'title': 'Top block',
                 'description': 'Longest phaseblock created',
-                'scale': 'Blues',
+                'scale': 'YlGn',
                 'suffix': ' Mbp',
                 'format': '{:,.3f}'
             }})
@@ -254,6 +261,12 @@ class MultiqcModule(BaseMultiqcModule):
         data_lengths = dict()
         for f in self.find_log_files('stats/molecule_lengths', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_lengths", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
             data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
@@ -349,10 +362,15 @@ class MultiqcModule(BaseMultiqcModule):
         return len(data[0])
 
     def gather_stats(self):
-        names = ["MB", "MC"]
+        names = ["MB", "MC", "RB"]
         data = {name: dict() for name in names}
         for f in self.find_log_files('stats/general_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
+
+            if sample_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
 
             sample_data = defaultdict(list)
             for line in f["f"]:
@@ -364,6 +382,10 @@ class MultiqcModule(BaseMultiqcModule):
                     _, coverage_bin, count = line.split("\t")
                     sample_data["MC"].append((float(coverage_bin), int(count)))
 
+                if line.startswith("RB"):
+                    _, reads_bin, count = line.split("\t")
+                    sample_data["RB"].append((int(reads_bin), int(count)))
+
             total_count = sum(s[1] for s in sample_data["MB"])
             data["MB"][sample_name] = {
                 mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
@@ -373,6 +395,12 @@ class MultiqcModule(BaseMultiqcModule):
             data["MC"][sample_name] = {
                 coverage_bin: 100 * count / total_count for coverage_bin, count in sample_data["MC"]
             }
+
+            total_count = sum(s[1] for s in sample_data["RB"])
+            data["RB"][sample_name] = {
+                reads_bin: 100 * count / total_count for reads_bin, count in sample_data["RB"]
+            }
+
         # Filter out samples to ignore
         data = {name: self.ignore_samples(d) for name, d in data.items()}
         if any(len(d) == 0 for d in data.values()):
@@ -408,6 +436,24 @@ class MultiqcModule(BaseMultiqcModule):
                     'yCeiling': 100,
                     'yLabelFormat': '{value}%',
                     'tt_label': 'Coverage {point.x}: {point.y:.1f}%',
+                })
+        )
+
+        self.add_section(
+            name="Reads per barcode",
+            description="Graph showing reads per barcode. Reads are counted for each barcode and then binned and the "
+                        "total nr of barcodes counted for each bin. The number for each bin relates to the lower bin "
+                        "threshold.",
+            plot=linegraph.plot(
+                data["RB"],
+                {
+                    'id': 'reads_per_barcode',
+                    'title': "Stats: Reads per barcode",
+                    'xlab': "Read count bin",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': 'Read count {point.x}: {point.y:.1f}%',
                 })
         )
 

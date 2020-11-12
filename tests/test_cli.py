@@ -3,6 +3,7 @@ import shutil
 import pysam
 import pytest
 import dnaio
+from xopen import xopen
 
 from blr.__main__ import main as blr_main
 from blr.cli.init import init, init_from_dir
@@ -43,6 +44,11 @@ def count_fastq_reads(path):
         for _ in f:
             n += 1
     return n
+
+
+def count_lariat_fastq_reads(path):
+    with xopen(path) as f:
+        return sum(1 for line in f if line.startswith("@"))
 
 
 def count_bam_tags(path, tag):
@@ -119,6 +125,17 @@ def test_trim_blr(workdir, read_mapper):
     assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_BLR_READ2) > 0.9
 
 
+@pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
+def test_trim_blr_lariat(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("read_mapper", "lariat")]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+
+
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
 def test_trim_tenx(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
@@ -164,7 +181,22 @@ def test_trim_tellseq(tmp_path, read_mapper):
         assert count_fastq_reads(raw) / count_fastq_reads(workdir / trimmed) > 0.9
 
 
-@pytest.mark.parametrize("read_mapper", ["bwa", "minimap2", "ema"])
+@pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
+def test_trim_tellseq_lariat(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
+         ("read_mapper", "lariat")]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+
+
+non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lariat") else ["bwa", "minimap2", "ema"]
+
+
+@pytest.mark.parametrize("read_mapper", non_default_mappers)
 def test_nondefault_read_mappers(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_BLR_READ1, "blr")
