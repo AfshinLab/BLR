@@ -152,7 +152,7 @@ rule build_config:
     shell:
         "blr naibrconfig"
         " --bam-file {input.bam}"
-        " --outdir {params.cwd}"
+        " --outdir {params.cwd}/{wildcards.base}_naibr"
         " --distance 10000"
         " --min-mapq {config[naibr_min_mapq]}"
         " --min-sv 1000"
@@ -188,9 +188,12 @@ rule lsv_calling:
     threads: 2
     conda: "../naibr-environment.yml"
     params:
-        cwd = os.getcwd()
+        cwd = os.getcwd(),
+        outdir = lambda wildcards: f"{wildcards.base}_naibr"
     shell:
-        "cd {input.naibr_path}"
+        "mkdir -p {params.outdir}"
+        " &&"
+        " cd {input.naibr_path}"
         " &&"
         " python"
         " NAIBR.py"
@@ -199,7 +202,9 @@ rule lsv_calling:
         " &&"
         " cd -"
         " &&"
-        " mv NAIBR_SVs.bedpe {output.results}"
+        " mv {params.outdir}/NAIBR_SVs.bedpe {output.results}"
+        " &&"
+        " rm -rf {params.outdir}"
 
 
 rule format_naibr_bedpe:
