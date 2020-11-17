@@ -70,7 +70,7 @@ rule hapcut2_stats:
     output:
         stats = "final.phasing_stats.txt"
     input:
-        vcf1 = "final.phased.vcf",
+        vcf1 = "final.phased.vcf.gz",
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""
