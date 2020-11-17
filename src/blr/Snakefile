@@ -609,7 +609,8 @@ rule call_variants:
                 "gatk --java-options '-Xmx{config[heap_space]}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
                 " -R {config[genome_reference]}"
                 " -I {input.bam}"
-                " -O {output.vcf} 2> {log}",
+                " -O {output.vcf}"
+                " --create-output-variant-index false 2> {log}",
             # This option is currently not included in the pipeline documentation, but it will run on any system which
             # - runs Linux (it's not maintained for any other system)
             # - has deepvariant installed (e.g. through conda)
@@ -654,7 +655,7 @@ rule filter_called_snps:
         " --filter-name 'highMQRankSum'"
         " --filter-expression 'MQRankSum > 6.0'"
         " --genotype-filter-name 'snpLowAD'"
-        " --genotype-filter-expression 'AD < 2.0'"
+        " --genotype-filter-expression 'AD < 2'"
         " --filter-name 'snpLowAF'"
         " --filter-expression 'AF < 0.15'"
         " --create-output-variant-index false"
@@ -676,7 +677,7 @@ rule filter_called_indels:
         " --filter-name 'highMQRankSum'"
         " --filter-expression 'MQRankSum > 6.0'"
         " --genotype-filter-name 'indelLowAD'"
-        " --genotype-filter-expression 'AD < 4.0'"
+        " --genotype-filter-expression 'AD < 4'"
         " --filter-name 'indelLowAF'"
         " --filter-expression 'AF < 0.25'"
         " --create-output-variant-index false"
