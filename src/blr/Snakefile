@@ -572,7 +572,7 @@ rule index_vcf:
 rule call_variants:
     """Call variants using the selected variant caller from configs."""
     output:
-        vcf = "{base}.variants.called.vcf"
+        vcf = temporary("{base}.variants.called.vcf")
     input:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
@@ -685,7 +685,7 @@ rule filter_called_indels:
 
 rule merge_filtered_snps_indels:
     output:
-        vcf = "{base}.variants.called.filtered.vcf"
+        vcf = temporary("{base}.variants.called.filtered.vcf")
     input:
         vcf_snps = "{base}.variants.called.SNP.filtered.vcf",
         vcf_indels = "{base}.variants.called.INDEL.filtered.vcf"
