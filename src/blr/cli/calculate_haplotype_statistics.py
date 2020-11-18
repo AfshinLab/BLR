@@ -644,8 +644,8 @@ def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, 
 
 def add_arguments(parser):
     parser.add_argument('-v1', '--vcf1',
-                        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype statistics "
-                             "on.")
+                        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype "
+                             "statistics on.")
     parser.add_argument('-v2', '--vcf2',
                         help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' "
                              "haplotype.")
