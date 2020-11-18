@@ -6,6 +6,18 @@ import pandas as pd
 import numpy as np
 from collections import Counter, defaultdict
 
+
+def get_linked_vcf(wildcards):
+    """Include linked file in input until symlink is no longer used"""
+    if config["reference_variants"]:
+        return
+    else:
+        if config["filter_variants"]:
+            return f"{wildcards.base}.variants.called.filtered.vcf"
+        else:
+            return f"{wildcards.base}.variants.called.vcf"
+
+
 rule hapcut2_extracthairs:
     """Extract heterozygous variants covered by alignments in BAM"""
     output:
@@ -13,6 +25,7 @@ rule hapcut2_extracthairs:
     input:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
+        vcf_link = get_linked_vcf
     log: "{base}.hapcut2_extracthairs.log"
     params:
         indels = "1" if config["phase_indels"] else "0"
@@ -35,6 +48,7 @@ rule hapcut2_linkfragments:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
         vcf = "{base}.phaseinput.vcf",
+        vcf_link = get_linked_vcf,
         unlinked = "{base}.calling.unlinked.txt"
     log: "{base}.hapcut2_linkfragments.log"
     shell:
@@ -54,6 +68,7 @@ rule hapcut2_phasing:
     input:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",
+        vcf_link = get_linked_vcf
     log: "{base}.hapcut2_phasing.log"
     shell:
         "hapcut2"
@@ -73,7 +88,7 @@ rule hapcut2_stats:
     output:
         stats = "final.phasing_stats.txt"
     input:
-        vcf1 = "final.phased.vcf",
+        vcf1 = "final.phased.vcf.gz",
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""

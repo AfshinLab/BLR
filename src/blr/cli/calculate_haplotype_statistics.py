@@ -13,6 +13,7 @@ https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_st
 from collections import defaultdict
 import statistics
 import logging
+from xopen import xopen
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def main(args):
 
 
 def parse_vcf(vcf_file):
-    with open(vcf_file, 'r') as vcf:
+    with xopen(vcf_file, 'r') as vcf:
         for line in vcf:
             if line[0] == '#':
                 continue
@@ -643,9 +644,11 @@ def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, 
 
 def add_arguments(parser):
     parser.add_argument('-v1', '--vcf1',
-                        help="A phased, single sample VCF file to compute haplotype statistics on.")
+                        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype "
+                             "statistics on.")
     parser.add_argument('-v2', '--vcf2',
-                        help="A phased, single sample  VCF file to use as the 'ground truth' haplotype.")
+                        help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' "
+                             "haplotype.")
     parser.add_argument('-i', '--indels', action="store_true",
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
     parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")

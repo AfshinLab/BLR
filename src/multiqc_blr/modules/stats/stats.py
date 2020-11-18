@@ -135,7 +135,8 @@ class MultiqcModule(BaseMultiqcModule):
                         "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
                         "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
                         "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"],
-                        "nr_barcodes_final_millions": data["barcodes"] / 1_000_000
+                        "nr_barcodes_final_millions": data["barcodes"] / 1_000_000,
+                        "median_molecule_count": data["median_molecule_count"]
                     }
 
                 general_stats_header = OrderedDict({
@@ -180,7 +181,12 @@ class MultiqcModule(BaseMultiqcModule):
                         'scale': 'BuGn',
                         'format': '{:,.1f}'
                     },
-
+                    "median_molecule_count": {
+                        'title': ' # Mol',
+                        'description': 'Median number of molecules per barcode',
+                        'scale': 'OrRd',
+                        'format': '{:,}'
+                    },
                 })
 
                 self.general_stats_addcols(general_stats_data, general_stats_header)
