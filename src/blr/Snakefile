@@ -768,7 +768,7 @@ rule mosdepth:
     params:
         prefix = "final",
         bin_size = config["coverage_window_size"]
-    threads: 20
+    threads: workflow.cores * 0.75
     shell:
         "mosdepth"
         " --threads {threads}"
