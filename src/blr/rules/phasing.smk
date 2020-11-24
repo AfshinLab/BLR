@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 def get_linked_vcf(wildcards):
     """Include linked file in input until symlink is no longer used"""
     if config["reference_variants"]:
-        return
+        return []
     else:
         if config["filter_variants"]:
             return f"{wildcards.base}.variants.called.filtered.vcf"
