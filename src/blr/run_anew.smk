@@ -32,7 +32,7 @@ rule final:
         "barcodes.clstr",
         "final.molecule_stats.filtered.tsv",
         "unmapped.bam",
-        expand("chunks/{chunk[0].name}.sorted.tag.bcmerge.mkdup.mol.filt.bam", chunk=chunks),
+        expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks),
         "final.bam"
 
 
@@ -59,7 +59,7 @@ rule make_chunk_beds:
 
 rule split_input_into_chunks:
     output:
-        bam = "chunks/{chunk}.sorted.tag.bcmerge.mkdup.mol.filt.bam"
+        bam = "chunks/{chunk}.calling.bam"
     input:
         bam = "final.bam",
         bai = "final.bam.bai",
