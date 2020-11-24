@@ -297,3 +297,13 @@ def test_init_from_workdir(tmp_path, workdir):
          ("chunk_size", "50000")]
         )
     run(workdir=new_workdir, snakefile="run_anew.smk")
+
+
+def test_lsv_calling(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("reference_variants", "null")]
+    )
+    target = "final.naibr_sv_calls.bedpe"
+    run(workdir=workdir, targets=[target])
+    assert workdir.joinpath(target).is_file()

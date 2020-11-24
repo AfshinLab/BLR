@@ -42,6 +42,10 @@ class MultiqcModule(BaseMultiqcModule):
         if n_molecule_length_reports > 0:
             log.info("Found {} molecule length reports".format(n_molecule_length_reports))
 
+        n_sv_size_reports = self.gather_sv_sizes()
+        if n_sv_size_reports > 0:
+            log.info("Found {} SV size reports".format(n_sv_size_reports))
+
         n_stats = self.gather_stats()
         if n_stats > 0:
             log.info("Found {} stats reports".format(n_stats))
@@ -305,6 +309,63 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(lengths_writable, "stats_molecule_lengths")
 
         return len(data_lengths)
+
+    def gather_sv_sizes(self):
+        data = [{}, {}, {}, {}]
+
+        for f in self.find_log_files('stats/sv_sizes', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".sv_sizes", "")
+            sample_df = pd.read_csv(f["f"], sep="\t")
+            for d in data:
+                d[sample_name] = {}
+            for row in sample_df.itertuples():
+                data[0][sample_name][row.Size] = row.DEL + row.INV + row.DUP
+                data[1][sample_name][row.Size] = row.DEL
+                data[2][sample_name][row.Size] = row.INV
+                data[3][sample_name][row.Size] = row.DUP
+
+        # Filter out samples to ignore
+        data = [self.ignore_samples(d) for d in data]
+
+        if len(data[0]) == 0:
+            log.debug("Could not find any molecule lengths data in {}".format(config.analysis_dir))
+            return 0
+
+        pconfig = {
+            'id': 'sv_sizes',
+            'title': "Stats: SV size distribution",
+            'xlab': "SV size range",
+            'yMinRange': (0, 10),
+            'categories': True,
+            'data_labels': [
+                {'name': 'Total', 'ylab': 'Count'},
+                {'name': 'DEL', 'ylab': 'Count'},
+                {'name': 'INV', 'ylab': 'Count'},
+                {'name': 'DUP', 'ylab': 'Count'},
+            ]
+        }
+        plot_html = linegraph.plot(data, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="SV size distribution",
+            description="Size distrobution of called structural variants (SV).",
+            plot=plot_html
+        )
+
+        general_stats_data = {name: {"svs": sum(total_data.values())} for name, total_data in data[0].items()}
+        general_stats_header = OrderedDict({
+            "svs": {
+                'title': 'SVs',
+                'description': 'Total number of detected structural variants',
+                'scale': 'Blues',
+                'format': '{:,}'
+            },
+        })
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        return len(data[0])
 
     def gather_stats(self):
         names = ["MB", "MC", "RB"]

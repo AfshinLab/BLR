@@ -111,6 +111,7 @@ def run(
             printfilegraph=printfilegraph,
             targets=targets,
             workdir=workdir,
+            use_conda=True,
             printreason=dryrun
         )
     if not success:

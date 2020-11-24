@@ -1,6 +1,11 @@
 """
 Rules related to phasing of variants (called or reference set)
 """
+import os
+import pandas as pd
+import numpy as np
+from collections import Counter, defaultdict
+
 
 def get_linked_vcf(wildcards):
     """Include linked file in input until symlink is no longer used"""
@@ -11,7 +16,6 @@ def get_linked_vcf(wildcards):
             return f"{wildcards.base}.variants.called.filtered.vcf"
         else:
             return f"{wildcards.base}.variants.called.vcf"
-
 
 
 rule hapcut2_extracthairs:
@@ -128,9 +132,9 @@ rule haplotag:
                 "whatshap haplotag"
                 " {input.vcf}"
                 " {input.bam}"
-                " -o {output.bam}"
                 " --linked-read-distance-cutoff {config[window_size]}"
                 " --reference {config[genome_reference]}"
+                " -o {output.bam}"
                 " {ignore_readgroups}",
             "blr":
                 "blr phasebam"
@@ -138,9 +142,160 @@ rule haplotag:
                 " --phase-set-tag {config[phase_set_tag]}"
                 " --haplotype-tag {config[haplotype_tag]}"
                 " --min-mapq {config[min_mapq]}"
+                " -o {output.bam}"
                 " {input.bam}"
                 " {input.hapcut2_phase_file}"
-                " -o {output.bam}"
         }
         command = commands[config["haplotag_tool"]]
         shell(command + " 2> {log}")
+
+
+
+rule build_config:
+    """
+    Builds a config file required for running NAIBR.
+    """
+    output:
+        config = "{base}.naibr.config"
+    input:
+        bam = "{base}.calling.phased.bam",
+        index = "{base}.calling.phased.bam.bai"
+    log: "{base}.build_config.log"
+    params:
+        cwd = os.getcwd(),
+        blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
+    shell:
+        "blr naibrconfig"
+        " --bam-file {input.bam}"
+        " --outdir {params.cwd}/{wildcards.base}_naibr"
+        " --distance 10000"
+        " --min-mapq {config[naibr_min_mapq]}"
+        " --min-sv 1000"
+        " --threads 1"
+        " --min-overlaps 3"
+        " {params.blacklist}"
+        " --output {output.config}"
+        " 2> {log}"
+
+
+rule get_naibr_path:
+    """Symlink existing NAIBR repo if specified or clone the latest version"""
+    output:
+        naibr_path = temp(directory("NAIBR"))
+    run:
+        if config["naibr_path"]:
+            shell("ln -s {config[naibr_path]} {output.naibr_path}")
+        else:
+            shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
+
+
+rule lsv_calling:
+    """
+    Runs NAIBR for LSV calling. This involves activating a python2 env, changing wd, running and changing back wd and
+    env.
+    """
+    output:
+        results = "{base}.naibr_sv_calls.tsv"
+    input:
+        config = "{base}.naibr.config",
+        naibr_path = "NAIBR"
+    log: "{base}.lsv_calling.log"
+    threads: 2
+    conda: "../naibr-environment.yml"
+    params:
+        cwd = os.getcwd(),
+        outdir = lambda wildcards: f"{wildcards.base}_naibr"
+    shell:
+        "mkdir -p {params.outdir}"
+        " &&"
+        " cd {input.naibr_path}"
+        " &&"
+        " python"
+        " NAIBR.py"
+        " {params.cwd}/{input.config}"
+        " > {params.cwd}/{log}"
+        " &&"
+        " cd -"
+        " &&"
+        " mv {params.outdir}/NAIBR_SVs.bedpe {output.results}"
+        " &&"
+        " rm -rf {params.outdir}"
+
+
+rule format_naibr_bedpe:
+    output:
+        bedpe = "final.naibr_sv_calls.bedpe"
+    input:
+        tsv = "final.naibr_sv_calls.tsv"
+    run:
+        # Translation based on this: https://github.com/raphael-group/NAIBR/issues/11
+        # Note that this is not entirely accurate as the more complex variants are possible.
+        sv_types = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
+        zygosity = {"1,1":"HOM" ,"2,2":"HOM" , "1,2":"HET" ,"2,1":"HET"}  # From https://github.com/raphael-group/NAIBR/issues/10
+        names = ["Chr1",	"Break1",	"Chr2",	"Break2", "SplitMolecules", "DiscordantReads", "Orientation",
+                 "Haplotype", "Score", "PassFilter"]
+        data = pd.read_csv(input.tsv, sep="\t", header=0, names=names)
+        with open(output.bedpe, "w") as file:
+            for nr, row in enumerate(data.itertuples(index=False)):
+                # Use BEDPE format according to 10x: https://support.10xgenomics.com/genome-exome/software/pipelines/latest/output/bedpe
+                # Supported by IGV (see https://github.com/igvteam/igv/wiki/BedPE-Support)
+                print(
+                    f"chr{row.Chr1}",
+                    row.Break1,
+                    row.Break1,
+                    f"chr{row.Chr2}",
+                    row.Break2,
+                    row.Break2,
+                    f"call_{nr}",
+                    row.Score,
+                    "+",
+                    "+",
+                    "." if row.PassFilter == "PASS" else "Filtered",
+                    "Type={};Zygosity={};Split_molecules={};Discordant_reads={};Orientation={};Haplotype={}".format(
+                        sv_types[row.Orientation],
+                        zygosity.get(row.Haplotype, "UNK"),
+                        row.SplitMolecules,
+                        row.DiscordantReads,
+                        row.Orientation,
+                        row.Haplotype,
+                    ),
+                    sep="\t",
+                    file=file
+                )
+
+rule aggregate_sv_sizes:
+    output:
+        tsv = "final.sv_sizes.tsv"
+    input:
+        tsv = "final.naibr_sv_calls.tsv"
+    run:
+        sv_trans = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
+        sv_types = ["DEL", "INV", "DUP"]
+        bins = [0, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+        bin_labels = ["0-1k", "1k-10k", "10k-100k", "100k-1M", "1M-10M", "10M-100M", "100M-1G"]
+        names = ["Chr1", "Break1", "Chr2", "Break2", "SplitMolecules", "DiscordantReads", "Orientation", "Haplotype",
+                 "Score", "PassFilter"]
+        data = pd.read_csv(input.tsv, sep="\t", header=0, names=names)
+        counts = Counter()
+        lengths = defaultdict(list)
+        with open(output.tsv, "w") as file:
+            # Remove filtered SVs
+            data = data[data["PassFilter"] == "PASS"]
+
+            for nr, row in enumerate(data.itertuples(index=False)):
+                sv_type = sv_trans[row.Orientation]
+                if row.Chr1 != row.Chr2:
+                    counts[("Interchrom",sv_type)] += 1
+                else:
+                    lengths[sv_type].append(abs(row.Break1 - row.Break2))
+
+
+            for sv_type in sv_types:
+                bin_counts, _ = np.histogram(lengths[sv_type], bins=bins)
+
+                for count, label in zip(bin_counts, bin_labels):
+                    counts[(label, sv_type)] += count
+
+            print("Size", *sv_types, sep="\t", file=file)
+            for label in ["Interchrom"] + bin_labels:
+                print(label, *[counts[(label, sv_type)] for sv_type in sv_types], sep="\t", file=file)

@@ -125,3 +125,12 @@ properties:
     type: boolean
     default: true
     description: Phase INDELs along with SNPs
+  naibr_path:
+    type: ["string", "null"]
+    description: Path to NAIBR folder
+  naibr_min_mapq:
+    type: integer
+    description: Minimum mapping quality for NAIBR SV calling
+  naibr_blacklist:
+    type: ["string", "null"]
+    description: Bed file containing region to skip

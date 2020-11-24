@@ -53,6 +53,12 @@ def execution_start():
         config.update_dict(config.sp,
                            {'stats/molecule_lengths': {'fn': '*.molecule_lengths.tsv'}})
 
+    if 'stats/sv_sizes' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/sv_sizes': {'fn': '*.sv_sizes.tsv',
+                                               'contents': 'Size	DEL	INV	DUP',
+                                               'num_lines': 1}})
+
     if 'stats/general_stats' not in config.sp:
         config.update_dict(config.sp,
                            {'stats/general_stats': {'fn': '*.stats.txt',
