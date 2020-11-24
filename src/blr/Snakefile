@@ -650,14 +650,13 @@ rule filter_called_snps:
         vcf = "{base}.variants.called.SNP.vcf"
     log: "{base}.variants.called.SNP.filtered.log"
     shell:
+        # TODO Include genotype filtration for AD < 2
         "gatk VariantFiltration"
         " -V {input.vcf}"
         " --filter-name 'lowQUAL'"
         " --filter-expression 'QUAL < 15'"
         " --filter-name 'highMQRankSum'"
         " --filter-expression 'MQRankSum > 6.0'"
-        " --genotype-filter-name 'snpLowAD'"
-        " --genotype-filter-expression 'AD < 2'"
         " --filter-name 'snpLowAF'"
         " --filter-expression 'AF < 0.15'"
         " --create-output-variant-index false"
@@ -672,14 +671,13 @@ rule filter_called_indels:
         vcf = "{base}.variants.called.INDEL.vcf"
     log: "{base}.variants.called.INDEL.filtered.log"
     shell:
+        # TODO Include genotype filtration for AD < 4
         "gatk VariantFiltration"
         " -V {input.vcf}"
         " --filter-name 'lowQUAL'"
         " --filter-expression 'QUAL < 15'"
         " --filter-name 'highMQRankSum'"
         " --filter-expression 'MQRankSum > 6.0'"
-        " --genotype-filter-name 'indelLowAD'"
-        " --genotype-filter-expression 'AD < 4'"
         " --filter-name 'indelLowAF'"
         " --filter-expression 'AF < 0.25'"
         " --create-output-variant-index false"
