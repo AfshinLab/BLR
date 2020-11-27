@@ -103,6 +103,7 @@ def process_molecule_stats(files, directory: Path, summary):
     summary["Median molecule length"] = float(data["Length"].median())
     summary["DNA in molecules >20 kbp (%)"] = 100 * sum(data[data["Length"] > 20_000]["Length"]) / sum(data["Length"])
     summary["DNA in molecules >100 kbp (%)"] = 100 * sum(data[data["Length"] > 100_000]["Length"]) / sum(data["Length"])
+    summary["Weighted mean length"] = float(np.average(data["Length"].values, weights=data["Length"].values))
 
     molecule_count = data.groupby("Barcode").count()["MoleculeID"]
     summary["Mean molecule count"] = float(molecule_count.mean())
