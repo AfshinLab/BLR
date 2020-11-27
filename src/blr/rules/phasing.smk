@@ -299,3 +299,32 @@ rule aggregate_sv_sizes:
             print("Size", *sv_types, sep="\t", file=file)
             for label in ["Interchrom"] + bin_labels:
                 print(label, *[counts[(label, sv_type)] for sv_type in sv_types], sep="\t", file=file)
+
+
+rule lsv_calling_linkedsv:
+    output:
+        "linkedsv_out/final.phased.bam.filtered_large_svcalls.bedpe",
+        "linkedsv_out/final.phased.bam.small_deletions.bedpe",
+        "linkedsv_out/final.phased.bam.large_cnv.bedpe"
+    input:
+        bam = "final.phased.bam"
+    log: "linkedsv_out.log"
+    threads: 20
+    params:
+        dir = "linkedsv_out"
+    shell:
+         "linkedsv.py "
+         " -i {input.bam}"
+         " -d {params.dir}"
+         " -r {config[genome_reference]}"
+         " -t {threads}"
+         " -v hg38"
+         " --germline_mode"
+         " --wgs &> {log}"
+
+
+rule symlink_linkedsv_calls:
+    output: "final.linkedsv.{svtype}.bedpe"
+    input: "linkedsv_out/final.phased.bam.{svtype}.bedpe"
+    shell:
+        "ln -s {input} {output}"

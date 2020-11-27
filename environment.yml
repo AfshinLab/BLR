@@ -32,3 +32,6 @@ dependencies:
   - picard-slim
   - whatshap
   - mosdepth
+  - scikit-learn
+  - seaborn
+  - bedtools

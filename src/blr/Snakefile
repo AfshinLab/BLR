@@ -57,6 +57,9 @@ def final_input(wildcards):
         "final.phased.vcf.gz",
         "final.phased.vcf.gz.tbi",
         "final.naibr_sv_calls.bedpe",
+        "final.linkedsv.filtered_large_svcalls.bedpe",
+        "final.linkedsv.small_deletions.bedpe",
+        "final.linkedsv.large_cnv.bedpe",
         "final.sv_sizes.tsv"
     ]
     if not config["reference_variants"]:
