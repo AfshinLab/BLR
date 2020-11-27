@@ -134,3 +134,11 @@ properties:
   naibr_blacklist:
     type: ["string", "null"]
     description: Bed file containing region to skip
+  min_supp_barcodes:
+    type: integer
+    description: LinkedSV - Minimum number of supporting barcodes to call SV
+    default: 5
+  save_temp_files:
+    type: boolean
+    description: LinkedSV - Save temporary files in LinkedSV output, used for debugging
+    default: false

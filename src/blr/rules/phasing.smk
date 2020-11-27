@@ -311,7 +311,8 @@ rule lsv_calling_linkedsv:
     log: "linkedsv_out.log"
     threads: 20
     params:
-        dir = "linkedsv_out"
+        dir = "linkedsv_out",
+        save_temp_files = "--save_temp_files" if config['save_temp_files'] else ""
     shell:
          "linkedsv.py "
          " -i {input.bam}"
@@ -319,6 +320,7 @@ rule lsv_calling_linkedsv:
          " -r {config[genome_reference]}"
          " -t {threads}"
          " -v hg38"
+         " --min_supp_barcodes {config[min_supp_barcodes]}"
          " --germline_mode"
          " --wgs &> {log}"
 
