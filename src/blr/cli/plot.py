@@ -101,8 +101,9 @@ def process_molecule_stats(files, directory: Path, summary):
     summary["N50 reads per molecule"] = calculate_N50(data["Reads"])
     summary["Mean molecule length"] = float(data["Length"].mean())
     summary["Median molecule length"] = float(data["Length"].median())
-    summary["DNA in molecules >20 kbp (%)"] = 100 * sum(data[data["Length"] > 20_000]["Length"]) / sum(data["Length"])
-    summary["DNA in molecules >100 kbp (%)"] = 100 * sum(data[data["Length"] > 100_000]["Length"]) / sum(data["Length"])
+    total_dna = sum(data["Length"])
+    summary["DNA in molecules >20 kbp (%)"] = 100 * sum(data[data["Length"] > 20_000]["Length"]) / total_dna
+    summary["DNA in molecules >100 kbp (%)"] = 100 * sum(data[data["Length"] > 100_000]["Length"]) / total_dna
     summary["Weighted mean length"] = float(np.average(data["Length"].values, weights=data["Length"].values))
 
     molecule_count = data.groupby("Barcode").count()["MoleculeID"]
