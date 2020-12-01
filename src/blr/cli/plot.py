@@ -62,6 +62,11 @@ def process_barcode_clstr(files, directory: Path, summary):
         data = pd.read_csv(files[0], sep="\t", names=["Canonical", "Reads", "Components"])
         data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
         data["SeqLen"] = data["Canonical"].apply(len)
+
+        summary["Barcodes raw"] = sum(data["Size"])
+        summary["Barcodes corrected"] = len(data)
+        summary["Barcodes corrected with > 3 read-pairs"] = len(data[data["Reads"] > 3])
+
         plot_barcode_clstr(data, directory)
     else:
         logger.warning("Cannot handle multiple 'barcode.clstr' files.")
@@ -97,7 +102,7 @@ def process_molecule_stats(files, directory: Path, summary):
     else:
         data = process_multiple(files, process_molecule_stats_file)
 
-    summary["Barcodes"] = len(data["Barcode"].unique())
+    summary["Barcodes final"] = len(data["Barcode"].unique())
     summary["N50 reads per molecule"] = calculate_N50(data["Reads"])
     summary["Mean molecule length"] = float(data["Length"].mean())
     summary["Median molecule length"] = float(data["Length"].median())
