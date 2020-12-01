@@ -177,15 +177,6 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         print("RB", row.Bin, row.Reads, sep="\t")
 
 
-def bin_sum(data, binsize=2000):
-    bins = range(0, max(data) + binsize, binsize)
-    weights = OrderedDict({b: 0 for b in bins[:-1]})
-    for value in data:
-        current_bin = int(value / binsize) * binsize
-        weights[current_bin] += value
-    return bins, weights.values()
-
-
 class Plot:
     """
     Plotting class for automatic filename generation, logging and file output. Using the defaults a PNG file with the
