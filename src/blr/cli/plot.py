@@ -167,7 +167,7 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
 
     # Reads per barcode
     readcounts = data.groupby("Barcode", as_index=False)["Reads"].sum()
-    read_bins = list(range(0, 4)) + list(range(4, max(readcounts["Reads"])+4, 4))
+    read_bins = list(range(0, max(readcounts["Reads"])+2, 2))
     readcounts["Bin"] = pd.cut(readcounts["Reads"], bins=read_bins, labels=read_bins[:-1], right=False)
     binned_counts = readcounts.groupby("Bin", as_index=False)["Reads"].count()
     binned_counts = binned_counts[binned_counts["Reads"] > 0]  # Remove zero entries
