@@ -226,7 +226,7 @@ def test_BQSR(workdir):
     # ensure they are re-created with BQSR applied
     for calling_bam in workdir.joinpath("chunks").glob("*.calling.bam"):
         calling_bam.unlink()
-    target = "final.bam"
+    target = "chunks/chrA.calling.bam"
     run(workdir=workdir, targets=[target])
     with pysam.AlignmentFile(workdir / target) as af:
         # Ensure that ApplyBQSR was run on the file by inspecting the @PG lines in the header
@@ -240,7 +240,7 @@ def test_call_variants(workdir, variant_caller):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
-    target = "called.vcf"
+    target = "chunks/chrA.variants.called.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
@@ -250,7 +250,7 @@ def test_filter_variants(workdir):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null"), ("filter_variants", "true")]
     )
-    target = "called.filtered.vcf"
+    target = "chunks/chrA.variants.called.filtered.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
@@ -269,7 +269,7 @@ def test_haplotag(workdir, haplotype_tool):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
     )
-    target = "final.phased.bam"
+    target = "chunks/chrA.calling.phased.bam"
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
@@ -304,6 +304,6 @@ def test_lsv_calling(workdir):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
     )
-    target = "final.naibr_sv_calls.bedpe"
+    target = "chunks/chrA.naibr_sv_calls.tsv"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
