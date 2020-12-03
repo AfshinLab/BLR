@@ -290,7 +290,16 @@ rule get_unmapped_reads:
         bai = "initialmapping.bam.bai"
     log: "unmapped.log"
     shell:
-        "samtools view -h {input.bam} '*' | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view"
+        " -h"
+        " {input.bam}"
+        " '*'"
+        " |"
+        " blr tagbam"
+        " -o {output.bam}"
+        " --sample-nr {config[sample_nr]}"
+        " - "
+        "2> {log}"
 
 
 rule tagbam:
