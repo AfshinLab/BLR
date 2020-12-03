@@ -33,3 +33,6 @@ dependencies:
   - whatshap
   - mosdepth
   - conda-pack 
+  - scikit-learn
+  - bedtools
+  - seaborn
