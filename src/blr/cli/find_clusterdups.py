@@ -51,7 +51,7 @@ def run_find_clusterdups(
     quantile_threshold: float,
     library_type: str
 ):
-    tn5 = library_type in {'blr', 'stlfr'}
+    non_acceptable_overlap = get_non_acceptable_overlap_func(library_type)
     logger.info("Starting Analysis")
     summary = Counter()
     positions = OrderedDict()
@@ -88,7 +88,8 @@ def run_find_clusterdups(
 
                     logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes "
                                 f"for {chrom_prev}")
-                    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window, tn5, summary)
+                    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window,
+                                             non_acceptable_overlap, summary)
                     positions.clear()
                     dup_positions.clear()
                 chrom_prev = chrom_new
@@ -104,7 +105,8 @@ def run_find_clusterdups(
     summary["Barcode duplicate positions"] += len(dup_positions)
 
     logger.info(f"Using threshold {threshold} to filter duplicate position on contig {chrom_prev}")
-    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window, tn5, summary)
+    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window,
+                             non_acceptable_overlap, summary)
 
     # Write outputs
     if output_pickle:
@@ -216,7 +218,8 @@ def get_barcode_threshold(dup_positions, quantile: float = 0.99, min_threshold=6
         return min_threshold
 
 
-def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, window: int, tn5: bool, summary):
+def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, window: int, non_acceptable_overlap,
+                             summary):
     """
     Query barcode duplicates from list of duplicate positions. Position are filtered using the set threshold.
     """
@@ -230,9 +233,18 @@ def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, win
                 position=tracked_position.position,
                 position_barcodes=tracked_position.barcodes,
                 window=window,
-                tn5=tn5,
+                non_acceptable_overlap=non_acceptable_overlap,
                 summary=summary
             )
+
+
+def get_non_acceptable_overlap_func(library_type: str):
+    if library_type in {"blr", "stlfr"}:  # Tn5-type tagmentation
+        return lambda x: x < -10 or x > -8
+    elif library_type in {"tellseq"}:  # MuA-type tagmentation
+        return lambda x: x < -6 or x > -4
+    else:
+        return lambda x: False
 
 
 class PositionTracker:
@@ -254,7 +266,8 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, tn5: bool, summary):
+def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap,
+                    summary):
     """
     Identifies connected barcodes i.e. barcodes sharing two duplicate positions within the current window which is used
     to construct a graph. For Tn5 type libraries, overlapping positions are not compared unless they are allowed by Tn5
@@ -264,15 +277,13 @@ def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, 
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
     :param position_barcodes: seq: Barcodes at analyzed position
     :param window: int: Max distance allowed between postions to call barcode duplicate.
-    :param tn5: bool: Libray constructed using Tn5 tagmentation
     """
     # Loop over list to get the positions closest to the analyzed position first. When positions
     # are out of the window size of the remaining buffer is removed.
     for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
         distance = position[0] - compared_position[1]
 
-        # Skip comparison against overlapping reads unless they are from Tn5 tagmentation for Tn5-type libraries.
-        if tn5 and distance < 0 and distance not in {-8, -9, -10}:
+        if non_acceptable_overlap(distance):
             continue
 
         if distance <= window:
