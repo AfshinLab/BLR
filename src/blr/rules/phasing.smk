@@ -2,9 +2,6 @@
 Rules related to phasing of variants (called or reference set)
 """
 import os
-import pandas as pd
-import numpy as np
-from collections import Counter, defaultdict
 
 
 def get_linked_vcf(wildcards):
@@ -227,75 +224,14 @@ rule format_naibr_bedpe:
         bedpe = "final.naibr_sv_calls.bedpe"
     input:
         tsv = "final.naibr_sv_calls.tsv"
-    run:
-        # Translation based on this: https://github.com/raphael-group/NAIBR/issues/11
-        # Note that this is not entirely accurate as the more complex variants are possible.
-        sv_types = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
-        zygosity = {"1,1":"HOM" ,"2,2":"HOM" , "1,2":"HET" ,"2,1":"HET"}  # From https://github.com/raphael-group/NAIBR/issues/10
-        names = ["Chr1",	"Break1",	"Chr2",	"Break2", "SplitMolecules", "DiscordantReads", "Orientation",
-                 "Haplotype", "Score", "PassFilter"]
-        data = pd.read_csv(input.tsv, sep="\t", header=0, names=names)
-        with open(output.bedpe, "w") as file:
-            for nr, row in enumerate(data.itertuples(index=False)):
-                # Use BEDPE format according to 10x: https://support.10xgenomics.com/genome-exome/software/pipelines/latest/output/bedpe
-                # Supported by IGV (see https://github.com/igvteam/igv/wiki/BedPE-Support)
-                print(
-                    f"chr{row.Chr1}",
-                    row.Break1,
-                    row.Break1,
-                    f"chr{row.Chr2}",
-                    row.Break2,
-                    row.Break2,
-                    f"call_{nr}",
-                    row.Score,
-                    "+",
-                    "+",
-                    "." if row.PassFilter == "PASS" else "Filtered",
-                    "Type={};Zygosity={};Split_molecules={};Discordant_reads={};Orientation={};Haplotype={}".format(
-                        sv_types[row.Orientation],
-                        zygosity.get(row.Haplotype, "UNK"),
-                        row.SplitMolecules,
-                        row.DiscordantReads,
-                        row.Orientation,
-                        row.Haplotype,
-                    ),
-                    sep="\t",
-                    file=file
-                )
+    script:
+        "../scripts/format_naibr_bedpe.py"
+
 
 rule aggregate_sv_sizes:
     output:
         tsv = "final.sv_sizes.tsv"
     input:
         tsv = "final.naibr_sv_calls.tsv"
-    run:
-        sv_trans = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
-        sv_types = ["DEL", "INV", "DUP"]
-        bins = [0, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-        bin_labels = ["0-1k", "1k-10k", "10k-100k", "100k-1M", "1M-10M", "10M-100M", "100M-1G"]
-        names = ["Chr1", "Break1", "Chr2", "Break2", "SplitMolecules", "DiscordantReads", "Orientation", "Haplotype",
-                 "Score", "PassFilter"]
-        data = pd.read_csv(input.tsv, sep="\t", header=0, names=names)
-        counts = Counter()
-        lengths = defaultdict(list)
-        with open(output.tsv, "w") as file:
-            # Remove filtered SVs
-            data = data[data["PassFilter"] == "PASS"]
-
-            for nr, row in enumerate(data.itertuples(index=False)):
-                sv_type = sv_trans[row.Orientation]
-                if row.Chr1 != row.Chr2:
-                    counts[("Interchrom",sv_type)] += 1
-                else:
-                    lengths[sv_type].append(abs(row.Break1 - row.Break2))
-
-
-            for sv_type in sv_types:
-                bin_counts, _ = np.histogram(lengths[sv_type], bins=bins)
-
-                for count, label in zip(bin_counts, bin_labels):
-                    counts[(label, sv_type)] += count
-
-            print("Size", *sv_types, sep="\t", file=file)
-            for label in ["Interchrom"] + bin_labels:
-                print(label, *[counts[(label, sv_type)] for sv_type in sv_types], sep="\t", file=file)
+    script:
+        "../scripts/aggregate_sv_sizes.py"
