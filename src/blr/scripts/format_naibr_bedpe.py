@@ -10,8 +10,8 @@ zygosity = {"1,1": "HOM", "2,2": "HOM", "1,2": "HET",
             "2,1": "HET"}  # From https://github.com/raphael-group/NAIBR/issues/10
 names = ["Chr1", "Break1", "Chr2", "Break2", "SplitMolecules", "DiscordantReads", "Orientation",
          "Haplotype", "Score", "PassFilter"]
-data = pd.read_csv(snakemake.input.tsv, sep="\t", header=0, names=names)
-with open(snakemake.output.bedpe, "w") as file:
+data = pd.read_csv(snakemake.input.tsv, sep="\t", header=0, names=names)  # noqa: F821
+with open(snakemake.output.bedpe, "w") as file:  # noqa: F821
     # Header
     print("#chrom1", "start1", "stop1", "chrom2", "start2", "stop2", "sv_type", "sv_id", "sv_length", "qual_score",
           "filter", "info", sep="\t", file=file)

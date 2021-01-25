@@ -87,7 +87,8 @@ def run_tagfastq(
     # canonical sequence.
     template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
     with open(corrected_barcodes, "r") as reader:
-        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template, skip_singles=skip_singles)
+        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
+                                                            skip_singles=skip_singles)
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -420,6 +421,6 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-p", "--pattern-match",
-        help="IUPAC barcode string to match against corrected barcodes e.g. for BLR it is usualy BDHVBDHVBDHVBDHVBDHV. "
-             "Non-matched barcodes will be removed."
+        help="IUPAC barcode string to match against corrected barcodes e.g. for BLR it is usualy "
+             "BDHVBDHVBDHVBDHVBDHV. Non-matched barcodes will be removed."
     )

@@ -29,10 +29,10 @@ names = [
     "PassFilter"
 ]
 
-data = pd.read_csv(snakemake.input.tsv, sep="\t", header=0, names=names)
+data = pd.read_csv(snakemake.input.tsv, sep="\t", header=0, names=names)  # noqa: F821
 counts = Counter()
 lengths = defaultdict(list)
-with open(snakemake.output.tsv, "w") as file:
+with open(snakemake.output.tsv, "w") as file:  # noqa: F821
     # Remove filtered SVs
     data = data[data["PassFilter"] == "PASS"]
 
