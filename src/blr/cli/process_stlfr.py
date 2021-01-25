@@ -1,19 +1,6 @@
 """
 Process stLFR reads with existing barcodes in header. Barcodes of type '21_325_341' where numbers correspond to
-barcode sequences are translated to their original sequences(see Note).
-
-E.g.
-
-Header in input:
-    @V100002302L1C001R017000001#53_1482_471/1	1	1
-
-Header out output (mapper is ema):
-    @V100002302L1C001R017000001:TATTACTCTC-TAGGATAGTT-GATATAGCGG BX:Z:TATTACTCTC-TAGGATAGTT-GATATAGCGG
-
-Header out output (mapper is other):
-    @V100002302L1C001R017000001_BX:Z:TATTACTCTC-TAGGATAGTT-GATATAGCGG 1	1
-
-Note: picard MarkDuplicates in barcode-aware mode has to have the barcode match the regex: ^[ATCGNatcgn-]*$."
+barcode sequences are translated to IUPAC bases.
 """
 
 import logging
@@ -22,6 +9,7 @@ import dnaio
 from tqdm import tqdm
 from collections import Counter
 from contextlib import ExitStack
+from itertools import product
 
 from blr.utils import print_stats
 from blr.cli.tagfastq import Output, ChunkHandler
@@ -35,7 +23,7 @@ def main(args):
         input2=args.input2,
         output1=args.output1,
         output2=args.output2,
-        barcodes=args.barcodes,
+        barcode_file=args.barcodes,
         barcode_tag=args.barcode_tag,
         mapper=args.mapper,
     )
@@ -46,7 +34,7 @@ def run_process_stlfr(
         input2: str,
         output1: str,
         output2: str,
-        barcodes: str,
+        barcode_file: str,
         barcode_tag: str,
         mapper: str,
 ):
@@ -54,10 +42,7 @@ def run_process_stlfr(
 
     summary = Counter()
 
-    # TODO This translation might not acctually be true since its unsure how the barcode file relates to the tagged
-    #  indeces on the FASTQs. Instead one could generate unique barcodes in for each index combo. This would aslo solve
-    #  https://github.com/FrickTobias/BLR/issues/219 for stLFR reads
-    index_to_barcode = {index: barcode for barcode, index in parse_barcodes(barcodes)}
+    barcodes = BarcodeGenerator(barcode_file)
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -84,10 +69,10 @@ def run_process_stlfr(
 
             name = read1.name.split("\t")[0]
 
-            # Remove '/1' from read name and split to get barcode_indeces
-            name, barcode_indeces = name.strip("/1").split("#")
+            # Remove '/1' from read name and split to get barcode_indices
+            name, barcode_indices = name.strip("/1").split("#")
 
-            barcode = translate_indeces(barcode_indeces, index_to_barcode, summary)
+            barcode = translate_indeces(barcode_indices, barcodes, summary)
 
             if barcode:
                 barcode_id = f"{barcode_tag}:Z:{barcode}"
@@ -155,25 +140,61 @@ def run_process_stlfr(
     logger.info("Finished")
 
 
-def translate_indeces(indeces, index_to_barcode, summary):
-    if indeces == "0_0_0":  # stLFR reads are tagged with #0_0_0 if the barcode could not be identified.
+def translate_indeces(index_string, barcodes, summary):
+    if index_string == "0_0_0":  # stLFR reads are tagged with #0_0_0 if the barcode could not be identified.
         summary["Skipped barcode type 0_0_0"] += 1
         return None
+    elif len(index_string.split("_")) < 3:
+        summary["Skipped barcode of incorrect length"] += 1
+        return None
     else:
-        # Translate index to barcode sequence, index could be missing e.g. "12_213_" which leades to a empty string
-        barcodes = [index_to_barcode[int(i)] for i in indeces.split("_") if i != ""]
-        if len(barcodes) != 3:
-            summary["Skipped barcode of incorrect length"] += 1
-            return None
+        return barcodes.get(index_string)
+
+
+class BarcodeGenerator:
+    """
+    Generate barcodes for particular stLFR index string, e.g. '1_2_4', either using reference in barcodes_file or
+    if not barcode file not provided, a 16 nt unique barcode.
+     """
+    def __init__(self, barcodes_file):
+        self._barcodes_file = barcodes_file
+        self._barcode_generator = self._generate_barcodes()
+        self._index_to_string = None
+        if self._barcodes_file is not None:
+            # TODO This translation might not acctually be true since its unsure how the barcode file relates to the
+            #  tagged indeces on the FASTQs. Instead one could generate unique barcodes in for each index combo.
+            #  This would aslo solve https://github.com/FrickTobias/BLR/issues/219 for stLFR reads
+            self._index_to_string = {index: barcode for barcode, index in self._parse_barcodes()}
+
+        self.translate_barcode = {}
+
+    def get(self, index_string):
+        if index_string in self.translate_barcode:
+            return self.translate_barcode[index_string]
         else:
-            return "".join(barcodes)
+            if self._index_to_string is not None:
+                barcode = "".join([self._index_to_string[int(i)] for i in index_string.split("_") if i != ""])
+            else:
+                barcode = next(self._barcode_generator)
+            self.translate_barcode[index_string] = barcode
+            return barcode
 
+    def _parse_barcodes(self):
+        with open(self._barcodes_file) as f:
+            for line in f:
+                barcode, index = line.strip().split(maxsplit=1)
+                yield barcode, int(index)
 
-def parse_barcodes(file):
-    with open(file) as f:
-        for line in f:
-            barcode, index = line.strip().split(maxsplit=1)
-            yield barcode, int(index)
+    @staticmethod
+    def _generate_barcodes():
+        """
+        Iterator to generate unique 16 nt barcode
+        """
+        # Note: Theortical barcode numbers.
+        #   Possible stLFR barcodes: 1536*1536*1536 = 3,623,878,656
+        #   Possible barcodes of len 16: 4^16 =       4,294,967,296
+        for barcode in product("ATCG", repeat=16):
+            yield "".join(barcode)
 
 
 class BarcodeHeap:
@@ -189,10 +210,6 @@ class BarcodeHeap:
 
 
 def add_arguments(parser):
-    parser.add_argument(
-        "barcodes",
-        help="stLFR barocode list for tab separated barcode sequences and indexes."
-    )
     parser.add_argument(
         "input1",
         help="Input FASTQ/FASTA file. Assumes to contain read1 if given with second input file. "
@@ -210,6 +227,10 @@ def add_arguments(parser):
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
              "result is written as interleaved .")
+    parser.add_argument(
+        "--barcodes",
+        help="stLFR barocode list for tab separated barcode sequences and indexes. If not provided a IUPAC barcode "
+             "of length 16 nt will be generated for each stLFR barcode.")
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s")

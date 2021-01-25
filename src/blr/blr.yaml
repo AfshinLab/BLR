@@ -27,7 +27,7 @@ barcode_whitelist: # Path to barcode whitelist.
 apply_hamming_correction: false # Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
 
 # stLFR libraries
-stlfr_barcodes: # Path to stLFR barcodes
+stlfr_barcodes: # Path to stLFR barcodes, recommended to skip if mapping using ema
 stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from tagmentation)
 
 # TELL-Seq libraries
