@@ -61,7 +61,7 @@ def run_process_stlfr(
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
         if mapper in ["ema", "lariat"]:
-            chunks = stack.enter_context(ChunkHandler(chunk_size=1_000))
+            chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
             heaps = BarcodeHeap()
 
         for read1, read2 in tqdm(reader, desc="Read pairs processed"):
