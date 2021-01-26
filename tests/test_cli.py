@@ -178,7 +178,7 @@ def test_trim_tellseq(tmp_path, read_mapper):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed):
-        assert count_fastq_reads(raw) / count_fastq_reads(workdir / trimmed) > 0.9
+        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
