@@ -166,6 +166,20 @@ def test_trim_stlfr(tmp_path, read_mapper):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
+@pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
+def test_trim_stlfr_lariat(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_STLFR_READ1, "stlfr")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
+         ("read_mapper", "lariat")]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed)
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_STLFR_READ1) > 0.8
+
+
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
 def test_trim_tellseq(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
@@ -182,15 +196,17 @@ def test_trim_tellseq(tmp_path, read_mapper):
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
-def test_trim_tellseq_lariat(workdir):
+def test_trim_tellseq_lariat(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
          ("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, force_run=["trim"])
-    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+    run(workdir=workdir, targets=trimmed)
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_TELLSEQ_READ1) > 0.7
 
 
 non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lariat") else ["bwa", "minimap2", "ema"]
