@@ -13,7 +13,7 @@ library("optparse")
 library("VennDiagram")
 
 option_list = list(
-  make_option(c("-i", "--input_vcf"), type="character",default=NULL,
+  make_option(c("-i", "--input_vcf"), type="character",default="4_naibrs_merged.vcf", #NULL,
               help="merged VCF dataset input file name", metavar="character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
               help="output file name [default= %default]", metavar="character")
@@ -58,25 +58,28 @@ ggplot(data=tt_melt,
 
 dev.off()
 
+#Get samples names
+files_names <- system(sprintf("bcftools query -l %s",vcf_file),intern = T)
+files_names <- sub(x = files_names, pattern = ".ema_final.naibr_sv_calls_filtered_sorted_merged.bedpe","",ignore.case = T)
+files_names <- gsub(x = files_names, pattern = "\\.BLR","",ignore.case = T)
+files_names <- gsub(x = files_names, pattern = "\\.","\n",ignore.case = T)
+
 
 #Extract list of shared regions
-
-
 output_file <- paste0(file_name,"sample_merged_overlapp.txt")
 perl_code <- sprintf( 'perl -ne \'print "$1\\n" if /SUPP_VEC=([^,;]+)/\' %s | sed -e \'s/\\(.\\)/\\1 /g\' > %s',
                       vcf_file, output_file)
 system(perl_code)
 
+
 #Plotting the intersections
 t=read.table(output_file ,header=F)
-venn.diagram(list(Sample1=which(t[,1]==1),
-                  Sample2=which(t[,2]==1),
-                  Sample3=which(t[,3]==1),
-                  Sample4=which(t[,4]==1)),
+
+list_to_plot <- list(which(t[,1]==1), which(t[,2]==1), which(t[,3]==1), which(t[,4]==1))
+names(list_to_plot) <- files_names
+
+venn.diagram(list_to_plot,
              fill = c("pink", "orange" ,"blue","green") ,
              alpha = c(0.5, 0.5, 0.5, 0.5),
-             cex = 2, lty =2, filename =  paste0(file_name,"my_sample_overlapp.gif") );
-
-
-
-
+             cex = 2, lty =2, filename =  paste0(file_name,"my_sample_overlapp.gif"),
+             );
