@@ -272,7 +272,8 @@ rule make_chunk_beds:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
 
 
-skip_tagbam = config["library_type"] == "10x" and config["read_mapper"] == "ema"
+skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
+              config["read_mapper"] == "lariat"
 
 
 rule split_into_chunks:

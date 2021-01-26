@@ -65,6 +65,7 @@ rule tag:
         " -s {config[sequence_tag]}"
         " --mapper {config[read_mapper]}"
         " --pattern-match {config[barcode]}"
+        " --sample-nr {config[sample_nr]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.interleaved_fastq}"

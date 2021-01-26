@@ -60,6 +60,7 @@ rule tag_stlfr:
         " --o2 {output.r2_fastq}"
         " -b {config[cluster_tag]}"
         " --mapper {config[read_mapper]}"
+        " --sample-nr {config[sample_nr]}"
         " {params.barcodes}"
         " {input.interleaved_fastq}"
         " 2> {log}"

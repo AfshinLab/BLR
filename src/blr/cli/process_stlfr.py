@@ -26,6 +26,7 @@ def main(args):
         barcode_file=args.barcodes,
         barcode_tag=args.barcode_tag,
         mapper=args.mapper,
+        sample_number=args.sample_nr,
     )
 
 
@@ -37,6 +38,7 @@ def run_process_stlfr(
         barcode_file: str,
         barcode_tag: str,
         mapper: str,
+        sample_number: int,
 ):
     logger.info("Starting")
 
@@ -110,7 +112,7 @@ def run_process_stlfr(
                     read1.qualities,
                     read2.sequence,
                     read2.qualities,
-                    f"{barcode}-1",
+                    f"{barcode}-{sample_number}",
                     corrected_barcode_qual,
                     "AAAAAA",
                     "KKKKKK"
@@ -237,4 +239,8 @@ def add_arguments(parser):
     parser.add_argument(
         "-m", "--mapper",
         help="Specify read mapper for labeling reads with barcodes. "
+    )
+    parser.add_argument(
+        "--sample-nr", type=int, default=1,
+        help="Sample number to append to barcode string. Default: %(default)s"
     )

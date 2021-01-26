@@ -65,6 +65,7 @@ def main(args):
         mapper=args.mapper,
         skip_singles=args.skip_singles,
         pattern_match=args.pattern_match,
+        sample_number=args.sample_nr,
     )
 
 
@@ -80,6 +81,7 @@ def run_tagfastq(
         mapper: str,
         skip_singles: bool,
         pattern_match: str,
+        sample_number: int,
 ):
     logger.info("Starting")
     summary = Counter()
@@ -166,7 +168,7 @@ def run_tagfastq(
                     read1.qualities,
                     read2.sequence,
                     read2.qualities,
-                    f"{corrected_barcode_seq}-1",
+                    f"{corrected_barcode_seq}-{sample_number}",
                     corrected_barcode_qual,
                     sample_index,
                     sample_index_qual
@@ -423,4 +425,8 @@ def add_arguments(parser):
         "-p", "--pattern-match",
         help="IUPAC barcode string to match against corrected barcodes e.g. for BLR it is usualy "
              "BDHVBDHVBDHVBDHVBDHV. Non-matched barcodes will be removed."
+    )
+    parser.add_argument(
+        "--sample-nr", type=int, default=1,
+        help="Sample number to append to barcode string. Default: %(default)s"
     )

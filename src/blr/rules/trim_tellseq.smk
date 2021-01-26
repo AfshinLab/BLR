@@ -54,6 +54,7 @@ rule tag_tellseq_reads:
         " --mapper {config[read_mapper]}"
         " --pattern-match {config[tellseq_barcode]}"
         " --skip-singles"
+        " --sample-nr {config[sample_nr]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.r1_fastq}"
