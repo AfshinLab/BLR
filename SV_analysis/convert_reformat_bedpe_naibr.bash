@@ -1,5 +1,5 @@
 #!/bin/bash
-
+  
 sort_vcf () {
 local file=$1   
 echo 'sorting .. '$file
@@ -11,7 +11,7 @@ gzip_index () {
 local file=$1   
 echo 'Zipping and indexing .. '$file
 bgzip -c $file > ${file}".gz"
-tabix ${file}".gz"  
+tabix ${file}".gz"
 }
 
 
@@ -19,16 +19,17 @@ tabix ${file}".gz"
 
 for file in $(ls *naibr_sv_calls.bedpe)
 do
-echo  ${file::${#file}-6}"_LSV.bedpe"
+echo  ${file::${#file}-6}
 
-Rscript reformat_naibr_output.R -f $file -o ${file::${#file}-6}"_LSV.bedpe"
-SURVIVOR bedpetovcf ${file::${#file}-6}"_LSV.bedpe" ${file::${#file}-6}"_LSV.vcf"
+Rscript filter_naibr.R -f $file -t DEL -q 0.5 #DUP INV  
 
-less ${file::${#file}-6}"_LSV.vcf" | sed s'/STRANDS=[0-9][- 0-9];//'g >  ${file::${#file}-6}"_LSV_noSTRANDS.vcf"
-
-sort_vcf ${file::${#file}-6}"_LSV_noSTRANDS.vcf"
-
-
-rm ${file::${#file}-6}"_LSV.vcf"
-rm ${file::${#file}-6}"_LSV_noSTRANDS.vcf"
 done
+
+
+ls *sorted_merged.vcf > files_to_merge.txt
+
+SURVIVOR merge files_to_merge.txt 5000 1 0 0 0 10000 4_naibrs_merged.vcf
+
+Rscript plot_merged_vcf.R -i 4_naibrs_merged.vcf
+
+rm *log
