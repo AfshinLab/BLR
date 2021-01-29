@@ -15,6 +15,18 @@ CONFIGFILE = Path("blr.yaml")
 
 
 def main(args):
+    run_tagbam(
+        input=args.input,
+        output=args.output,
+        sample_number=args.sample_nr,
+    )
+
+
+def run_tagbam(
+        input: str,
+        output: str,
+        sample_number: int,
+):
     logger.info("Starting analysis")
 
     # Load configs to find mapper
@@ -31,11 +43,11 @@ def main(args):
     summary = Counter()
 
     # Read SAM/BAM files and transfer barcode information from alignment name to SAM tag
-    with PySAMIO(args.input, args.output, __name__) as (infile, outfile):
+    with PySAMIO(input, output, __name__) as (infile, outfile):
         for read in tqdm(infile.fetch(until_eof=True), desc="Processing reads", unit=" reads"):
             # Strips header from tag and depending on script mode, possibly sets SAM tag
             summary["Total reads"] += 1
-            processing_function(read, args.sample_nr, summary)
+            processing_function(read, sample_number, summary)
             outfile.write(read)
 
     print_stats(summary, name=__name__)
