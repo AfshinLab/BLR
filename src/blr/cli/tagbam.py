@@ -116,4 +116,4 @@ def add_arguments(parser):
     parser.add_argument("-o", "--output", default="-",
                         help="Write output BAM to file rather then stdout.")
     parser.add_argument("-s", "--sample-nr", default=1, type=int,
-                        help="Add sample number to each barcode ")
+                        help="Add sample number to each barcode. Default: %(default)s")
