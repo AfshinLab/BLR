@@ -1,21 +1,6 @@
-import os
-import tempfile
-from contextlib import contextmanager
-
 from blr.cli.process_stlfr import BarcodeGenerator
 
-
-@contextmanager
-def tempinput(data):
-    # Temporarly generate file object
-    # https://stackoverflow.com/questions/11892623/stringio-and-compatibility-with-with-statement-context-manager
-    temp = tempfile.NamedTemporaryFile(delete=False)
-    temp.write(data)
-    temp.close()
-    try:
-        yield temp.name
-    finally:
-        os.unlink(temp.name)
+from .utils import tempinput
 
 
 def test_generate_barcodes_no_reference():
