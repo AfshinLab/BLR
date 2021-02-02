@@ -1,4 +1,5 @@
 from collections import Counter
+from pytest import raises
 
 from blr.cli.tagfastq import match_template, IUPAC, scramble, parse_corrected_barcodes, BarcodeReader
 
@@ -23,8 +24,9 @@ def test_scramble():
     scramble(scrambled_sequences)
     assert len(scrambled_sequences) == len(sequences)
     assert all(s in scrambled_sequences for s in sequences)
-    for s1, s2 in zip(scrambled_sequences[:-1], scrambled_sequences[1:]):
-        assert s1[:16] != s2[:16]
+    assert all(s1[:16] != s2[:16] for s1, s2 in zip(scrambled_sequences[:-1], scrambled_sequences[1:]))
+    with raises(AssertionError):
+        assert all(s1[:16] != s2[:16] for s1, s2 in zip(sequences[:-1], sequences[1:]))
 
 
 def test_parse_barcodes():
