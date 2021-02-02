@@ -5,7 +5,6 @@ We can add any custom Python functions here and call them
 using the setuptools plugin hooks.
 """
 
-from __future__ import print_function
 import logging
 
 from multiqc.utils import config
@@ -50,6 +49,22 @@ def execution_start():
         config.update_dict(config.sp,
                            {'stats/phaseblock_data': {'fn': '*.phaseblock_data.tsv'}})
 
+    if 'stats/molecule_lengths' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/molecule_lengths': {'fn': '*.molecule_lengths.tsv'}})
+
+    if 'stats/sv_sizes' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/sv_sizes': {'fn': '*.sv_sizes.tsv',
+                                               'contents': 'Size	DEL	INV	DUP',
+                                               'num_lines': 1}})
+
+    if 'stats/general_stats' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/general_stats': {'fn': '*.stats.txt',
+                                                    'contents_re': '^# Stats compiled from blr.cli.plot*',
+                                                    'num_lines': 1}})
+
     if 'hapcut2/phasing_stats' not in config.sp:
         # Current looking for file containing the string "switch rate:" on the first line.
         config.update_dict(config.sp,
@@ -62,3 +77,8 @@ def execution_start():
                            {'whatshap/stats': {'fn': '*.tsv',
                                                'contents': '#sample	chromosome	file_name	variants	phased	unphased	singletons	blocks	variant_per_block_median	variant_per_block_avg	variant_per_block_min	variant_per_block_max	variant_per_block_sum	bp_per_block_median	bp_per_block_avg	bp_per_block_min	bp_per_block_max	bp_per_block_sum	heterozygous_variants	heterozygous_snvs	phased_snvs	block_n50',  # noqa: E501
                                                'num_lines': 1}})
+
+    if "whatshap/haplotag" not in config.sp:
+        config.update_dict(config.sp,
+                           {'whatshap/haplotag': {'fn': '*haplotag.log',
+                                                  'contents_re': '^haplotag - total processing time:*'}})

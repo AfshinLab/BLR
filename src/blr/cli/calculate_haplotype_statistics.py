@@ -13,12 +13,16 @@ https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_st
 from collections import defaultdict
 import statistics
 import logging
+from xopen import xopen
 
 logger = logging.getLogger(__name__)
 
 
 def main(args):
-    logging.info("Starting analysis")
+    logger.info("Starting analysis")
+    if not args.vcf2:
+        logger.info("No reference vcf provided - error rates will not be computed.")
+
     stats = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
 
     if args.output:
@@ -26,11 +30,11 @@ def main(args):
             print(stats.to_txt(), file=file)
     else:
         print(stats.to_txt())
-    logging.info("Finished")
+    logger.info("Finished")
 
 
 def parse_vcf(vcf_file):
-    with open(vcf_file, 'r') as vcf:
+    with xopen(vcf_file, 'r') as vcf:
         for line in vcf:
             if line[0] == '#':
                 continue
@@ -50,6 +54,10 @@ def parse_vcf_phase(vcf_file, indels=False):
     chrom_blocks = dict()
 
     for el in parse_vcf(vcf_file):
+        # Skip non-phased entries
+        if "|" not in el[9].split(':')[0]:
+            continue
+
         # get the index where the PS information is
         for i, f in enumerate(el[8].split(':')):
             if i == 0:
@@ -400,7 +408,10 @@ class ErrorResult:
 def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels):
     # parse and get stuff to compute error rates
     chrom_a_blocklist = parse_vcf_phase(assembled_vcf_file, indels)
-    chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
+    if reference_vcf_file:
+        chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
+    else:
+        chrom_t_blocklist = defaultdict(list)
 
     chromosomes = sorted(chrom_a_blocklist)
     err = ErrorResult()
@@ -607,7 +618,7 @@ def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, 
 
     poss_flat = poss_mm
 
-    if poss_sw == 0 and poss_mm == 0:
+    if t_blocklist and poss_sw == 0 and poss_mm == 0:
         logger.warning('Possible switch positions and possible mismatch positions are both 0, it is likely that '
                        'something is very wrong.')
 
@@ -633,9 +644,11 @@ def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, 
 
 def add_arguments(parser):
     parser.add_argument('-v1', '--vcf1',
-                        help="A phased, single sample VCF file to compute haplotype statistics on.")
+                        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype "
+                             "statistics on.")
     parser.add_argument('-v2', '--vcf2',
-                        help="A phased, single sample  VCF file to use as the 'ground truth' haplotype.")
+                        help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' "
+                             "haplotype.")
     parser.add_argument('-i', '--indels', action="store_true",
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
     parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")

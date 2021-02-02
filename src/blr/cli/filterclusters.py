@@ -16,7 +16,6 @@ def main(args):
         barcodes=args.barcodes,
         output=args.output,
         barcode_tag=args.barcode_tag,
-        sequence_tag=args.sequence_tag,
         molecule_tag=args.molecule_tag
     )
 
@@ -26,10 +25,9 @@ def run_filterclusters(
     barcodes: str,
     output: str,
     barcode_tag: str,
-    sequence_tag: str,
     molecule_tag: str
 ):
-    tags_to_remove = [barcode_tag, sequence_tag, molecule_tag]
+    tags_to_remove = [barcode_tag, molecule_tag]
     removed_tags = {tag: set() for tag in tags_to_remove}
     summary = Counter()
     logger.info("Starting")
@@ -44,10 +42,6 @@ def run_filterclusters(
     with PySAMIO(input, output, __name__) as (openin, openout):
         for read in tqdm(openin.fetch(until_eof=True), desc="Filtering input", unit="reads"):
             summary["Total reads"] += 1
-
-            if read.is_duplicate:
-                summary["Duplicate reads removed"] += 1
-                continue
 
             barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
 
@@ -78,7 +72,11 @@ def strip_barcode(pysam_read, tags_to_be_removed, removed_tags):
 
     # Remove tags
     for bam_tag in tags_to_be_removed:
-        removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        try:
+            removed_tags[bam_tag].add(pysam_read.get_tag(bam_tag))
+        except KeyError:
+            continue
+
         # Strip read from tag
         pysam_read.set_tag(bam_tag, None, value_type="Z")
 
@@ -101,10 +99,6 @@ def add_arguments(parser):
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s"
-    )
-    parser.add_argument(
-        "-s", "--sequence-tag", default="RX",
-        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s"
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",

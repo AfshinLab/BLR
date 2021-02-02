@@ -5,7 +5,7 @@ import sys
 import logging
 from ruamel.yaml import YAML
 from snakemake.utils import validate
-import pkg_resources
+from importlib_resources import path as resource_path
 from pathlib import Path
 from typing import List, Tuple
 from shutil import get_terminal_size
@@ -55,16 +55,19 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
 
     # Update configs
     for key, value in changes_set:
-        if key in configs:
-            value = YAML(typ='safe').load(value)
-            logger.info(f"Changing value of '{key}': {configs[key]} --> {value}.")
-            configs[key] = value
-        else:
-            logger.warning(f"KEY = {key} not in config. Config not updated with set ({key}, {value})")
+        value = YAML(typ='safe').load(value)
+        logger.info(f"Changing value of '{key}': {configs[key]} --> {value}.")
+        item = configs
+
+        # allow nested keys
+        keys = key.split('.')
+        for i in keys[:-1]:
+            item = item[i]
+        item[keys[-1]] = value
 
     # Confirm that configs is valid.
-    schema_path = pkg_resources.resource_filename("blr", SCHEMA_FILE)
-    validate(configs, schema_path)
+    with resource_path('blr', SCHEMA_FILE) as schema_path:
+        validate(configs, str(schema_path))
 
     # Write first to temporary file then overwrite filename.
     tmpfile = Path(str(filename) + ".tmp")

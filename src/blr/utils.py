@@ -16,6 +16,9 @@ else:
         return iterable
 
 
+ACCEPTED_LIBRARY_TYPES = ["blr", "10x", "stlfr", "tellseq"]
+
+
 def is_1_2(s, t):
     """
     Determine whether s and t are identical except for a single character of
@@ -106,6 +109,7 @@ class PySAMIO:
         :param inmode: Reading mode for input file. 'r' for SAM and 'rb' for BAM.
         :param outmode: Reading mode for output file. 'r' for SAM and 'rb' for BAM.
         """
+        self._save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
         self.infile = pysam.AlignmentFile(inname, inmode)
         self.header = self._make_header(name)
         self.outfile = pysam.AlignmentFile(outname, outmode, header=self.header)
@@ -115,6 +119,7 @@ class PySAMIO:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.infile.close(), self.outfile.close()
+        pysam.set_verbosity(self._save)
         return isinstance(exc_val, OSError)
 
     def _make_header(self, name):

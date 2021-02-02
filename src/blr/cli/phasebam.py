@@ -31,7 +31,8 @@ def main(args):
 
     # Phase reads & corresponding molecules at hetSNV sites
     read_phase_dict, molecule_phase_dict = phase_reads_and_molecules(args.input_bam, args.molecule_tag,
-                                                                     phased_snv_dict, anomaly_file, summary)
+                                                                     phased_snv_dict, anomaly_file, args.min_mapq,
+                                                                     summary)
 
     # Write output (setting phasing)
     with PySAMIO(args.input_bam, args.output, __name__) as (infile, out):
@@ -289,7 +290,7 @@ def skip_variant(variant, min_switch_error, min_missmatch_error, include_pruned,
     return False
 
 
-def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_file, summary):
+def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_file, min_mapq, summary):
     """
     Goes through a SAM file and matches reads at variants to one of the two haplotypes. Then sets the reads molecule
     phase accordingly.
@@ -297,6 +298,7 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
     :param molecule_tag: str, SAM tag
     :param phased_snv_dict: dict, dict[chrom][pos][nucleotide] = phase_info
     :anomaly_file: open tsv file for writing weird reads to
+    :param min_mapq: int
     :param summary: Counter instance, from collections
     :return: dict[read.query_name] = haplotype, dict[molecule] = haplotype
     """
@@ -307,7 +309,7 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
         for read in tqdm(infile.fetch(until_eof=True), desc="Phasing reads at hetSNV positions", unit=" reads"):
             summary["Total reads"] += 1
             # Init criteria for read
-            if skip_read(read, phased_snv_dict, summary):
+            if skip_read(read, phased_snv_dict, min_mapq, summary):
                 continue
 
             # Get variants at the current read and remove any variants whenever reads have passed their position
@@ -345,8 +347,8 @@ def phase_reads_and_molecules(bam_file, molecule_tag, phased_snv_dict, anomaly_f
     return read_phase_dict, molecule_phase_dict
 
 
-def skip_read(read, phased_snv_dict, summary):
-    if read.is_unmapped:
+def skip_read(read, phased_snv_dict, min_mapq, summary):
+    if read.is_unmapped or read.mapping_quality < min_mapq:
         return True
 
     if read.reference_name not in phased_snv_dict:
@@ -579,6 +581,8 @@ def add_arguments(parser):
         help="How to prioritise between phasing information. 'READ': Read phase >> Molecule phase, 'MOLECULE': "
              "Molecule phase >> Read phase, 'CONCORDANT': Read phase == Molecule phase (agreement between phases). "
              "Default: %(default)s.")
+    arg("--min-mapq", type=int, default=0,
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s")
 
     arg("--molecule-tag", default="MI", help="Molecule SAM tag. Default: %(default)s.")
     arg("--haplotype-tag", default="HP", help="Haplotype SAM tag. Default: %(default)s")

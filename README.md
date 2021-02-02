@@ -1,4 +1,4 @@
-[![Travis CI](https://api.travis-ci.org/FrickTobias/BLR.svg?branch=master)](https://travis-ci.org/FrickTobias/BLR/)
+[![CI](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions?query=branch%3Amaster)
 
 :exclamation:**NB! This is currently under heavy development.**:exclamation:
 
@@ -72,6 +72,12 @@ install it to you `$HOME` folder and enable the bioconda channel.
     source $HOME/miniconda/etc/profile.d/conda.sh
     conda config --add channels bioconda
 
+#### 1.1
+
+Clone NAIBR github. 
+
+    git clone https://github.com/raphael-group/NAIBR
+
 ### 2. Install
 
 Clone the git repository.
@@ -113,6 +119,11 @@ To enable DeepVariant, install it separately to your environment.
     conda install deepvariant
 
 This will enable the `variant_caller: deepvariant` option in the analysis config file.    
+
+#### 2.3 Lariat aligner
+
+To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to manually install it within your 
+environment. For help on installation see [the following instructions](doc/lariat_install.rst). 
 
 ### 3. Updating
 

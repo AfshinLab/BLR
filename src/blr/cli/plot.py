@@ -4,13 +4,15 @@ Plot data from
 import logging
 import pandas as pd
 import numpy as np
-from collections import OrderedDict, defaultdict, Counter
+from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.colors import LogNorm
 from pathlib import Path
 import os
 
 from blr.utils import print_stats, calculate_N50
+from blr import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,10 @@ SIZE_WIDE = (10, 6)
 
 def main(args):
     summary = Counter()
+
+    # Fix for running matplotlib in background on SSH.
+    # https://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
+    matplotlib.use("Agg")
 
     name_to_function = {
         "molecule_stats": process_molecule_stats,   # Files containing "molecule_stats" and ending with "tsv"
@@ -42,6 +48,7 @@ def main(args):
 
         logger.info(f"File '{filename}' does not match possible inputs. Skipping from analysis.")
 
+    print(f"# Stats compiled from {__name__} ({__version__})")
     for func_name, files in matched.items():
         proc_func = name_to_function.get(func_name)
         proc_func(files, args.output_dir, summary)
@@ -55,6 +62,11 @@ def process_barcode_clstr(files, directory: Path, summary):
         data = pd.read_csv(files[0], sep="\t", names=["Canonical", "Reads", "Components"])
         data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
         data["SeqLen"] = data["Canonical"].apply(len)
+
+        summary["Barcodes raw"] = sum(data["Size"])
+        summary["Barcodes corrected"] = len(data)
+        summary["Barcodes corrected with > 3 read-pairs"] = len(data[data["Reads"] > 3])
+
         plot_barcode_clstr(data, directory)
     else:
         logger.warning("Cannot handle multiple 'barcode.clstr' files.")
@@ -69,27 +81,12 @@ def plot_barcode_clstr(data: pd.DataFrame, directory: Path):
         data["Reads"].plot(ax=ax, bins=bins, logy=True, logx=True, kind="hist")
         ax.set_xlabel("Reads per cluster")
 
-    # Cumulative sum of read count starting from largest cluster
-    # - x = number of reads
-    # - y = rank of cluster sorted from largest to smallest
-    with Plot("Cumulative read count", output_dir=directory) as (fig, ax):
-        data["Reads"].cumsum().plot(ax=ax)
-        ax.set_ylabel("Reads")
-        ax.set_xlabel("Rank")
-
     # Histogram over components per barcode cluster
     # - x = number of components per cluster
     # - y = frequency
     with Plot("Nr of components per barcode cluster histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
         data["Size"].plot(ax=ax, logy=True, bins=data["Size"].max(), kind="hist")
         ax.set_xlabel("Nr components per cluster")
-
-    # Histogram of length for canonical fragment
-    # - x = length of canonical fragment in bp
-    # - y = frequency
-    with Plot("Canonical fragment length histogram", output_dir=directory) as (fig, ax):
-        data["SeqLen"].plot(ax=ax, logy=True, kind="hist", bins=7)
-        ax.set_xlabel("Canonical fragment length (bp)")
 
 
 def process_multiple(files, func):
@@ -105,13 +102,19 @@ def process_molecule_stats(files, directory: Path, summary):
     else:
         data = process_multiple(files, process_molecule_stats_file)
 
-    summary["Barcodes"] = len(data["Barcode"].unique())
+    summary["Barcodes final"] = len(data["Barcode"].unique())
     summary["N50 reads per molecule"] = calculate_N50(data["Reads"])
     summary["Mean molecule length"] = float(data["Length"].mean())
     summary["Median molecule length"] = float(data["Length"].median())
-    summary["DNA in molecules >20 kbp (%)"] = 100 * len(data[data["Length"] > 20_000]) / len(data)
-    summary["DNA in molecules >100 kbp (%)"] = 100 * len(data[data["Length"] > 100_000]) / len(data)
+    total_dna = sum(data["Length"])
+    summary["DNA in molecules >20 kbp (%)"] = 100 * sum(data[data["Length"] > 20_000]["Length"]) / total_dna
+    summary["DNA in molecules >100 kbp (%)"] = 100 * sum(data[data["Length"] > 100_000]["Length"]) / total_dna
+    summary["Weighted mean length"] = float(np.average(data["Length"].values, weights=data["Length"].values))
 
+    molecule_count = data.groupby("Barcode").count()["MoleculeID"]
+    summary["Mean molecule count"] = float(molecule_count.mean())
+    summary["Median molecule count"] = float(molecule_count.median())
+    summary["Single molecule droplets (%)"] = float(100 * sum(molecule_count.values == 1) / len(molecule_count))
     plot_molecule_stats(data, directory)
 
 
@@ -123,18 +126,6 @@ def process_molecule_stats_file(file, nr=None):
 
 
 def plot_molecule_stats(data: pd.DataFrame, directory: Path):
-    # Histogram of molecule length distribution
-    # - x = molecule length in kbp
-    # - y = sum of lengths in bin
-    with Plot("Molecule length histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        bins, weights = bin_sum(data["Length"], binsize=2000)
-
-        plt.hist(bins[:-1], bins, weights=list(weights))
-        ax.set_ylabel("Total DNA mass")
-        ax.set_yticklabels([])
-        ax.set_xlabel("Molecule length (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
-
     # Read count per molecule vs molecule length
     # - x = molecule length in kbp
     # - y = read count for molecule
@@ -145,25 +136,16 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
         ax.set_ylabel("Reads per molecule")
 
-    # Get list of reads per kilobasepair fragment
-    read_per_kb = data["Reads"] / data["Length"] * 1000
-
-    # Histogram of reads per kilobase fragment
-    # - x = reads per kilobase molecule
-    # - y = frequency
-    with Plot("Read per kilobase molecule histogram", output_dir=directory) as (fig, ax):
-        max_count = max(map(int, read_per_kb))
-        read_per_kb.plot(ax=ax, bins=range(0, max_count+1), kind="hist", density=True,
-                         title="Read per kilobase molecule histogram")
-        ax.set_xlabel("Read count per kbp molecule")
-
-    # Histogram of molecule read coverage
-    # - x = molecule read coverage rate
-    # - y = frequency
-    coverage = data["BpCovered"] / data["Length"]
-    with Plot("Molecule read coverage histogram", output_dir=directory) as (fig, ax):
-        coverage.plot(ax=ax, kind="hist", xlim=(0, 1))
-        ax.set_xlabel("Molecule read coverage")
+    # Molecule read coverage
+    data["Coverage"] = data["BpCovered"] / data["Length"]
+    coverage_bins = np.array(range(0, 101)) / 100
+    data["Bin"] = pd.cut(data["Coverage"], bins=coverage_bins, labels=coverage_bins[:-1])
+    binned_coverage = data.groupby("Bin", as_index=False)["Coverage"].count()
+    binned_coverage = binned_coverage[binned_coverage["Coverage"] > 0]  # Remove zero entries
+    print("# Molecule coverage. Use `grep ^MC | cut -f 2-` to extrat this part. Columns are: Molecule coverage bin "
+          "(numbers refer to lower threshold), Count.")
+    for row in binned_coverage.itertuples():
+        print("MC", row.Bin, row.Coverage, sep="\t")
 
     # Molecule coverage vs length
     # - x = molecule length in kbp
@@ -176,32 +158,23 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
         ax.set_ylabel("Molecule coverage (kbp)")
         ax.set_yticklabels(map(int, plt.yticks()[0] / 1000))
 
-    # Total barcode molecule length histogram
-    # - x = sum of molecule lengths for barcode
-    # - y = frequency
-    barcode_len = data.groupby("Barcode")["Length"].sum()
-    with Plot("Total molecule length per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_len.plot(ax=ax, kind="hist")
-        ax.set_xlabel("Sum molecule length per barcode (kbp)")
-        ax.set_xticklabels(map(int, plt.xticks()[0] / 1000))
-
     # Molecules per barcode
-    # - x = molecules per barcode
-    # - y = log frequency
-    barcode_mols = data.groupby("Barcode")["Barcode"].count()
-    with Plot("Molecules per barcode histogram", output_dir=directory, figsize=SIZE_WIDE) as (fig, ax):
-        barcode_mols.plot(ax=ax, bins=range(1, max(barcode_mols)+2), kind="hist")
-        ax.set_xlabel("Molecules per barcode")
-        ax.set_yscale('log')
+    mols_per_bc = list(Counter(data.groupby("Barcode")["Barcode"].count().values).items())
+    print("# Molecules per barcode. Use `grep ^MB | cut -f 2-` to extrat this part. Columns are: Molecules per "
+          "barcode, Count.")
+    for count, freq in sorted(mols_per_bc):
+        print("MB", count, freq, sep="\t")
 
-
-def bin_sum(data, binsize=2000):
-    bins = range(0, max(data) + binsize, binsize)
-    weights = OrderedDict({b: 0 for b in bins[:-1]})
-    for value in data:
-        current_bin = int(value / binsize) * binsize
-        weights[current_bin] += value
-    return bins, weights.values()
+    # Reads per barcode
+    readcounts = data.groupby("Barcode", as_index=False)["Reads"].sum()
+    read_bins = list(range(0, max(readcounts["Reads"])+2, 2))
+    readcounts["Bin"] = pd.cut(readcounts["Reads"], bins=read_bins, labels=read_bins[:-1], right=False)
+    binned_counts = readcounts.groupby("Bin", as_index=False)["Reads"].count()
+    binned_counts = binned_counts[binned_counts["Reads"] > 0]  # Remove zero entries
+    print("# Reads per barcode. Use `grep ^RB | cut -f 2-` to extract this part. Columns are: Reads bin (numbers "
+          "relate to the lower threshold for the bin), Nr of barcodes")
+    for row in binned_counts.itertuples():
+        print("RB", row.Bin, row.Reads, sep="\t")
 
 
 class Plot:

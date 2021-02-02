@@ -1,8 +1,11 @@
 import sys
 import pandas as pd
 from snakemake.utils import validate
-from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+import pickle
 import os
+
+from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+from blr.cli.find_clusterdups import BarcodeGraph
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -17,13 +20,15 @@ elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
 elif config["library_type"] == "stlfr":
     include: "rules/trim_stlfr.smk"
+elif config["library_type"] == "tellseq":
+    include: "rules/trim_tellseq.smk"
 
 # Import rules for phasing
 include: "rules/phasing.smk"
 
 # Create read group string to tag reads.
 platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
-readgroup = ReadGroup(identifier="1", library=config['library_type'], sample="20", platfrom_unit="unit1",
+readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_type'], sample="20", platfrom_unit="unit1",
                       platform=platform)
 
 
@@ -42,60 +47,71 @@ else:
     chunks = []
 
 
-def get_final_targets(wildcards):
-    """Define final file names based on configs."""
-    input_files = [
-        "reads.1.final.fastq.gz",
-        "reads.2.final.fastq.gz",
+def final_input(wildcards):
+    files = [
         "multiqc_report.html",
         "final.bam",
+        "final.bam.bai",
+        "final.phased.bam",
+        "final.phased.bam.bai",
+        "final.phased.vcf.gz",
+        "final.phased.vcf.gz.tbi",
+        "final.naibr_sv_calls.bedpe",
+        "final.sv_sizes.tsv"
     ]
-    if config["phasing_ground_truth"]:
-        input_files.append("final.phasing_stats.txt")
-
-    return input_files
+    if not config["reference_variants"]:
+        files.extend([
+            "called.vcf.gz",
+            "called.vcf.gz.tbi"
+        ])
+        if config["filter_variants"]:
+            files.extend([
+                "called.filtered.vcf.gz",
+                "called.filtered.vcf.gz.tbi"
+            ])
+    return files
 
 
 rule final:
-   input:
-        get_final_targets
+   input: final_input
 
 
 rule fastqc_raw_reads:
     """Creates fastqc reports from raw read files. Output names are automatically given by fastqc."""
     output:
-        qc = expand("trimmed.barcoded.{nr}_fastqc.html", nr=(1,2)),
-        zip = expand("trimmed.barcoded.{nr}_fastqc.zip", nr=(1,2))
+        qc = "trimmed.barcoded.{nr,[12]}_fastqc.html",
+        zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
     input:
-        reads = expand("trimmed.barcoded.{nr}.fastq.gz", nr=(1,2)),
-    log:
-        "fastqc_raw_reads.log"
+        reads = "trimmed.barcoded.{nr}.fastq.gz",
+    log: "trimmed.barcoded.{nr,[12]}_fastqc.log"
+    threads: 2  # Fix java.lang.OutOfMemoryError (https://github.com/s-andrews/FastQC/issues/24)
     shell:
         "fastqc"
         " {input.reads}"
+        " -t {threads}"
         " 2> {log}"
 
 
 def get_multiqc_input(wildcards):
     inputs = [
-        "trimmed.barcoded.1_fastqc.html",
-        "trimmed.barcoded.2_fastqc.html",
-        "final.bam",
         "figures",
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi",
         "final.phaseblock_data.tsv",
         "final.whatshap_stats.tsv",
         "final.insert_size_metrics.txt",
-        "final.insert_size_histogram.pdf"
+        "final.insert_size_histogram.pdf",
+        "final.phasing_stats.txt",
+        "final.duplicate_metrics.txt",
+        "final.molecule_lengths.tsv",
+        "final.alignment_summary_metrics.txt",
+        "blr_mqc.yaml"
     ]
-    if config["phasing_ground_truth"]:
-        inputs.append("final.phasing_stats.txt")
+    if config["read_mapper"] != "lariat":
+        inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
     return inputs
 
 
@@ -111,13 +127,29 @@ rule multiqc_summarize:
     log:
         "multiqc.log"
     shell:
-        "multiqc"
-        " ."
-        " 2> {log}"
+        "multiqc . 2> {log}"
+
+
+rule report_configs:
+    """Translate configs to HTML to include in MultiQC report"""
+    output:
+        yaml = temp("blr_mqc.yaml")
+    run:
+        with open(output.yaml, "w") as configs:
+            text = "id: 'run_configs'\n"
+            text += "section_name: 'Run configs'\n"
+            text += "plot_type: 'html'\n"
+            text += "description: ' for current analysis. Describes which parameter values was used.'\n"
+            text += "data: |\n"
+            text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
+            for param, value in config.items():
+                text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
+            text += "\t</dl>".expandtabs(4)
+            print(text, file=configs)
 
 
 def plot_figures_input(wildcards):
-    if config["library_type"] == "blr":
+    if config["library_type"] in {"blr", "tellseq"}:
         return "final.molecule_stats.filtered.tsv", "barcodes.clstr"
     else:
         return "final.molecule_stats.filtered.tsv"
@@ -125,38 +157,24 @@ def plot_figures_input(wildcards):
 
 rule plot_figures:
     """Generate plots for final report."""
-    output: directory("figures")
+    output:
+        images = directory("figures"),
+        stats = "final.stats.txt"
     input: plot_figures_input
     log: "final.plot.log"
     shell:
         "blr plot"
         " {input}"
-        " -o {output} 2> {log}"
+        " -o {output.images} 2> {log} > {output.stats}"
 
 
-rule barcode_sort_fastq:
-    """Assumes barcode read name is followed by barcode sequence. Required for EMA aligner.
-    Exmaple: @ST-E00269:339:H27G2CCX2:7:1102:21186:8060:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-    """
-    output:
-        fastq = "sorted.{nr}.fastq.gz"
-    input:
-        fastq = "trimmed.barcoded.{nr}.fastq.gz"
-    shell:
-        "pigz -cd -p 1 {input.fastq} |"
-        " paste - - - - |"
-        " sort -t ' ' -k2 |"
-        " tr '\t' '\n' |"
-        " pigz > {output.fastq}"
-
-
-rule map_sort_tag:
-    """Map reads using the aligner specified in configs. Output is sorted and tagged with barcode."""
+rule map_sort:
+    """Map reads using the aligner specified in configs. Output is sorted."""
     output:
         bam = "initialmapping.bam"
     input:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz" if config["read_mapper"] != "ema" else "sorted.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz" if config["read_mapper"] != "ema" else "sorted.2.fastq.gz"
+        r1_fastq = "trimmed.barcoded.1.fastq.gz",
+        r2_fastq = "trimmed.barcoded.2.fastq.gz"
     threads: 20
     log:
         map = "read_mapping.log",
@@ -198,7 +216,37 @@ rule map_sort_tag:
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
-                " -p 10x"
+                " -i {config[sample_nr]}"
+                " -p 10x",
+            "lariat":
+                # Experimental addition!
+                # Lariat creates a output directory with three files:
+                #  - 000000-chrA_0000000000_pos_bucketed.bam -> Mapped barcode tagged reads for chunk (multiple if run
+                #    on several chunks)
+                #  - ZZZ_unmapped_pos_bucketed.bam --> Unmapped reads
+                #  - bc_sorted_bam.bam --> Concatenated BAM with all reads.
+                # Only the `bc_sorted_bam.bam` is used currently and the rest deleted on step completion. Lariat does not
+                # add read groups (or I cannot figure out how) so this is done separately.
+                "mkdir -p lariat_tmp"
+                " && "
+                "trap 'rm -rf lariat_tmp' EXIT"
+                " && "
+                "lariat"
+                " -reads={input.r1_fastq}"
+                " -genome={config[genome_reference]}"
+                " -threads={threads}"
+                " -trim_length=0"
+                " -first_chunk=True"
+                " -output=lariat_tmp"
+                " -sample_id={readgroup.sample} &> {log.map}"
+                " && "  
+                "samtools addreplacerg"  
+                " -r {readgroup.ID}"
+                " -r {readgroup.LB}"
+                " -r {readgroup.SM}"
+                " -r {readgroup.PL}"
+                " -r {readgroup.PU}"
+                " lariat_tmp/bc_sorted_bam.bam"
         }
         command = commands[config["read_mapper"]]
 
@@ -206,7 +254,7 @@ rule map_sort_tag:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
 
         shell(
-            command + " 2> {log.map} | "
+            command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -o {output.bam}" +
@@ -225,9 +273,13 @@ rule make_chunk_beds:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
 
 
+skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
+              config["read_mapper"] == "lariat"
+
+
 rule split_into_chunks:
     output:
-        bam = pipe("chunks/{chunk}.sorted.bam")
+        bam = temp("chunks/{chunk}.sorted.tag.bam") if skip_tagbam else pipe("chunks/{chunk}.sorted.bam")
     input:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai",
@@ -238,37 +290,80 @@ rule split_into_chunks:
 
 rule get_unmapped_reads:
     output:
-        bam = "unmapped.bam"
+        bam = temp("unmapped.bam")
     input:
-        bam = "initialmapping.bam"
+        bam = "initialmapping.bam",
+        bai = "initialmapping.bam.bai"
     log: "unmapped.log"
+    params:
+        tag = ">" if skip_tagbam else f"| blr tagbam - --sample-nr {config['sample_nr']} -o",
+        outtype = "-bh" if skip_tagbam else "-h"
     shell:
-        "samtools view -hf 13 {input.bam} | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view {params.outtype} {input.bam} '*' {params.tag} {output.bam} 2> {log}"
 
 
 rule tagbam:
     output:
-        bam = "{base}.sorted.tag.bam"
+        bam = temp("{base}.sorted.tag.bam")
     input:
         bam = "{base}.sorted.bam"
     log:
         "{base}.tagbam.log"
     shell:
-        "blr tagbam {input.bam} -o {output.bam} 2> {log}"
+        "blr tagbam "
+        " -o {output.bam}"
+        " --sample-nr {config[sample_nr]}"
+        " {input.bam}  2> {log}"
 
 
-rule clusterrmdup:
-    """Merge cluster duplicates defined as two separate cluster sharing """
+rule find_clusterdups:
+    """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
     output:
-        bam = "{base}.sorted.tag.bcmerge.bam",
-        merges = "{base}.barcode-merges.csv"
+        pickle = temporary("{base}.sorted.tag.clusterdups.pickle")
     input:
         bam = "{base}.sorted.tag.bam"
-    log: "{base}.clusterrmdup.log"
+    log: "{base}.find_clusterdups.log"
     shell:
-        "blr clusterrmdup"
+        "blr find_clusterdups"
         " {input.bam}"
-        " {output.merges}"
+        " --output-pickle {output.pickle}"
+        " --min-mapq {config[min_mapq]}"
+        " --library-type {config[library_type]}"
+        " --window {config[window_size]}"
+        " --quantile-threshold 0.99"
+        " -b {config[cluster_tag]} 2> {log}"
+
+
+rule get_barcode_merges:
+    """Merge graphs of connected barcodes from all chunks to get CSV of barcodes to merge."""
+    output:
+        merges = "final.barcode-merges.csv"
+    input:
+        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks)
+    run:
+        graph = BarcodeGraph()
+        for filepath in input.pickle:
+            with open(filepath, "rb") as file:
+                filegraph = BarcodeGraph.from_graph(pickle.load(file))
+                graph.merge(filegraph)
+
+        with open(output.merges, 'w') as file:
+            for old_barcode, new_barcode in graph.iter_merges():
+                print(old_barcode, new_barcode, sep=",", file=file)
+
+
+rule merge_clusterdups:
+    """Merge cluster duplicates defined as two separate cluster sharing """
+    output:
+        bam = temp("{base}.sorted.tag.bcmerge.bam"),
+    input:
+        bam = "{base}.sorted.tag.bam",
+        merges = "final.barcode-merges.csv"
+    log: "{base}.merge_clusterdups.log"
+    shell:
+        "blr merge_clusterdups"
+        " {input.bam}"
+        " {input.merges}"
         " -o {output.bam}"
         " -b {config[cluster_tag]} 2> {log}"
 
@@ -276,7 +371,7 @@ rule clusterrmdup:
 rule mark_duplicates:
     """Mark duplicates within barcodes clusters."""
     output:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.bam",
+        bam = temp("{base}.sorted.tag.bcmerge.mkdup.bam"),
         metrics = "{base}.sorted.tag.bcmerge.mkdup_metrics.txt"
     input:
         bam = "{base}.sorted.tag.bcmerge.bam"
@@ -299,8 +394,8 @@ rule mark_duplicates:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
-        stats = "{base}.molecule_stats.tsv"
+        bam = temp("{base}.sorted.tag.bcmerge.mkdup.mol.bam"),
+        stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
     log: "{base}.buildmolecules.log"
@@ -312,6 +407,8 @@ rule buildmolecules:
         " -m {config[molecule_tag]}"
         " -b {config[cluster_tag]}"
         " --window {config[window_size]}"
+        " --min-mapq {config[min_mapq]}"
+        " --library-type {config[library_type]}"
         " 2> {log}"
 
 
@@ -323,14 +420,16 @@ rule concat_molecule_stats:
     run:
         dfs = list()
         for nr, file in enumerate(input.tsv):
-            df =  pd.read_csv(file, sep="\t")
-            if not df.empty:
-                df["ChunkID"] = nr
-                dfs.append(df)
+            try:
+                df = pd.read_csv(file, sep="\t")
+            except pd.errors.EmptyDataError:
+                continue
+
+            df["ChunkID"] = nr
+            dfs.append(df)
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
-
 
 rule get_barcodes_to_filter:
     output:
@@ -378,7 +477,6 @@ rule filterclusters:
         " {input.barcodes}"
         " -m {config[molecule_tag]}"
         " -b {config[cluster_tag]}"
-        " -s {config[sequence_tag]}"
         " 2> {log} |"
         " tee {output.bam}"
         " |"
@@ -485,7 +583,7 @@ rule index_vcf:
 rule call_variants:
     """Call variants using the selected variant caller from configs."""
     output:
-        vcf = "{base}.variants.called.vcf"
+        vcf = temporary("{base}.variants.called.vcf")
     input:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
@@ -522,7 +620,8 @@ rule call_variants:
                 "gatk --java-options '-Xmx{config[heap_space]}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
                 " -R {config[genome_reference]}"
                 " -I {input.bam}"
-                " -O {output.vcf} 2> {log}",
+                " -O {output.vcf}"
+                " --create-output-variant-index false 2> {log}",
             # This option is currently not included in the pipeline documentation, but it will run on any system which
             # - runs Linux (it's not maintained for any other system)
             # - has deepvariant installed (e.g. through conda)
@@ -537,6 +636,78 @@ rule call_variants:
         shell(commands[config["variant_caller"]])
 
 
+rule extract_called:
+    """Extract SNPs and INDELs from called varinats"""
+    output:
+        vcf = temporary("{base}.variants.called.{type,(SNP|INDEL)}.vcf")
+    input:
+        vcf = "{base}.variants.called.vcf"
+    log: "{base}.variants.called.{type,(SNP|INDEL)}.log"
+    shell:
+        "gatk SelectVariants"
+        " -V {input.vcf}"
+        " -select-type {wildcards.type}"
+        " --create-output-variant-index false"
+        " -O {output.vcf} 2> {log}"
+
+
+rule filter_called_snps:
+    """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    output:
+        vcf = temporary("{base}.variants.called.SNP.filtered.vcf")
+    input:
+        vcf = "{base}.variants.called.SNP.vcf"
+    log: "{base}.variants.called.SNP.filtered.log"
+    shell:
+        # TODO Include genotype filtration for AD < 2
+        "gatk VariantFiltration"
+        " -V {input.vcf}"
+        " --filter-name 'lowQUAL'"
+        " --filter-expression 'QUAL < 15'"
+        " --filter-name 'highMQRankSum'"
+        " --filter-expression 'MQRankSum > 6.0'"
+        " --filter-name 'snpLowAF'"
+        " --filter-expression 'AF < 0.15'"
+        " --create-output-variant-index false"
+        " -O {output.vcf} 2> {log}"
+
+
+rule filter_called_indels:
+    """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    output:
+        vcf = temporary("{base}.variants.called.INDEL.filtered.vcf")
+    input:
+        vcf = "{base}.variants.called.INDEL.vcf"
+    log: "{base}.variants.called.INDEL.filtered.log"
+    shell:
+        # TODO Include genotype filtration for AD < 4
+        "gatk VariantFiltration"
+        " -V {input.vcf}"
+        " --filter-name 'lowQUAL'"
+        " --filter-expression 'QUAL < 15'"
+        " --filter-name 'highMQRankSum'"
+        " --filter-expression 'MQRankSum > 6.0'"
+        " --filter-name 'indelLowAF'"
+        " --filter-expression 'AF < 0.25'"
+        " --create-output-variant-index false"
+        " -O {output.vcf} 2> {log}"
+
+
+rule merge_filtered_snps_indels:
+    output:
+        vcf = temporary("{base}.variants.called.filtered.vcf")
+    input:
+        vcf_snps = "{base}.variants.called.SNP.filtered.vcf",
+        vcf_indels = "{base}.variants.called.INDEL.filtered.vcf"
+    log: "{base}.variants.called.filtered.log"
+    shell:
+        "picard MergeVcfs"
+        " --CREATE_INDEX false"
+        " -O {output.vcf}"
+        " -I {input.vcf_snps}"
+        " -I {input.vcf_indels} 2> {log}"
+
+
 def get_phase_input_vcf(wildcards):
     if config["reference_variants"]:
         return {
@@ -544,12 +715,15 @@ def get_phase_input_vcf(wildcards):
             "bed": f"chunks/{wildcards.chunk}.bed",
         }
     else:
-        return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
+        if config["filter_variants"]:
+            return {"vcf": f"chunks/{wildcards.chunk}.variants.called.filtered.vcf"}
+        else:
+            return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
 
 
 rule split_or_symlink_phase_input_vcf:
     output:
-        vcf = "chunks/{chunk}.phaseinput.vcf"
+        vcf = temp("chunks/{chunk}.phaseinput.vcf")
     input:
         unpack(get_phase_input_vcf)
     run:
@@ -565,15 +739,15 @@ rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bam = expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks),
-        bam_unmapped = "unmapped.bam"
+        bam = ancient(expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks)),
+        bam_unmapped = ancient("unmapped.bam")
     shell:
         "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
 
 
 rule concat_phased_vcfs:
     output:
-        vcf = "final.phased.vcf"
+        vcf = temp("final.phased.vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf", chunk=chunks)
     shell:
@@ -582,9 +756,9 @@ rule concat_phased_vcfs:
 
 rule concat_called_vcfs:
     output:
-        vcf = "called.vcf"
+        vcf = temp("called.{filtered,(filtered.|)}vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.variants.called.vcf", chunk=chunks)
+        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks)
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
 
@@ -595,8 +769,6 @@ rule mosdepth:
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.region.dist.txt",
         "final.mosdepth.summary.txt",
-        "final.per-base.bed.gz",
-        "final.per-base.bed.gz.csi",
         "final.regions.bed.gz",
         "final.regions.bed.gz.csi"
     input:
@@ -605,11 +777,12 @@ rule mosdepth:
     params:
         prefix = "final",
         bin_size = config["coverage_window_size"]
-    threads: 20
+    threads: workflow.cores * 0.75
     shell:
         "mosdepth"
         " --threads {threads}"
         " --by {params.bin_size}"
+        " --no-per-base"
         " {params.prefix}"
         " {input.bam}"
 
@@ -628,12 +801,29 @@ rule aggregate_phaseblock_data:
                     for p in parse_phaseblocks(file):
                         print(p.snv_span, p.phased_snvs, p.length, p.fragments, sep="\t", file=output_tsv)
 
+
+rule aggregate_molecule_lengths:
+    output:
+        tsv = "final.molecule_lengths.tsv"
+    input:
+        tsv = "final.molecule_stats.filtered.tsv"
+    run:
+        molecules = pd.read_csv(input.tsv, sep="\t")
+        bins = range(0, max(molecules["Length"])+1000, 1000)
+        molecules["Bin"] = pd.cut(molecules["Length"], bins=bins, labels=bins[:-1])
+        binned_lengths = molecules.groupby("Bin", as_index=False)["Length"].sum()
+        binned_lengths.columns = ["Bin", "LengthSum"]
+        binned_lengths = binned_lengths[binned_lengths["LengthSum"] > 0]  # Remove zero entries
+        binned_lengths.to_csv(output.tsv, sep="\t", index=False)
+
+
 rule whatshap_stats:
     """Calculate phaseing stats related to variants and phaseblocks."""
     output:
         tsv = "final.whatshap_stats.tsv"
     input:
-        phased_vcf = "final.phased.vcf"
+        phased_vcf = "final.phased.vcf.gz",
+        phased_vcf_index = "final.phased.vcf.gz.tbi"
     log: "whatshap_stats.log"
     shell:
          "whatshap stats"
@@ -654,6 +844,50 @@ rule collect_insert_size_metrics:
         " I={input.bam}"
         " O={output.metrics}"
         " H={output.hist} 2> {log}"
+
+
+rule collect_duplicate_metrics:
+    output:
+        metrics = "final.duplicate_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_duplicate_metrics.log"
+    shell:
+        "picard CollectDuplicateMetrics"
+        " I={input.bam}"
+        " M={output.metrics}"
+        " ASSUME_SORTED=true 2> {log}"
+
+
+rule collect_alignment_summary_metrics:
+    output:
+        metrics = "final.alignment_summary_metrics.txt"
+    input:
+        bam = "final.bam"
+    log: "collect_alignment_summary_metrics.log"
+    shell:
+        "picard CollectAlignmentSummaryMetrics"
+        " I={input.bam}"
+        " O={output.metrics}"
+        " MAX_INSERT_SIZE=2000"
+        " ASSUME_SORTED=true 2> {log}"
+
+
+rule concat_lsv_calls:
+    output:
+        tsv = "final.naibr_sv_calls.tsv"
+    input:
+        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks)
+    run:
+        dfs = list()
+        for file in input.tsv:
+            try:
+                dfs.append(pd.read_csv(file, sep="\t"))
+            except pd.errors.EmptyDataError:
+                continue
+
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.tsv, sep="\t", index=False)
 
 rule Large_SV_calling:
     """Using LinkedSV for large structural variants detection"""

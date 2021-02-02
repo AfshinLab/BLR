@@ -9,8 +9,9 @@ haplotype_tag: HP # Used to store haplotype, same as 10x default. Combined with 
 genome_reference:  # Path to indexed reference
 dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
-read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2 or ema
-library_type: # Library type. Chose blr, 10x or stlfr
+read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2, ema or lariat
+library_type: # Library type. Chose blr, 10x, stlfr or tellseq
+sample_nr: 1 # Integer used as RG idetifier and to distiguish barcodes when merging BAM files.
 
 #################
 # Trim settings #
@@ -19,15 +20,20 @@ library_type: # Library type. Chose blr, 10x or stlfr
 h1: CAGTTGATCATCAGCAGGTAATCTGG # h1 adaptor sequnce, appears before barcode in read1
 h2: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG # h2 adaptor sequence, appears after barcode in read1
 h3: CTGTCTCTTATACACATCT # h3 adaptor sequence, appears after genomics insert in read1 and read2.
-barcode_len: 20 # Length of barcode sequence
+barcode: BDHVBDHVBDHVBDHVBDHV # Barcode sequence
 
 # 10x libraries
 barcode_whitelist: # Path to barcode whitelist.
 apply_hamming_correction: false # Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
 
 # stLFR libraries
-stlfr_barcodes: # Path to stLFR barcodes
+stlfr_barcodes: # Path to stLFR barcodes, recommended to skip if mapping using ema
 stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from tagmentation)
+
+# TELL-Seq libraries
+tellseq_index: # Path to index 1 file containing the associated 18 bp barcode sequences.
+tellseq_correction: correct_singles # Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
+tellseq_barcode: NNHNNYRNNNNYRNNHNN # Barcode sequence for pattern matching
 
 ####################
 # Phasing settings #
@@ -35,20 +41,25 @@ stlfr_adapter: CTGTCTCTTATACACATCT # Adaptor sequence for stLFR constructs (from
 reference_variants: # Path to reference variants used for phasing, if None will call variants with `variant_caller`
 phasing_ground_truth: # Path to phased variants used for calculating stats
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
+filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
+phase_indels: true # Phase INDELs along with SNPs
 
-# Tool for tagging haplotype information from phasing onto BAM. 'whatshap' only works for called variants while
-# 'blr' works for phasing with reference variants.
-haplotag_tool: blr # Choose 'whatshap' or 'blr'
+# Tool for tagging haplotype information from phasing onto BAM.
+haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
 
 ##############################
 # Software-specific settings #
 ##############################
-heap_space: 90 # GATK: Maximum heap space (~memory) to run java script with, as number of Gb.
+heap_space: 10 # GATK: Maximum heap space (~memory) to run java script with, as number of Gb.
 barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
 barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
 coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
+min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
+naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
+naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling
+naibr_blacklist: # Bed file containing region to skip
 
 #######################
 # LinkedSV parameters #

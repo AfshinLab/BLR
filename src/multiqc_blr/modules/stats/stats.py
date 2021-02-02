@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for general stats"""
 
-from __future__ import print_function
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import logging
 import pandas as pd
 
@@ -39,10 +38,22 @@ class MultiqcModule(BaseMultiqcModule):
         if n_phaseblock_reports > 0:
             log.info("Found {} phaseblock reports".format(n_phaseblock_reports))
 
+        n_molecule_length_reports = self.gather_molecule_lengths()
+        if n_molecule_length_reports > 0:
+            log.info("Found {} molecule length reports".format(n_molecule_length_reports))
+
+        n_sv_size_reports = self.gather_sv_sizes()
+        if n_sv_size_reports > 0:
+            log.info("Found {} SV size reports".format(n_sv_size_reports))
+
+        n_stats = self.gather_stats()
+        if n_stats > 0:
+            log.info("Found {} stats reports".format(n_stats))
+
     def gather_stats_logs(self):
         # Find and load any input files for this module
         headers = dict()
-        stats_data = dict()
+        data = dict()
         for f in self.find_log_files('stats', filehandles=True):
             tool_name = self.get_tool_name(f["f"])
 
@@ -50,36 +61,41 @@ class MultiqcModule(BaseMultiqcModule):
             if not tool_name:
                 continue
 
-            if tool_name not in stats_data:
-                stats_data[tool_name] = dict()
+            if tool_name not in data:
+                data[tool_name] = dict()
                 headers[tool_name] = OrderedDict()
 
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(f".{tool_name}", "")
 
             log.debug(f"Found report for tool {tool_name} with sample {sample_name}")
 
-            if sample_name in stats_data[tool_name]:
+            if sample_name in data[tool_name]:
                 log.debug(f"Duplicate sample name found for tool {tool_name}! Overwriting: {sample_name}")
 
-            stats_data[tool_name][sample_name] = dict()
+            self.add_data_source(f)
+
+            data[tool_name][sample_name] = dict()
 
             for parameter, value in self.parse(f["f"]):
                 header_name = parameter.lower().replace(" ", "_")
-                stats_data[tool_name][sample_name][header_name] = value
+                data[tool_name][sample_name][header_name] = value
 
                 headers[tool_name][header_name] = {
                     'title': parameter
                 }
 
+        # Filter out samples to ignore for each tool
+        data = {tool: self.ignore_samples(data) for tool, data in data.items() if self.ignore_samples(data)}
+
         # Nothing found - raise a UserWarning to tell MultiQC
-        if len(stats_data) == 0:
+        if len(data) == 0:
             log.debug("Could not find any stats logs in {}".format(config.analysis_dir))
 
-        log.info(f"Found {len(stats_data)} tools (Report per tool: "
-                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in stats_data.items()])})")
+        log.info(f"Found {len(data)} tools (Report per tool: "
+                 f"{', '.join([tool + '=' + str(len(reps)) for tool, reps in data.items()])})")
 
         # For each tool generat a separat statistics table for all found samples.
-        for tool_name, tool_data in stats_data.items():
+        for tool_name, tool_data in data.items():
             tool_name_title = tool_name.capitalize()
 
             # Write parsed report data to a file
@@ -119,52 +135,58 @@ class MultiqcModule(BaseMultiqcModule):
                         "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
                         "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
                         "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"],
-                        "nr_barcodes_final_millions": data["barcodes"] / 1_000_000
+                        "nr_barcodes_final_millions": data["barcodes_final"] / 1_000_000,
+                        "median_molecule_count": data["median_molecule_count"]
                     }
 
                 general_stats_header = OrderedDict({
                     "n50_lpm": {
                         'title': 'N50 LPM',
                         'description': 'N50 linked-reads per molecule',
-                        'scale': 'Blues',
+                        'scale': 'OrRd',
                         'format': '{:,}'
                     },
                     "mean_molecule_length_kbp": {
                         'title': 'Mean len',
                         'description': 'Mean molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'PuBu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "median_molecule_length_kbp": {
                         'title': 'Median len',
                         'description': 'Median molecule length in kbp',
-                        'scale': 'Blues',
+                        'scale': 'BuPu',
                         'suffix': ' kbp',
                         'format': '{:,.1f}'
                     },
                     "dna_in_molecules_20_kbp_percent": {
-                        'title': 'DNA>20kbp',
+                        'title': '>20kbp',
                         'description': 'Percent of DNA in molecules longer than 20 kbp',
-                        'scale': 'Blues',
+                        'scale': 'Oranges',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "dna_in_molecules_100_kbp_percent": {
-                        'title': 'DNA>100kbp',
+                        'title': '>100kbp',
                         'description': 'Percent of DNA in molecules longer than 100 kbp',
-                        'scale': 'Blues',
+                        'scale': 'YlOrBr',
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
                     "nr_barcodes_final_millions": {
-                        'title': '# barcodes',
-                        'description': 'Number of barcode in final data.',
+                        'title': '# Bc',
+                        'description': 'Number of barcodes in final data.',
                         'suffix': 'M',
-                        'scale': 'Blues',
+                        'scale': 'BuGn',
                         'format': '{:,.1f}'
                     },
-
+                    "median_molecule_count": {
+                        'title': ' # Mol',
+                        'description': 'Median number of molecules per barcode',
+                        'scale': 'OrRd',
+                        'format': '{:,}'
+                    },
                 })
 
                 self.general_stats_addcols(general_stats_data, general_stats_header)
@@ -173,8 +195,17 @@ class MultiqcModule(BaseMultiqcModule):
         data_lengths = dict()
         for f in self.find_log_files('stats/phaseblock_data', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phaseblock_data", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
             sample_data = pd.read_csv(f["f"], sep="\t")
             data_lengths[sample_name] = sample_data["Length"].to_list()
+
+        # Filter out samples to ignore
+        data_lengths = self.ignore_samples(data_lengths)
 
         if len(data_lengths) == 0:
             log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
@@ -196,9 +227,9 @@ class MultiqcModule(BaseMultiqcModule):
         }
         general_stats_header = OrderedDict({
             "longest_phaseblock": {
-                'title': 'Longest phaseblock',
+                'title': 'Top block',
                 'description': 'Longest phaseblock created',
-                'scale': 'Blues',
+                'scale': 'YlGn',
                 'suffix': ' Mbp',
                 'format': '{:,.3f}'
             }})
@@ -231,6 +262,208 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(lengths_writable, "stats_phaseblock_lengths")
 
         return len(data_lengths)
+
+    def gather_molecule_lengths(self):
+        data_lengths = dict()
+        for f in self.find_log_files('stats/molecule_lengths', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_lengths", "")
+
+            if sample_name in data_lengths:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
+            sample_data = pd.read_csv(f["f"], sep="\t")
+            sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
+            data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
+
+        # Filter out samples to ignore
+        data_lengths = self.ignore_samples(data_lengths)
+
+        if len(data_lengths) == 0:
+            log.debug("Could not find any molecule lengths data in {}".format(config.analysis_dir))
+            return 0
+
+        pconfig = {
+            'id': 'molecule_lengths',
+            'title': "Stats: Molecule lengths",
+            'xlab': "Molecule length (kbp)",
+            'ylab': 'Total DNA density',
+            'tt_label': '{point.x} kbp: {point.y:.4f}',
+        }
+        plot_html = linegraph.plot(data_lengths, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Molecule lengths",
+            description="Molecule lengths binned in 1 kbp and their length summed for eached bin to get the density.",
+            plot=plot_html
+        )
+
+        # Make new dict with keys as strings for writable output.
+        lengths_writable = dict()
+        for sample, data in data_lengths.items():
+            lengths_writable[sample] = {str(k): v for k, v in data.items()}
+
+        # Write parsed report data to a file
+        self.write_data_file(lengths_writable, "stats_molecule_lengths")
+
+        return len(data_lengths)
+
+    def gather_sv_sizes(self):
+        data = [{}, {}, {}, {}]
+
+        for f in self.find_log_files('stats/sv_sizes', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".sv_sizes", "")
+            sample_df = pd.read_csv(f["f"], sep="\t")
+            for d in data:
+                d[sample_name] = {}
+            for row in sample_df.itertuples():
+                data[0][sample_name][row.Size] = row.DEL + row.INV + row.DUP
+                data[1][sample_name][row.Size] = row.DEL
+                data[2][sample_name][row.Size] = row.INV
+                data[3][sample_name][row.Size] = row.DUP
+
+        # Filter out samples to ignore
+        data = [self.ignore_samples(d) for d in data]
+
+        if len(data[0]) == 0:
+            log.debug("Could not find any molecule lengths data in {}".format(config.analysis_dir))
+            return 0
+
+        pconfig = {
+            'id': 'sv_sizes',
+            'title': "Stats: SV size distribution",
+            'xlab': "SV size range",
+            'yMinRange': (0, 10),
+            'categories': True,
+            'data_labels': [
+                {'name': 'Total', 'ylab': 'Count'},
+                {'name': 'DEL', 'ylab': 'Count'},
+                {'name': 'INV', 'ylab': 'Count'},
+                {'name': 'DUP', 'ylab': 'Count'},
+            ]
+        }
+        plot_html = linegraph.plot(data, pconfig)
+
+        # Add a report section with plot
+        self.add_section(
+            name="SV size distribution",
+            description="Size distrobution of called structural variants (SV).",
+            plot=plot_html
+        )
+
+        general_stats_data = {name: {"svs": sum(total_data.values())} for name, total_data in data[0].items()}
+        general_stats_header = OrderedDict({
+            "svs": {
+                'title': 'SVs',
+                'description': 'Total number of detected structural variants',
+                'scale': 'Blues',
+                'format': '{:,}'
+            },
+        })
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        return len(data[0])
+
+    def gather_stats(self):
+        names = ["MB", "MC", "RB"]
+        data = {name: dict() for name in names}
+        for f in self.find_log_files('stats/general_stats', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
+
+            if sample_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
+            sample_data = defaultdict(list)
+            for line in f["f"]:
+                if line.startswith("MB"):
+                    _, mol_per_bc, count = line.split("\t")
+                    sample_data["MB"].append((int(mol_per_bc), int(count)))
+
+                if line.startswith("MC"):
+                    _, coverage_bin, count = line.split("\t")
+                    sample_data["MC"].append((float(coverage_bin), int(count)))
+
+                if line.startswith("RB"):
+                    _, reads_bin, count = line.split("\t")
+                    sample_data["RB"].append((int(reads_bin), int(count)))
+
+            total_count = sum(s[1] for s in sample_data["MB"])
+            data["MB"][sample_name] = {
+                mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
+            }
+
+            total_count = sum(s[1] for s in sample_data["MC"])
+            data["MC"][sample_name] = {
+                coverage_bin: 100 * count / total_count for coverage_bin, count in sample_data["MC"]
+            }
+
+            total_count = sum(s[1] for s in sample_data["RB"])
+            data["RB"][sample_name] = {
+                reads_bin: 100 * count / total_count for reads_bin, count in sample_data["RB"]
+            }
+
+        # Filter out samples to ignore
+        data = {name: self.ignore_samples(d) for name, d in data.items()}
+        if any(len(d) == 0 for d in data.values()):
+            log.debug("Could not find any stats reports in {}".format(config.analysis_dir))
+            return 0
+
+        self.add_section(
+            name="Molecules per barcode",
+            description="Molecule per barcode",
+            plot=linegraph.plot(
+                data["MB"],
+                {
+                    'id': 'molecules_per_barcode',
+                    'title': "Stats: Molecules per barcode",
+                    'xlab': "Molecules per barcode",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': '{point.x} molecules: {point.y:.1f}%',
+                })
+        )
+
+        self.add_section(
+            name="Molecule coverage",
+            description="Molecule coverage",
+            plot=linegraph.plot(
+                data["MC"],
+                {
+                    'id': 'molecule_coverage',
+                    'title': "Stats: Molecule coverage",
+                    'xlab': "Molecules coverage",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': 'Coverage {point.x}: {point.y:.1f}%',
+                })
+        )
+
+        self.add_section(
+            name="Reads per barcode",
+            description="Graph showing reads per barcode. Reads are counted for each barcode and then binned and the "
+                        "total nr of barcodes counted for each bin. The number for each bin relates to the lower bin "
+                        "threshold.",
+            plot=linegraph.plot(
+                data["RB"],
+                {
+                    'id': 'reads_per_barcode',
+                    'title': "Stats: Reads per barcode",
+                    'xlab': "Read count bin",
+                    'ylab': 'Fraction of total',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': 'Read count {point.x}: {point.y:.1f}%',
+                })
+        )
+
+        return len(data.popitem()[1])
 
     @staticmethod
     def get_tool_name(file):

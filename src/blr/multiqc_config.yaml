@@ -5,3 +5,77 @@ intro_text: "This is a collection of results from the BLR pipeline. Go to our
 table_columns_visible:
     mosdepth:
         30_x_pc: False
+        1_x_pc: True
+    Bowtie 2 / HiSAT2:
+        overall_alignment_rate: False
+    Cutadapt:
+        percent_trimmed: False
+    FastQC:
+        percent_duplicates: False
+
+extra_fn_clean_exts:
+    - type: remove
+      pattern: .duplicate_metrics
+      module: picard
+
+fn_ignore_dirs:
+    - '.snakemake'
+
+whatshap_config:
+    phased_chromosomes: # 'chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22'
+
+run_modules:
+    - mosdepth
+    - fastqc
+    - picard
+    - whatshap
+    - stats
+    - hapcut2
+    - cutadapt
+    - custom_content
+
+sp:
+    picard/markdups:
+        fn: "final.duplicate_metrics.txt"
+    picard/alignment_metrics:
+        fn: "final.alignment_summary_metrics.txt"
+    picard/basedistributionbycycle:
+        skip: true
+    picard/gcbias:
+        skip: true
+    picard/hsmetrics:
+        skip: true
+    picard/insertsize:
+        fn: "final.insert_size_metrics.txt"
+    picard/oxogmetrics:
+        skip: true
+    picard/pcr_metrics:
+        skip: true
+    picard/quality_by_cycle:
+        skip: true
+    picard/quality_score_distribution:
+        skip: true
+    picard/quality_yield_metrics:
+        skip: true
+    picard/rnaseqmetrics:
+        skip: true
+    picard/rrbs_metrics:
+        skip: true
+    picard/sam_file_validation:
+        skip: true
+    picard/variant_calling_metrics:
+        skip: true
+    picard/wgs_metrics:
+        skip: true
+    cutadapt:
+        fn: "cutadapt_trim.log"
+    whatshap/stats:
+        fn: "final.whatshap_stats.tsv"
+    whatshap/haplotag:
+        fn: "*.haplotag.log"
+    fastqc:
+        fn_re: "trimmed.barcoded.[1|2].fastq.gz"
+    hapcut2/phasing_stats:
+        fn: "final.phasing_stats.txt"
+    stats/sv_sizes:
+        fn: "final.sv_sizes.tsv"

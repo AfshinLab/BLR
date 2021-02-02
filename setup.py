@@ -16,6 +16,9 @@ setup(
         "pysam",
         "dnaio",
         "tqdm",
+        "pandas",
+        "numpy",
+        "matplotlib",
         "snakemake",
         "importlib_resources; python_version<'3.7'",
         "dataclasses; python_version<'3.7'",
@@ -26,7 +29,8 @@ setup(
     },
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml", "multiqc_config.yaml"]},
+    package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml", "multiqc_config.yaml",
+                          "naibr.config", "naibr-environment.yml"]},
     entry_points={
         "console_scripts": [
             "blr = blr.__main__:main"

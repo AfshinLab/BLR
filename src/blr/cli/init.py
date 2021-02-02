@@ -7,8 +7,9 @@ import os.path
 import sys
 from pathlib import Path
 from importlib_resources import read_binary
+from typing import List
 
-from ..utils import guess_paired_path
+from ..utils import guess_paired_path, ACCEPTED_LIBRARY_TYPES
 from blr.cli.config import change_config
 
 logger = logging.getLogger(__name__)
@@ -16,14 +17,15 @@ logger = logging.getLogger(__name__)
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
+KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr"}
 
 
 def add_arguments(parser):
-    parser.add_argument(
+    required = parser.add_mutually_exclusive_group()
+    required.add_argument(
         "--reads1",
         "--r1",
         type=Path,
-        required=True,
         metavar="READS",
         help="First paired-end read file (.fastq.gz). The second is found automatically.",
     )
@@ -31,14 +33,27 @@ def add_arguments(parser):
         "-l",
         "--library-type",
         required=True,
-        choices=["blr", "10x", "stlfr"],
+        choices=ACCEPTED_LIBRARY_TYPES,
         help="Select library type from currently available technologies: %(choices)s."
+    )
+    required.add_argument(
+        "-w",
+        "--from-workdir",
+        type=Path,
+        metavar="DIR",
+        action="append",
+        help=f"Initailize new analysis directory based on previous analysis instead of FASTQ reads. Will identify key "
+             f"files (currently: {', '.join(KEY_FILES)}) from previous run(s) and use the for the basis of new "
+             f"analysis. If multiple DIRs are provided the files will be merged appropriately."
     )
     parser.add_argument("directory", type=Path, help="New analysis directory to create")
 
 
 def main(args):
-    init(args.directory, args.reads1, args.library_type)
+    if args.reads1:
+        init(args.directory, args.reads1, args.library_type)
+    elif args.from_workdir:
+        init_from_dir(args.directory, args.from_workdir, args.library_type)
 
 
 def init(directory: Path, reads1: Path, library_type: str):
@@ -65,11 +80,7 @@ def init(directory: Path, reads1: Path, library_type: str):
 
 
 def create_and_populate_analysis_directory(directory: Path, reads1: Path, reads2: Path, library_type: str):
-    try:
-        directory.mkdir()
-    except OSError as e:
-        logger.error(e)
-        sys.exit(1)
+    try_mkdir(directory)
 
     # Write the configuration files
     write_config_to_dir(CONFIGURATION_FILE_NAME, directory)
@@ -104,3 +115,50 @@ def create_symlink(readspath, dirname, target):
     else:
         src = readspath
     os.symlink(src, os.path.join(dirname, target))
+
+
+def try_mkdir(directory: Path):
+    try:
+        directory.mkdir()
+    except OSError as e:
+        logger.error(e)
+        sys.exit(1)
+
+
+def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
+    if not all(w.is_dir() and (w / CONFIGURATION_FILE_NAME).exists() for w in workdirs):
+        logger.error(f"The workdir paths must lead to directories and contain the file '{CONFIGURATION_FILE_NAME}'")
+        sys.exit(1)
+
+    for file in KEY_FILES:
+        if not all((w / file).exists() for w in workdirs):
+            logger.error(f"The workdirs must contain the file '{file}'")
+            sys.exit(1)
+
+    # TODO Add warning if multiple workdirs are passed but they use the same 'sample_nr' to tag barcodes
+    # TODO Enable re-tagging files is share same 'sample_nr'?
+
+    if " " in str(directory):
+        logger.error("The name of the analysis directory must not contain spaces")
+        sys.exit(1)
+
+    try_mkdir(directory)
+
+    # Write the configuration files
+    write_config_to_dir(CONFIGURATION_FILE_NAME, directory)
+    write_config_to_dir(MULTIQC_CONFIG_FILE_NAME, directory)
+
+    # Update with library type into
+    change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)])
+
+    input_dir = directory / "inputs"
+    input_dir.mkdir()
+
+    for nr, workdir in enumerate(workdirs, start=1):
+        for file in KEY_FILES:
+            target_name = f"dir{nr}.{file}"
+            create_symlink(workdir / file, input_dir, target_name)
+
+    logger.info(f"Directory {directory} initialized.")
+    logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
+    logger.info(f"Run 'cd {directory} && blr run anew' to start the analysis.")
