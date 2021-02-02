@@ -1,6 +1,6 @@
 from collections import Counter
 
-from blr.cli.tagfastq import match_template, IUPAC, scramble, parse_corrected_barcodes
+from blr.cli.tagfastq import match_template, IUPAC, scramble, parse_corrected_barcodes, BarcodeReader
 
 from .utils import tempinput
 
@@ -45,3 +45,19 @@ def test_parse_barcodes():
                                                              template=None, skip_singles=True)
             assert len(corrected_barcodes) == 3
             assert len(set(corrected_barcodes.values())) == 2
+
+
+def test_barcode_parsing_split_header():
+    fasta = b">MYHEADER EXTRA\nGATTACCA"
+    with tempinput(fasta) as f:
+        bcreader = BarcodeReader(f)
+        barcode = bcreader.get_barcode("MYHEADER")
+        assert barcode == "GATTACCA"
+
+
+def test_barcode_parsing_single_header():
+    fasta = b">MYHEADER\nGATTACCA"
+    with tempinput(fasta) as f:
+        bcreader = BarcodeReader(f)
+        barcode = bcreader.get_barcode("MYHEADER")
+        assert barcode == "GATTACCA"

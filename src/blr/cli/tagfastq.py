@@ -115,9 +115,11 @@ def run_tagfastq(
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
             # Header parsing
             summary["Read pairs read"] += 1
+            # TODO Handle reads with single header
             name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
             _, nr_and_index2 = read2.name.split(maxsplit=1)
 
+            # TODO Check that sample_index is ATCG.
             sample_index = nr_and_index1.split(':')[-1]
             uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
             corrected_barcode_seq = None
@@ -285,7 +287,7 @@ class BarcodeReader:
 
     def parse(self):
         for barcode in tqdm(self._file, desc="Uncorrected barcodes processed", disable=True):
-            read_name, _ = barcode.name.split(maxsplit=1)
+            read_name, *_ = barcode.name.split(maxsplit=1)
             yield read_name, barcode.sequence
 
     def get_barcode(self, read_name, maxiter=10):
