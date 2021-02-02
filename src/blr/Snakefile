@@ -136,15 +136,16 @@ rule report_configs:
         yaml = temp("blr_mqc.yaml")
     run:
         with open(output.yaml, "w") as configs:
-            print("""id: 'run_configs'
-section_name: 'Run configs'
-plot_type: 'html'
-description: ' for current analysis. Describes which parameter values was used.'
-data: |
-    <dl class="dl-horizontal">""", file=configs)
+            text = "id: 'run_configs'\n"
+            text += "section_name: 'Run configs'\n"
+            text += "plot_type: 'html'\n"
+            text += "description: ' for current analysis. Describes which parameter values was used.'\n"
+            text += "data: |\n"
+            text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
             for param, value in config.items():
-                print(f"        <dt>{param}</dt><dd><samp>{value}</samp></dd>", file=configs)
-            print ("    </dl>", file=configs)
+                text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
+            text += "\t</dl>".expandtabs(4)
+            print(text, file=configs)
 
 
 def plot_figures_input(wildcards):
