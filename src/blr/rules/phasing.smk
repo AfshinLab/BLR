@@ -258,6 +258,7 @@ rule lsv_calling_linkedsv:
          " -v hg38"
          " --min_supp_barcodes {config[min_supp_barcodes]}"
          " --germline_mode"
+         "--save_temp_files" 
          " --wgs &> {log}"
 
 

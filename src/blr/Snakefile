@@ -892,23 +892,3 @@ rule concat_lsv_calls:
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
 
-rule Large_SV_calling:
-    """Using LinkedSV for large structural variants detection"""
-    output: "LSV_output"
-    input: "final.phased.bam"
-    log: "LSV.log"
-    threads: 20
-    params:
-          ref_genome = config["genome_reference"],
-          min_supp_barcodes = config["min_supp_barcodes"]
-    shell:
-         "time linkedsv.py -i {input} "
-         "-d {output}" 
-         "-r {params.ref_genome}"
-         "-v hg38"
-         "-t {threads}"
-         "--min_supp_barcodes {params.min_supp_barcodes}" 
-         "--germline_mode" 
-         "--save_temp_files" 
-         "--wgs" 
-         "1> {log} 2>&1"
