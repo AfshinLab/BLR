@@ -77,3 +77,5 @@ sp:
         fn_re: "trimmed.barcoded.[1|2].fastq.gz"
     hapcut2/phasing_stats:
         fn: "final.phasing_stats.txt"
+    stats/sv_sizes:
+        fn: "final.sv_sizes.tsv"

@@ -166,6 +166,20 @@ def test_trim_stlfr(tmp_path, read_mapper):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
+@pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
+def test_trim_stlfr_lariat(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_STLFR_READ1, "stlfr")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
+         ("read_mapper", "lariat")]
+    )
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed)
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_STLFR_READ1) > 0.8
+
+
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
 def test_trim_tellseq(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
@@ -178,19 +192,21 @@ def test_trim_tellseq(tmp_path, read_mapper):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed):
-        assert count_fastq_reads(raw) / count_fastq_reads(workdir / trimmed) > 0.9
+        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
-def test_trim_tellseq_lariat(workdir):
+def test_trim_tellseq_lariat(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
          ("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, force_run=["trim"])
-    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+    run(workdir=workdir, targets=trimmed)
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_TELLSEQ_READ1) > 0.7
 
 
 non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lariat") else ["bwa", "minimap2", "ema"]
@@ -226,7 +242,7 @@ def test_BQSR(workdir):
     # ensure they are re-created with BQSR applied
     for calling_bam in workdir.joinpath("chunks").glob("*.calling.bam"):
         calling_bam.unlink()
-    target = "final.bam"
+    target = "chunks/chrA.calling.bam"
     run(workdir=workdir, targets=[target])
     with pysam.AlignmentFile(workdir / target) as af:
         # Ensure that ApplyBQSR was run on the file by inspecting the @PG lines in the header
@@ -240,7 +256,7 @@ def test_call_variants(workdir, variant_caller):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
-    target = "called.vcf"
+    target = "chunks/chrA.variants.called.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
@@ -250,7 +266,7 @@ def test_filter_variants(workdir):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null"), ("filter_variants", "true")]
     )
-    target = "called.filtered.vcf"
+    target = "chunks/chrA.variants.called.filtered.vcf"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
 
@@ -269,7 +285,7 @@ def test_haplotag(workdir, haplotype_tool):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
     )
-    target = "final.phased.bam"
+    target = "chunks/chrA.calling.phased.bam"
     run(workdir=workdir, targets=[target])
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
@@ -304,6 +320,6 @@ def test_lsv_calling(workdir):
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
     )
-    target = "final.naibr_sv_calls.bedpe"
+    target = "chunks/chrA.naibr_sv_calls.tsv"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()

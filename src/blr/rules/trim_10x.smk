@@ -43,7 +43,7 @@ rule count_10x:
 rule preproc_10x:
     """Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."""
     output:
-        bins = directory("temp_bins")
+        bins = temp(directory("temp_bins"))
     input:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",

@@ -17,8 +17,8 @@ READ 2 LAYOUT
                insert length
 """
 
-DBS = "N"*config["barcode_len"]
-trim_len = sum(map(len, [config["h1"], DBS, config["h2"]]))
+barcode_placeholder = "N"*len(config["barcode"])
+trim_len = sum(map(len, [config["h1"], barcode_placeholder, config["h2"]]))
 extract_len = len(config["h1"])
 
 
@@ -33,7 +33,7 @@ rule trim:
     threads: workflow.cores - 1  # rule tag needs one thread
     shell:
         "cutadapt"
-        " -g 'XNNN{config[h1]}{DBS}{config[h2]};min_overlap={trim_len}...{config[h3]};optional'"
+        " -g 'XNNN{config[h1]}{barcode_placeholder}{config[h2]};min_overlap={trim_len}...{config[h3]};optional'"
         " -A {config[h3]}"
         " --pair-filter 'any'"
         " -e 0.2"
@@ -64,6 +64,8 @@ rule tag:
         " -b {config[cluster_tag]}"
         " -s {config[sequence_tag]}"
         " --mapper {config[read_mapper]}"
+        " --pattern-match {config[barcode]}"
+        " --sample-nr {config[sample_nr]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.interleaved_fastq}"

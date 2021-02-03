@@ -33,6 +33,24 @@ from blr.utils import tqdm, print_stats
 
 logger = logging.getLogger(__name__)
 
+IUPAC = {
+    "A": "A",
+    "C": "C",
+    "G": "G",
+    "T": "T",
+    "R": "AG",
+    "Y": "CT",
+    "M": "AC",
+    "K": "GT",
+    "S": "CG",
+    "W": "AT",
+    "H": "ACT",
+    "B": "CGT",
+    "V": "ACG",
+    "D": "AGT",
+    "N": "ACGT"
+}
+
 
 def main(args):
     run_tagfastq(
@@ -45,7 +63,9 @@ def main(args):
         barcode_tag=args.barcode_tag,
         sequence_tag=args.sequence_tag,
         mapper=args.mapper,
-        skip_singles=args.skip_singles
+        skip_singles=args.skip_singles,
+        pattern_match=args.pattern_match,
+        sample_number=args.sample_nr,
     )
 
 
@@ -59,14 +79,18 @@ def run_tagfastq(
         barcode_tag: str,
         sequence_tag: str,
         mapper: str,
-        skip_singles: bool
+        skip_singles: bool,
+        pattern_match: str,
+        sample_number: int,
 ):
     logger.info("Starting")
     summary = Counter()
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
+    template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
     with open(corrected_barcodes, "r") as reader:
-        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, skip_singles=skip_singles)
+        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
+                                                            skip_singles=skip_singles)
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -91,9 +115,11 @@ def run_tagfastq(
         for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
             # Header parsing
             summary["Read pairs read"] += 1
+            # TODO Handle reads with single header
             name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
             _, nr_and_index2 = read2.name.split(maxsplit=1)
 
+            # TODO Check that sample_index is ATCG.
             sample_index = nr_and_index1.split(':')[-1]
             uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
             corrected_barcode_seq = None
@@ -144,7 +170,7 @@ def run_tagfastq(
                     read1.qualities,
                     read2.sequence,
                     read2.qualities,
-                    f"{corrected_barcode_seq}-1",
+                    f"{corrected_barcode_seq}-{sample_number}",
                     corrected_barcode_qual,
                     sample_index,
                     sample_index_qual
@@ -175,7 +201,7 @@ def run_tagfastq(
     logger.info("Finished")
 
 
-def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
+def parse_corrected_barcodes(open_file, summary, mapper, template, skip_singles=False):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
     corrected canonical sequence
@@ -195,6 +221,11 @@ def parse_corrected_barcodes(open_file, summary, mapper, skip_singles=False):
 
         if skip_singles and int(size) == 1:
             summary["Clusters size 1 skipped"] += 1
+            continue
+
+        if template and not match_template(canonical_seq, template):
+            summary["Barcodes not matching pattern"] += 1
+            summary["Reads with barcodes not matching pattern"] += int(size)
             continue
 
         corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
@@ -238,6 +269,16 @@ def scramble(seqs, maxiter=10):
         logger.warning("Scrambling reached maxiter")
 
 
+def match_template(sequence: str, template) -> bool:
+    if len(sequence) != len(template):
+        return False
+
+    for base, accepted_bases in zip(sequence, template):
+        if base not in accepted_bases:
+            return False
+    return True
+
+
 class BarcodeReader:
     def __init__(self, filename):
         self._cache = dict()
@@ -246,7 +287,7 @@ class BarcodeReader:
 
     def parse(self):
         for barcode in tqdm(self._file, desc="Uncorrected barcodes processed", disable=True):
-            read_name, _ = barcode.name.split(maxsplit=1)
+            read_name, *_ = barcode.name.split(maxsplit=1)
             yield read_name, barcode.sequence
 
     def get_barcode(self, read_name, maxiter=10):
@@ -381,4 +422,13 @@ def add_arguments(parser):
     parser.add_argument(
         "--skip-singles", default=False, action="store_true",
         help="Skip adding barcode information for corrected barcodes with only one supporting read pair"
+    )
+    parser.add_argument(
+        "-p", "--pattern-match",
+        help="IUPAC barcode string to match against corrected barcodes e.g. for BLR it is usualy "
+             "BDHVBDHVBDHVBDHVBDHV. Non-matched barcodes will be removed."
+    )
+    parser.add_argument(
+        "--sample-nr", type=int, default=1,
+        help="Sample number to append to barcode string. Default: %(default)s"
     )

@@ -19,10 +19,6 @@ READ 2 LAYOUT
 
 """
 
-rule link_to_barcodes:
-    output: "barcodes.txt"
-    shell: "ln -s {config[stlfr_barcodes]} {output}"
-
 
 rule trim_stlfr:
     """Trim away possible 3' adapter."""
@@ -31,7 +27,6 @@ rule trim_stlfr:
     input:
         r1_fastq = "reads.1.fastq.gz",
         r2_fastq = "reads.2.fastq.gz",
-        barcodes = "barcodes.txt"
     log: "cutadapt_trim.log",
     threads: workflow.cores - 1
     shell:
@@ -56,7 +51,8 @@ rule tag_stlfr:
         r2_fastq = "trimmed.barcoded.2.fastq.gz"
     input:
         interleaved_fastq = "trimmed.fastq",
-        barcodes = "barcodes.txt"
+    params:
+        barcodes = "" if config["stlfr_barcodes"] is None else f"--barcodes {config['stlfr_barcodes']}"
     log: "process_stlfr.log"
     shell:
         "blr process_stlfr"
@@ -64,6 +60,7 @@ rule tag_stlfr:
         " --o2 {output.r2_fastq}"
         " -b {config[cluster_tag]}"
         " --mapper {config[read_mapper]}"
-        " {input.barcodes}"
+        " --sample-nr {config[sample_nr]}"
+        " {params.barcodes}"
         " {input.interleaved_fastq}"
         " 2> {log}"

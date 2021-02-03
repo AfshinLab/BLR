@@ -4,7 +4,7 @@ Plot data from
 import logging
 import pandas as pd
 import numpy as np
-from collections import OrderedDict, defaultdict, Counter
+from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.colors import LogNorm
@@ -62,6 +62,11 @@ def process_barcode_clstr(files, directory: Path, summary):
         data = pd.read_csv(files[0], sep="\t", names=["Canonical", "Reads", "Components"])
         data["Size"] = data["Components"].apply(lambda x: len(x.split(',')))
         data["SeqLen"] = data["Canonical"].apply(len)
+
+        summary["Barcodes raw"] = sum(data["Size"])
+        summary["Barcodes corrected"] = len(data)
+        summary["Barcodes corrected with > 3 read-pairs"] = len(data[data["Reads"] > 3])
+
         plot_barcode_clstr(data, directory)
     else:
         logger.warning("Cannot handle multiple 'barcode.clstr' files.")
@@ -97,17 +102,19 @@ def process_molecule_stats(files, directory: Path, summary):
     else:
         data = process_multiple(files, process_molecule_stats_file)
 
-    summary["Barcodes"] = len(data["Barcode"].unique())
+    summary["Barcodes final"] = len(data["Barcode"].unique())
     summary["N50 reads per molecule"] = calculate_N50(data["Reads"])
     summary["Mean molecule length"] = float(data["Length"].mean())
     summary["Median molecule length"] = float(data["Length"].median())
-    summary["DNA in molecules >20 kbp (%)"] = 100 * len(data[data["Length"] > 20_000]) / len(data)
-    summary["DNA in molecules >100 kbp (%)"] = 100 * len(data[data["Length"] > 100_000]) / len(data)
+    total_dna = sum(data["Length"])
+    summary["DNA in molecules >20 kbp (%)"] = 100 * sum(data[data["Length"] > 20_000]["Length"]) / total_dna
+    summary["DNA in molecules >100 kbp (%)"] = 100 * sum(data[data["Length"] > 100_000]["Length"]) / total_dna
+    summary["Weighted mean length"] = float(np.average(data["Length"].values, weights=data["Length"].values))
 
     molecule_count = data.groupby("Barcode").count()["MoleculeID"]
     summary["Mean molecule count"] = float(molecule_count.mean())
     summary["Median molecule count"] = float(molecule_count.median())
-
+    summary["Single molecule droplets (%)"] = float(100 * sum(molecule_count.values == 1) / len(molecule_count))
     plot_molecule_stats(data, directory)
 
 
@@ -160,7 +167,7 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
 
     # Reads per barcode
     readcounts = data.groupby("Barcode", as_index=False)["Reads"].sum()
-    read_bins = list(range(0, 4)) + list(range(4, max(readcounts["Reads"])+4, 4))
+    read_bins = list(range(0, max(readcounts["Reads"])+2, 2))
     readcounts["Bin"] = pd.cut(readcounts["Reads"], bins=read_bins, labels=read_bins[:-1], right=False)
     binned_counts = readcounts.groupby("Bin", as_index=False)["Reads"].count()
     binned_counts = binned_counts[binned_counts["Reads"] > 0]  # Remove zero entries
@@ -168,15 +175,6 @@ def plot_molecule_stats(data: pd.DataFrame, directory: Path):
           "relate to the lower threshold for the bin), Nr of barcodes")
     for row in binned_counts.itertuples():
         print("RB", row.Bin, row.Reads, sep="\t")
-
-
-def bin_sum(data, binsize=2000):
-    bins = range(0, max(data) + binsize, binsize)
-    weights = OrderedDict({b: 0 for b in bins[:-1]})
-    for value in data:
-        current_bin = int(value / binsize) * binsize
-        weights[current_bin] += value
-    return bins, weights.values()
 
 
 class Plot:

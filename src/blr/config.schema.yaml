@@ -44,9 +44,9 @@ properties:
   h3:
     type: string
     description: h3 adaptor sequence, appears after genomics insert in read1 and read2.
-  barcode_len:
-    type: integer
-    description: Length of barcode sequence
+  barcode:
+    type: string
+    description: Barcode sequence
   reference_variants:
     type: [ "string", "null" ]
     description: Path to reference variants, if not provided then variant will be called by freebayes
@@ -109,6 +109,9 @@ properties:
     type: "string"
     description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
     pattern: "cluster|correct_singles"
+  tellseq_barcode:
+    type: string
+    description: Barcode sequence
   sample_nr:
     type: integer
     default: 1

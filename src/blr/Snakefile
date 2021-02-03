@@ -139,15 +139,16 @@ rule report_configs:
         yaml = temp("blr_mqc.yaml")
     run:
         with open(output.yaml, "w") as configs:
-            print("""id: 'run_configs'
-section_name: 'Run configs'
-plot_type: 'html'
-description: ' for current analysis. Describes which parameter values was used.'
-data: |
-    <dl class="dl-horizontal">""", file=configs)
+            text = "id: 'run_configs'\n"
+            text += "section_name: 'Run configs'\n"
+            text += "plot_type: 'html'\n"
+            text += "description: ' for current analysis. Describes which parameter values was used.'\n"
+            text += "data: |\n"
+            text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
             for param, value in config.items():
-                print(f"        <dt>{param}</dt><dd><samp>{value}</samp></dd>", file=configs)
-            print ("    </dl>", file=configs)
+                text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
+            text += "\t</dl>".expandtabs(4)
+            print(text, file=configs)
 
 
 def plot_figures_input(wildcards):
@@ -218,6 +219,7 @@ rule map_sort:
                 " -R {readgroup}"
                 " -r {config[genome_reference]}"
                 " -t {threads}"
+                " -i {config[sample_nr]}"
                 " -p 10x",
             "lariat":
                 # Experimental addition!
@@ -274,9 +276,13 @@ rule make_chunk_beds:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
 
 
+skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
+              config["read_mapper"] == "lariat"
+
+
 rule split_into_chunks:
     output:
-        bam = pipe("chunks/{chunk}.sorted.bam")
+        bam = temp("chunks/{chunk}.sorted.tag.bam") if skip_tagbam else pipe("chunks/{chunk}.sorted.bam")
     input:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai",
@@ -292,8 +298,11 @@ rule get_unmapped_reads:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai"
     log: "unmapped.log"
+    params:
+        tag = ">" if skip_tagbam else f"| blr tagbam - --sample-nr {config['sample_nr']} -o",
+        outtype = "-bh" if skip_tagbam else "-h"
     shell:
-        "samtools view -h {input.bam} '*' | blr tagbam -o {output.bam} - 2> {log}"
+        "samtools view {params.outtype} {input.bam} '*' {params.tag} {output.bam} 2> {log}"
 
 
 rule tagbam:
