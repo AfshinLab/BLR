@@ -85,7 +85,7 @@ def main():
     vcffile_merged = file_name + "_filtered_sorted_merged.vcf"
 
     df.to_csv(bedfile, index=None, header=None, sep='\t')
-    os.system("bedtools merge -i {} -c 4,5,6,7,8,9 -o first,collapse,max,mean,first,count -d {} > tmp_{}".format(bedfile,aa.max_distance,bedfile_merged))
+    os.system("bedtools merge -i {} -c 4,5,6,7,8,9 -o first,collapse,max,max,first,count -d {} > tmp_{}".format(bedfile,aa.max_distance,bedfile_merged))
     os.system("bedtools intersect -v -a tmp_{0} -b hg38_black_list.bed -b hg38_gap.bed > {0}".format(bedfile_merged))
 
     df = pd.read_csv(bedfile_merged,header=None, sep='\t')
