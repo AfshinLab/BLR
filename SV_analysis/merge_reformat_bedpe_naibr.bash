@@ -21,14 +21,14 @@ for file in $(ls *naibr_sv_calls.bedpe)
 do
 echo  ${file::${#file}-6}
 
-Rscript filter_naibr.R -f $file -t DEL -q 0.5 #DUP INV  
+Rscript filter_naibr.py -f $file -t DEL -q 0.5 #DUP INV
 
 done
 
 
 ls *sorted_merged.vcf > files_to_merge.txt
 
-SURVIVOR merge files_to_merge.txt 5000 1 0 0 0 10000 4_naibrs_merged.vcf
+SURVIVOR merge files_to_merge.txt 5000 1 0 0 0 1000 4_naibrs_merged.vcf
 
 Rscript plot_merged_vcf.R -i 4_naibrs_merged.vcf
 

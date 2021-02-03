@@ -19,7 +19,7 @@ option_list = list(
               help="Min SV length to keep [default= %default]", metavar="integer"),
   make_option(c("-q", "--quantile"), type="double", default=0.1, 
               help="Remove SV with QC less than the quantile [default= %default]", metavar="double"),
-  make_option(c("-d", "--max_distance"), type="integer", default=10000, 
+  make_option(c("-d", "--max_distance"), type="integer", default=1000,
               help="Max distance between SV to be merged [default= %default]", metavar="integer")
 ); 
 

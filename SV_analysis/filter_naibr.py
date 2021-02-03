@@ -23,7 +23,7 @@ def add_arguments():
         help="Min SV length to keep")
     parser.add_argument("-q", "--quantile", default=0.1, type=float,
         help="Remove SV with QC less than the quantile")
-    parser.add_argument("-d", "--max_distance", default=10000,type=int,
+    parser.add_argument("-d", "--max_distance", default=1000,type=int,
         help="Max distance between SV to be merged")
     args = parser.parse_args()
     return (parser, args)
