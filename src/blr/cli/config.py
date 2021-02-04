@@ -106,8 +106,8 @@ def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
 
 
 def add_arguments(parser):
-    parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
+    parser.add_argument("-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
                         help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values "
                              "write 'null'. Can be given multiple times.")
-    parser.add_argument("--file", default=DEFAULT_PATH, type=Path,
+    parser.add_argument("-f", "--file", default=DEFAULT_PATH, type=Path,
                         help="Configuration file to modify. Default: %(default)s in current directory.")
