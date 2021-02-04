@@ -55,6 +55,8 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
 
     # Update configs
     for key, value in changes_set:
+        # Convert relative paths to absolute
+        value = make_paths_absolute(value, workdir=filename.parent)
         value = YAML(typ='safe').load(value)
         logger.info(f"Changing value of '{key}': {configs[key]} --> {value}.")
         item = configs
@@ -86,6 +88,21 @@ def load_yaml(filename: Path):
         yaml = YAML()
         data = yaml.load(file)
     return data, yaml
+
+
+def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
+    """
+    Detect if value is a relative path and make it absolut if so.
+    :param value: Parameter value from arguments
+    :param workdir: Path to workdir. Default: CWD
+    :return:
+    """
+    if "../" in value and (workdir / value).exists():
+        if (workdir / value).is_symlink():
+            return str((workdir / value).absolute())
+        else:
+            return str((workdir / value).resolve(True))
+    return value
 
 
 def add_arguments(parser):
