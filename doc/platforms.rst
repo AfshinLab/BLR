@@ -1,6 +1,6 @@
-Plattfroms
+Platforms
 ==========
-This text contains information about the different linked-read plattforms supported by the pipeline and which requirements for input and possible preprocessing they have.
+This text contains information about the different linked-read platforms supported by the pipeline and which requirements for input and possible preprocessing they have.
 
 - BLR_ (fully supported)
 - `10x Genomics`_ (supported)
