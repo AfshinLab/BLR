@@ -23,12 +23,13 @@ modified to run completely independant of LongRanger. The pipeline also
 allowes for inputting FASTQs from other linked-read technologies such as: 
 10x Genomics Chromium Genome, Universal Sequencing TELL-seq and MGI
 stLFR. Read more about the integrated linked-read platforms 
-[here](#doc/platforms.rst)
+[here](doc/platforms.rst)
 
 ## Usage
 
 - [1. Setup analysis](#1-setup-an-analysis-folder)
 - [2. Run analysis](#2-running-an-analysis)
+- [3. MultiQC plugin](#3-multiqc-plugin)
 
 ### 1. Setup an analysis folder
 
@@ -70,7 +71,7 @@ For more options, see the documentation.
 
     blr run -h
 
-## 3 MultiQC plugin
+## 3. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called 
 MultiQC_BLR. If you which to run MultiQC without this plugin include 
@@ -161,7 +162,7 @@ The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR
 ## Development
 
 Issues are tracked through https://github.com/FrickTobias/BLR/issues. For
- more information on development go [here](#doc/develop.rst).
+ more information on development go [here](doc/develop.rst).
 
 ## Old version
 
