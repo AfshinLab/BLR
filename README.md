@@ -4,13 +4,31 @@
 
 # Barcode-Linked Reads Analysis
 
-Content:
-
+- [About the pipeline](#About-the-pipeline)
 - [Usage](#Usage)
 - [One-time installation](#One-time-installation)
+- [Development](#development)
 - [Old version](#Old-version)
 
+## About the pipeline
+
+The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping
+ and structural variant calling from FASTQs. It was originally developed for the
+prep-processing of data for the paper 
+[High throughput barcoding method for genome-scale phasing](https://www.nature.com/articles/s41598-019-54446-x) 
+for input into the 10x LongRanger pipeline (see [Old version](#Old-version
+)) but have since been
+ heavily
+modified to run completely independant of LongRanger. The pipeline also
+allowes for inputting FASTQs from other linked-read technologies such as: 
+10x Genomics Chromium Genome, Universal Sequencing TELL-seq and MGI
+stLFR. Read more about the integrated linked-read platforms 
+[here](#doc/platforms.rst)
+
 ## Usage
+
+- [1. Setup analysis](#1-setup-an-analysis-folder)
+- [2. Run analysis](#2-running-an-analysis)
 
 ### 1. Setup an analysis folder
 
@@ -18,16 +36,16 @@ Activate your Conda environment.
 
     conda activate blr
 
-Choose a name for the analysis. It will be `output_folder` in this example. Create
-the analysis directory. Specify the library type using the `-l` flag, here we choose `blr`.
+Create the analysis directory using `blr init`. Choose a name for the
+ analysis, `output_folder` in this example. Specify the library type using
+  the `-l` flag, here we choose `blr`.
 
     blr init --reads1=path/to/sample.R1.fastq.gz -l blr path/to/output_folder
 
 Note that BLR expects paired-end reads. However, only the path to the R1 file
 needs to be provided. The R2 file will be found automatically.
 
-To use the other blr commands, make sure you working directory is your 
-newly created analysis folder.
+Move into your newly created analysis folder.
 
     cd path/to/output_folder
 
@@ -36,8 +54,7 @@ particular to enter the path to your reference genome.
 
     blr config --set genome_reference path/to/GRCh38.fasta
 
-To see what other configurations can be altered, read the documentation in 
-the `blr.yaml` file or run `blr config` to print the current configs to the terminal.
+To see what other configurations can be altered, read the documentation in the `blr.yaml` file or run `blr config` to print the current configs to the terminal.
 
 ### 2. Running an analysis
 
@@ -45,7 +62,7 @@ Change working directory to your analysis folder
 
     cd path/to/output_folder
 
-The pipeline automatically runs all steps.
+The pipeline it launched using the `blr run` command. To automatically runs all steps run: 
 
     blr run
 
@@ -53,15 +70,31 @@ For more options, see the documentation.
 
     blr run -h
 
+## 3 MultiQC plugin
+
+There is a MultiQC plugin included in the BLR pipeline called 
+MultiQC_BLR. If you which to run MultiQC without this plugin include 
+`--disable-blr-plugin` in your multiqc command. 
+
+The plugin allows for comparision between different runs. In this case go to 
+the directory containing the folders for the runs you wish to compare. Then run:
+
+    multiqc -d .
+    
+The `-d` option prepends the directory name to each sample allowing differentiation 
+between the runs. 
+
 ## One-time installation
+
+- [1. Setup Conda](#1-prerequisite-conda)
+- [2. Install BLR](#2-install-blr)
+- [3. Optional installations](#3-optional-installations)
 
 ### 1. Prerequisite: Conda
 
-- [Install miniconda](https://docs.conda.io/en/latest/miniconda.html)
-- Enable the [bioconda channel](http://bioconda.github.io/)
-
-You could also try copy-pasting the following to your terminal. This will download miniconda, 
-install it to you `$HOME` folder and enable the bioconda channel.
+Install [miniconda](https://docs.conda.io/en/latest/miniconda.html). You could 
+also try copy-pasting the following to your terminal. This will download 
+miniconda, install it to you `$HOME` folder.
 
     if [[ $OSTYPE = "linux-gnu" ]]; then 
         wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -70,15 +103,12 @@ install it to you `$HOME` folder and enable the bioconda channel.
     fi
     bash miniconda.sh -b -p $HOME/miniconda
     source $HOME/miniconda/etc/profile.d/conda.sh
+
+Enable the [bioconda channel](http://bioconda.github.io/)
+
     conda config --add channels bioconda
 
-#### 1.1
-
-Clone NAIBR github. 
-
-    git clone https://github.com/raphael-group/NAIBR
-
-### 2. Install
+### 2. Install BLR
 
 Clone the git repository.
 
@@ -97,40 +127,41 @@ Install blr into the environment in "editable install" mode.
 This will install blr in such a way that you can still modify the source code
 and get any changes immediately without re-installing.
 
-#### 2.1 MultiQC plugin
+### 3. Optional installations
 
-There is a MultiQC plugin included in the BLR pipeline called 
-MultiQC_BLR. If you which to run MultiQC without this plugin include 
-`--disable-blr-plugin` in your multiqc command. 
+#### 3.1 DeepVariant
 
-The plugin allows for comparision between different runs. In this case go to 
-the directory containing the folders for the runs you wish to compare. Then run:
-
-    multiqc -d .
-    
-The `-d` option prepends the directory name to each sample allowing differentiation 
-between the runs. 
-
-#### 2.2 Linux users (not macOS)
-
-To enable DeepVariant, install it separately to your environment.
+To enable [DeepVariant](https://github.com/google/deepvariant), install it
+ separately to your environment. Note that it is currently only available for
+  linux. 
 
     conda activate blr
     conda install deepvariant
 
-This will enable the `variant_caller: deepvariant` option in the analysis config file.    
+To use DeepVariant for variant calling in your analysis, run:
+   
+    blr config --set variant_caller deepvariant    
 
-#### 2.3 Lariat aligner
+#### 3.2 Lariat aligner
 
 To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to manually install it within your 
-environment. For help on installation see [the following instructions](doc/lariat_install.rst). 
+environment. For help on installation see [the following instructions](doc
+/lariat_install.rst). To enable mapping using lariat, run:
 
-### 3. Updating
+    blr config --set read_mapper lariat
 
-Change working directory to your blr git folder and update.
+#### 3.3 NAIBR
 
-    cd path/to/BLR
-    git pull
+The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR
+) will be downloaded and used automatically. If you want to use an other
+ version of NAIBR this can be set through:
+ 
+    blr config --set naibr_path /path/to/NAIBR/
+
+## Development
+
+Issues are tracked through https://github.com/FrickTobias/BLR/issues. For
+ more information on development go [here](#doc/develop.rst).
 
 ## Old version
 
