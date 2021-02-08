@@ -74,10 +74,10 @@ For more options, see the documentation.
 ### 3. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called 
-MultiQC_BLR. If you which to run MultiQC without this plugin include 
+MultiQC_BLR. If you wish to run MultiQC without this plugin include 
 `--disable-blr-plugin` in your multiqc command. 
 
-The plugin allows for comparision between different runs. In this case go to 
+The plugin allows for comparison between different runs. In this case go to 
 the directory containing the folders for the runs you wish to compare. Then run:
 
     multiqc -d .
@@ -154,7 +154,7 @@ environment. For help on installation see [the following instructions](doc
 #### 3.3 NAIBR
 
 The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR
-) will be downloaded and used automatically. If you want to use an other
+) will be downloaded and used automatically. If you want to use another
  version of NAIBR this can be set through:
  
     blr config --set naibr_path /path/to/NAIBR/
