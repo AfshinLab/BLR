@@ -15,8 +15,9 @@ READ2 LAYOUT
 Processing is partly based on the 10x end-to-end workflow described for the EMA aligner. See the docs on their github
 https://github.com/arshajii/ema#end-to-end-workflow-10x
 """
+# If not mapping with ema it is unneccessary to generate a lot of bins.
 if config["read_mapper"] != "ema":
-    config["fastq_bins"] = workflow.cores
+    config["fastq_bins"] = min(config["fastq_bins"], workflow.cores)
 
 
 rule link_to_whitelist:
@@ -53,12 +54,11 @@ rule preproc_10x:
         r2_fastq="reads.2.fastq.gz",
         counts_ncnt = "reads.ema-ncnt",
         counts_fcnt = "reads.ema-fcnt",
-        log = "ema_count.log",
         whitelist = "barcodes_whitelist.txt",
     log: "ema_preproc.log"
     threads: 20
     params:
-        hamming_correction = "" if not config["apply_hamming_correction"] else " -h",
+        hamming_correction = "" if not config["apply_hamming_correction"] else " -h"
     shell:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
