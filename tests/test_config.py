@@ -22,3 +22,4 @@ def test_make_paths_absolute():
         os.symlink(file, symlink_path)
         relative_symlink_path = str(file.parent / ".." / file.parents[0] / "tmp_symlink")
         assert make_paths_absolute(relative_symlink_path) == symlink_path
+        os.unlink(symlink_path)
