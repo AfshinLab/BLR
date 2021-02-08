@@ -71,7 +71,7 @@ For more options, see the documentation.
 
     blr run -h
 
-## 3. MultiQC plugin
+### 3. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called 
 MultiQC_BLR. If you which to run MultiQC without this plugin include 
