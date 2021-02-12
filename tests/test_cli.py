@@ -107,8 +107,8 @@ def test_config(tmp_path):
 
 
 def test_default_read_mapper(workdir):
-    n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "initialmapping.bam")
+    n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
+    assert count_bam_alignments(workdir / "initialmapping.bam") / n_input_fastq_reads > 0.9
 
 
 # The read mapper will partly determine the output format so we test for different mappers here. Bowtie2, bwa and
@@ -221,8 +221,11 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
         [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper)]
     )
     run(workdir=workdir, targets=["initialmapping.bam"])
-    n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed_barcoded.1.fastq.gz")
-    assert n_input_fastq_reads <= count_bam_alignments(workdir / "initialmapping.bam")
+    if read_mapper == "lariat":
+        n_input_fastq_reads = 2 * count_lariat_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
+    else:
+        n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
+    assert count_bam_alignments(workdir / "initialmapping.bam") / n_input_fastq_reads > 0.9
 
 
 def test_final_compressed_reads_exist(workdir):
