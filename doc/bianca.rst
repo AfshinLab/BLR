@@ -26,6 +26,14 @@ Pack enviroment on Rackham
 
   conda env create -n my-env -f environment.linux.lock.yml 
 
+- Activate the created environment
+
+
+.. code-block::
+
+  conda activate my-env
+
+
 - Install BLR in non-editable mode using
 
 .. code-block::
