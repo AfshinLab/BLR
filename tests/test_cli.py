@@ -69,6 +69,14 @@ def bam_has_tag(path, tag):
     return False
 
 
+def chromsome_phased_in_vcf(path, chromosome):
+    with pysam.VariantFile(path) as f:
+        for rec in f.fetch(chromosome):
+            if "PS" in rec.samples[0] and rec.samples[0]["PS"] is not None:
+                return True
+    return False
+
+
 @pytest.fixture(scope="module")
 def _workdir(tmp_path_factory):
     """
@@ -80,7 +88,8 @@ def _workdir(tmp_path_factory):
     change_config(
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
-            ("chunk_size", "50000")
+            ("chunk_size", "50000"),
+            ("phasing_contigs", "null")
         ]
     )
     # chromosomes B, C and D end up in the same chunk
@@ -218,7 +227,7 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper)]
+        [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper), ("phasing_contigs", "null")]
     )
     run(workdir=workdir, targets=["initialmapping.bam"])
     if read_mapper == "lariat":
@@ -326,3 +335,16 @@ def test_lsv_calling(workdir):
     target = "chunks/chrA.naibr_sv_calls.tsv"
     run(workdir=workdir, targets=[target])
     assert workdir.joinpath(target).is_file()
+
+
+def test_phasing_contigs(workdir):
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("phasing_contigs", "chrA")]
+    )
+    targets = ["final.phased.vcf.gz", "final.phased.vcf.gz.tbi"]
+    run(workdir=workdir, targets=targets)
+    assert chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrA")
+    assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrB")
+    assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrC")
+    assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrD")

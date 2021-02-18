@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 from snakemake.utils import validate
+from collections import defaultdict
 import pickle
 import os
 
@@ -34,17 +35,34 @@ readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_ty
 
 # For parallelization, we split the initial mapped BAM file into non-overlapping "chunks",
 # which are computed from the FASTA index file
+chunks = defaultdict(list)
 if config["genome_reference"] is not None:
     try:
         with open(config["genome_reference"] + ".fai") as f:
-            chunks = list(chromosome_chunks(parse_fai(f), size=config["chunk_size"]))
+            chunks["all"] = list(chromosome_chunks(parse_fai(f), size=config["chunk_size"]))
     except FileNotFoundError as e:
         sys.exit(
             f"The genome index file {config['genome_reference']} is missing. "
             "Please create it with 'samtools faidx'"
         )
-else:
-    chunks = []
+
+    # TODO Fix case where chunk contains mix of both contigs to be phased and not phased.
+
+    # Generate list of contigs to phase and check against all "chunks"
+    if config["phasing_contigs"] is not None:
+        phasing_contigs = set(config["phasing_contigs"].split(","))
+
+        if not all(contig in {chunk[0].name for chunk in chunks["all"]} for contig in phasing_contigs):
+            sys.exit("The contigs in phasing_contigs does not match those found in the reference "
+                     f"{config['genome_reference']}.")
+
+        for chunk in chunks["all"]:
+            if chunk[0].name in phasing_contigs:
+                chunks["phased"].append(chunk)
+            else:
+                chunks["not_phased"].append(chunk)
+    else:
+        chunks["phased"] = chunks["all"]
 
 
 def final_input(wildcards):
@@ -265,9 +283,9 @@ rule map_sort:
 
 rule make_chunk_beds:
     output:
-        expand("chunks/{chunk[0].name}.bed", chunk=chunks)
+        expand("chunks/{chunk[0].name}.bed", chunk=chunks["all"])
     run:
-        for chunk in chunks:
+        for chunk in chunks["all"]:
             with open(f"chunks/{chunk[0].name}.bed", "w") as f:
                 for chromosome in chunk:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
@@ -339,7 +357,7 @@ rule get_barcode_merges:
     output:
         merges = "final.barcode-merges.csv"
     input:
-        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks)
+        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks["all"])
     run:
         graph = BarcodeGraph()
         for filepath in input.pickle:
@@ -416,7 +434,7 @@ rule concat_molecule_stats:
     output:
         tsv = "final.molecule_stats.tsv"
     input:
-        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks)
+        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks["all"])
     run:
         dfs = list()
         for nr, file in enumerate(input.tsv):
@@ -735,21 +753,37 @@ rule split_or_symlink_phase_input_vcf:
             symlink_relpath(input.vcf, output.vcf)
 
 
+def bams_to_merge(wildcards):
+    if wildcards.phased == "":
+        input = [f"chunks/{chunk[0].name}.calling.{{phased}}bam" for chunk in chunks["all"]]
+    else:
+        input = [f"chunks/{chunk[0].name}.calling.{{phased}}bam" for chunk in chunks["phased"]]
+        input.extend([f"chunks/{chunk[0].name}.calling.bam" for chunk in chunks["not_phased"]])
+    input.append("unmapped.bam")
+    return input
+
+
 rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bam = ancient(expand("chunks/{chunk[0].name}.calling.{{phased}}bam", chunk=chunks)),
-        bam_unmapped = ancient("unmapped.bam")
+        bams = ancient(bams_to_merge)
     shell:
-        "samtools cat -o {output.bam} {input.bam} {input.bam_unmapped}"
+        "samtools cat -o {output.bam} {input.bams}"
+
+
+def vcfs_to_merge(wildcards):
+    input = [f"chunks/{chunk[0].name}.calling.phased.vcf" for chunk in chunks["phased"]]
+    filt = "filtered." if config["filter_variants"] else ""
+    input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["not_phased"]])
+    return input
 
 
 rule concat_phased_vcfs:
     output:
         vcf = temp("final.phased.vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf", chunk=chunks)
+        vcf = vcfs_to_merge
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
 
@@ -758,7 +792,7 @@ rule concat_called_vcfs:
     output:
         vcf = temp("called.{filtered,(filtered.|)}vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks)
+        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks["all"])
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
 
@@ -791,7 +825,7 @@ rule aggregate_phaseblock_data:
     output:
         tsv = "final.phaseblock_data.tsv"
     input:
-        phase = expand("chunks/{chunk[0].name}.calling.phase", chunk=chunks)
+        phase = expand("chunks/{chunk[0].name}.calling.phase", chunk=chunks["phased"])
     run:
         data = list()
         with open(output.tsv, "w") as output_tsv:
@@ -877,7 +911,7 @@ rule concat_lsv_calls:
     output:
         tsv = "final.naibr_sv_calls.tsv"
     input:
-        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks)
+        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks["all"])
     run:
         dfs = list()
         for file in input.tsv:
