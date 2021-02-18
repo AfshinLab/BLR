@@ -152,7 +152,8 @@ def test_trim_tenx(tmp_path, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("barcode_whitelist", TESTDATA_TENX_BARCODES),
-         ("read_mapper", read_mapper)]
+         ("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)

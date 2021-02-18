@@ -84,6 +84,10 @@ properties:
     type: boolean
     default: false
     description: Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
+  fastq_bins:
+    type: integer
+    default: 1
+    description: Number of bins to split FASTQ over for ema mapping
   stlfr_barcodes:
     type: ["string", "null"]
     description: Path to stLFR barcodes

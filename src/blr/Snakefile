@@ -14,6 +14,10 @@ validate(config, "config.schema.yaml")
 # TODO include handling of reads from `longranger basic` that already have barcodes extracted and trimmed? See issue
 #  in ema when discussed https://github.com/arshajii/ema/issues/15
 
+# Hidden config options
+config["ema_bins_dir"] = "fastq_bins"
+
+
 # Import rules for trimming fastq files.
 if config["library_type"] == "blr":
     include: "rules/trim_blr.smk"
@@ -184,6 +188,50 @@ rule plot_figures:
         "blr plot"
         " {input}"
         " -o {output.images} 2> {log} > {output.stats}"
+
+
+rule map_sort_ema_bins:
+    output:
+        bam = temp("{dir}/ema-bin-{bin_nr,\d+}.bam")
+    input:
+        interleaved_fastq = "{dir}/ema-bin-{bin_nr}"
+    threads: 4
+    log:
+        map = "{dir}/ema-bin-{bin_nr}.mapping.log",
+        sort = "{dir}/ema-bin-{bin_nr}.sorting.log"
+    shell:
+        "ema align"
+        " -t {threads}"
+        " -d"
+        " -p 10x"
+        " -R {readgroup}"
+        " -r {config[genome_reference]}"
+        " -1 {input.interleaved_fastq}"
+        " 2>> {log.map}"
+        " |"
+        " samtools sort "
+        " -@ {threads}"
+        " -O bam"
+        " -l 0"
+        " -o {output.bam}"
+        " - 2> {log.sort}"
+
+
+if config["library_type"] == "10x" and config["read_mapper"] == "ema":
+    ruleorder: merge_mapped_ema_bins > map_sort
+else:
+    ruleorder: map_sort > merge_mapped_ema_bins
+
+
+rule merge_mapped_ema_bins:
+    output:
+        bam = "initialmapping.bam"
+    input:
+        bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
+                                   nr=[str(i).zfill(3) for i in range(config['fastq_bins'])])
+    threads: 20
+    shell:
+        "samtools merge -cp -@ {threads} {output.bam} {input.bams}"
 
 
 rule map_sort:
