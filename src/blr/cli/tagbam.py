@@ -4,20 +4,17 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 
 import logging
 from collections import Counter
-from pathlib import Path
 
 from blr.utils import print_stats, PySAMIO, get_bamtag, tqdm
-from blr.cli.config import load_yaml
 
 logger = logging.getLogger(__name__)
-
-CONFIGFILE = Path("blr.yaml")
 
 
 def main(args):
     run_tagbam(
         input=args.input,
         output=args.output,
+        mapper=args.mapper,
         sample_number=args.sample_nr,
     )
 
@@ -25,13 +22,10 @@ def main(args):
 def run_tagbam(
         input: str,
         output: str,
+        mapper: str,
         sample_number: int,
 ):
     logger.info("Starting analysis")
-
-    # Load configs to find mapper
-    configs, _ = load_yaml(CONFIGFILE)
-    mapper = configs["read_mapper"]
 
     if mapper == "ema":
         processing_function = mode_ema
@@ -115,5 +109,7 @@ def add_arguments(parser):
 
     parser.add_argument("-o", "--output", default="-",
                         help="Write output BAM to file rather then stdout.")
+    parser.add_argument("-m", "--mapper", default="bowtie2",
+                        help="Mapper used for aligning reads. Default: %(default)s")
     parser.add_argument("-s", "--sample-nr", default=1, type=int,
                         help="Add sample number to each barcode. Default: %(default)s")

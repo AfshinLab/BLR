@@ -362,7 +362,7 @@ rule get_unmapped_reads:
         bai = "initialmapping.bam.bai"
     log: "unmapped.log"
     params:
-        tag = ">" if skip_tagbam else f"| blr tagbam - --sample-nr {config['sample_nr']} -o",
+        tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']} -o",
         outtype = "-bh" if skip_tagbam else "-h"
     shell:
         "samtools view {params.outtype} {input.bam} '*' {params.tag} {output.bam} 2> {log}"
@@ -378,6 +378,7 @@ rule tagbam:
     shell:
         "blr tagbam "
         " -o {output.bam}"
+        " --mapper {config[read_mapper]}"
         " --sample-nr {config[sample_nr]}"
         " {input.bam}  2> {log}"
 
