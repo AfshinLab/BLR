@@ -29,7 +29,8 @@ stLFR. Read more about the integrated linked-read platforms
 
 - [1. Setup analysis](#1-setup-an-analysis-folder)
 - [2. Run analysis](#2-running-an-analysis)
-- [3. MultiQC plugin](#3-multiqc-plugin)
+- [3. Test files](#3-test-files)
+- [4. MultiQC plugin](#3-multiqc-plugin)
 
 ### 1. Setup an analysis folder
 
@@ -70,8 +71,23 @@ The pipeline it launched using the `blr run` command. To automatically runs all 
 For more options, see the documentation.
 
     blr run -h
+    
+### 3. Test files
 
-### 3. MultiQC plugin
+For unit testing we use test files for different platforms. The latest version of these
+can be downloaded and unpacked using the following commands:
+
+    wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-0.5.tar.gz
+    tar xf blr-testdata-0.5.tar.gz
+    ln -s blr-testdata-0.5 blr-testdata
+    
+Now unit testing can be run locally from within the BLR directory using:
+
+    bash tests/run.sh
+
+This is useful if you want to test your changes before submitting them as a PR.
+
+### 4. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called 
 MultiQC_BLR. If you wish to run MultiQC without this plugin include 
