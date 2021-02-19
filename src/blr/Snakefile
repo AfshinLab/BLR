@@ -130,7 +130,8 @@ def get_multiqc_input(wildcards):
         "final.duplicate_metrics.txt",
         "final.molecule_lengths.tsv",
         "final.alignment_summary_metrics.txt",
-        "blr_mqc.yaml"
+        "final.sv_sizes.tsv",
+        "blr_mqc.yaml",
     ]
     if config["read_mapper"] != "lariat":
         inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
