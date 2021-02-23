@@ -6,7 +6,7 @@ import pickle
 import os
 
 from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
-from blr.cli.find_clusterdups import BarcodeGraph
+from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -405,15 +405,16 @@ rule get_barcode_merges:
     input:
         pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks["all"])
     run:
-        graph = BarcodeGraph()
+        uf = UnionFind()
         for filepath in input.pickle:
             with open(filepath, "rb") as file:
-                filegraph = BarcodeGraph.from_graph(pickle.load(file))
-                graph.merge(filegraph)
+                uf_file = UnionFind.from_dict(pickle.load(file))
+                uf.update(uf_file)
 
         with open(output.merges, 'w') as file:
-            for old_barcode, new_barcode in graph.iter_merges():
-                print(old_barcode, new_barcode, sep=",", file=file)
+            for old_barcode, new_barcode in uf.items():
+                if old_barcode != new_barcode:
+                    print(old_barcode, new_barcode, sep=",", file=file)
 
 
 rule merge_clusterdups:

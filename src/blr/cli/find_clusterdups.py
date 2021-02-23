@@ -1,12 +1,13 @@
 """
-Find barcode cluster duplicates (two different barcode sequences origin to the same droplet, tagging the
-same tagmented long molecule).
+Find barcode sequences originating from the same droplet/compartment.
 
-Condition to call barcode duplicate:
+Condition to call cluster duplicate:
 
-Two positions (positions defined as a unique set of read_start, read_stop, mate_start, mate_stop))
-at a maximum of W (--window, default 100kbp, between = max(downstream_pos)-max(downstream_pos)) bp
-apart sharing more than one barcode (share = union(bc_set_pos1, bc_set_pos2)).
+    Two barcodes are considered cluster duplicates if they share two identical read pair positions
+    (start, stop, direction) within a defined window (-w/--window). Positions are also required to not overlap in any
+    way that is not allowed by the library technology. Specifically for BLR and stLFR libraries that use the Tn5
+    tagmentase overlaps of 9 +/- 1 bp are allowed. For TELL-seq libraries that use the MuA tagmentase overlaps of
+    5 +/- 1 bp are allowed. For 10x Chromium libraries any overlaps are allowed.
 """
 
 from pysam import AlignmentFile, AlignedSegment, set_verbosity
@@ -14,7 +15,6 @@ from argparse import ArgumentError
 import logging
 from collections import Counter, deque, OrderedDict, defaultdict
 import pickle
-from copy import deepcopy
 import numpy as np
 from math import ceil
 
@@ -58,7 +58,7 @@ def run_find_clusterdups(
     dup_positions = OrderedDict()
     chrom_prev = None
     pos_prev = 0
-    barcode_graph = BarcodeGraph()
+    uf = UnionFind()
     for read, mate in tqdm(paired_reads(input, min_mapq, summary), desc="Reading pairs"):
         barcode = get_bamtag(read, barcode_tag)
         if not barcode:
@@ -88,7 +88,7 @@ def run_find_clusterdups(
 
                     logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes "
                                 f"for {chrom_prev}")
-                    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window,
+                    query_barcode_duplicates(dup_positions, uf, threshold, window,
                                              non_acceptable_overlap, summary)
                     positions.clear()
                     dup_positions.clear()
@@ -105,21 +105,24 @@ def run_find_clusterdups(
     summary["Barcode duplicate positions"] += len(dup_positions)
 
     logger.info(f"Using threshold {threshold} to filter duplicate position on contig {chrom_prev}")
-    query_barcode_duplicates(dup_positions, barcode_graph, threshold, window,
+    query_barcode_duplicates(dup_positions, uf, threshold, window,
                              non_acceptable_overlap, summary)
+
+    summary["Duplicate compartments"] = len({v for _, v in uf.items()})
+    summary["Barcodes removed"] = sum(1 for _ in uf.items()) - summary["Duplicate compartments"]
 
     # Write outputs
     if output_pickle:
         logger.info(f"Writing pickle object to {output_pickle}")
         with open(output_pickle, 'wb') as file:
-            pickle.dump(barcode_graph.graph, file, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(uf.parents, file, pickle.HIGHEST_PROTOCOL)
 
     if output_merges:
         logger.info(f"Writing merges to {output_merges}")
         with open(output_merges, 'w') as file:
-            for old_barcode, new_barcode in barcode_graph.iter_merges():
-                summary["Barcodes removed"] += 1
-                print(old_barcode, new_barcode, sep=",", file=file)
+            for old_barcode, new_barcode in uf.items():
+                if old_barcode != new_barcode:
+                    print(old_barcode, new_barcode, sep=",", file=file)
 
     logger.info("Finished")
     print_stats(summary, name=__name__)
@@ -218,7 +221,7 @@ def get_barcode_threshold(dup_positions, quantile: float = 0.99, min_threshold=6
         return min_threshold
 
 
-def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, window: int, non_acceptable_overlap,
+def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, non_acceptable_overlap,
                              summary):
     """
     Query barcode duplicates from list of duplicate positions. Position are filtered using the set threshold.
@@ -228,7 +231,7 @@ def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, win
         if len(tracked_position.barcodes) < threshold:
             summary["Filtered barcode duplicate positions"] += 1
             seed_duplicates(
-                barcode_graph=barcode_graph,
+                uf=uf,
                 buffer_dup_pos=buffer_dup_pos,
                 position=tracked_position.position,
                 position_barcodes=tracked_position.barcodes,
@@ -266,13 +269,13 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap,
+def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap,
                     summary):
     """
     Identifies connected barcodes i.e. barcodes sharing two duplicate positions within the current window which is used
     to construct a graph. For Tn5 type libraries, overlapping positions are not compared unless they are allowed by Tn5
     tagmentation (i.e overlap 9±1 bp).
-    :param barcode_graph: dict: Tracks which barcodes should be merged.
+    :param uf: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
     :param position_barcodes: seq: Barcodes at analyzed position
@@ -280,91 +283,117 @@ def seed_duplicates(barcode_graph, buffer_dup_pos, position, position_barcodes, 
     """
     # Loop over list to get the positions closest to the analyzed position first. When positions
     # are out of the window size of the remaining buffer is removed.
-    for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
-        distance = position[0] - compared_position[1]
+    if not uf.same_component(*position_barcodes):
+        for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
+            distance = position[0] - compared_position[1]
 
-        if non_acceptable_overlap(distance):
-            continue
+            if non_acceptable_overlap(distance):
+                continue
 
-        if distance <= window:
-            barcode_intersect = position_barcodes & compared_barcodes
+            if distance <= window:
+                barcode_intersect = position_barcodes & compared_barcodes
 
-            # If two or more unique barcodes are found, update merge dict
-            if len(barcode_intersect) >= 2:
-                barcode_graph.add_connected_barcodes(barcode_intersect)
-        else:
-            # Remove positions outside of window (at end of list) since positions are sorted.
-            for i in range(len(buffer_dup_pos) - index):
-                buffer_dup_pos.pop()
-            break
+                # If two or more unique barcodes are found, update merge dict
+                if len(barcode_intersect) >= 2:
+                    uf.union(*barcode_intersect)
+            else:
+                # Remove positions outside of window (at end of list) since positions are sorted.
+                for i in range(len(buffer_dup_pos) - index):
+                    buffer_dup_pos.pop()
+                break
 
-    # Add new position at the start of the list.
-    buffer_dup_pos.appendleft((position, position_barcodes))
+        # Add new position at the start of the list.
+        buffer_dup_pos.appendleft((position, position_barcodes))
 
 
-class BarcodeGraph:
-    def __init__(self, graph=None):
-        self.graph = graph if graph else defaultdict(set)
-        self._seen = set()
+class UnionFind:
+    """Union-find data structure.
+    Each UnionFind instance X maintains a family of disjoint sets of
+    hashable objects, supporting the following two methods:
+    - X[item] returns a name for the set containing the given item.
+      Each set is named by an arbitrarily-chosen one of its members; as
+      long as the set remains unchanged it will keep the same name. If
+      the item is not yet part of a set in X, a new singleton set is
+      created for it.
+    - X.union(item1, item2, ...) merges the sets containing each item
+      into a single larger set.  If any item is not yet part of a set
+      in X, it is added to X as one of the members of the merged set.
 
-    def add_connected_barcodes(self, barcodes):
-        for barcode in barcodes:
-            self.graph[barcode].update(barcodes - set(barcode))
+    Based on Josiah Carlson's code,
+    http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/215912
+    with significant additional changes by D. Eppstein.
+    https://www.ics.uci.edu/~eppstein/PADS/UnionFind.py
+    """
 
-    def _update_component(self, nodes, component):
-        """Breadth-first search of nodes"""
-        new_nodes = set()
-        for n in nodes:
-            if n not in self._seen:
-                self._seen.add(n)
-                component.add(n)
-                new_nodes |= self.graph[n]
+    def __init__(self, mapping=None):
+        """Create a new  union-find structure."""
+        self.parents = mapping if isinstance(mapping, dict) else {}
 
-        new_nodes = new_nodes.difference(component)
+    def __getitem__(self, object):
+        """Find and return the name of the set containing the object."""
 
-        if new_nodes:
-            self._update_component(new_nodes, component)
+        # check for previously unknown object
+        if object not in self.parents:
+            self.parents[object] = object
+            return object
 
-    def components(self):
-        """Generate all connected components of graph"""
-        self._seen.clear()
-        for node, neigbours in self.graph.items():
-            if node not in self._seen:
-                self._seen.add(node)
-                component = {node}
-                self._update_component(neigbours, component)
-                yield component
+        # find path of objects leading to the root
+        path = [object]
+        root = self.parents[object]
+        while root != path[-1]:
+            path.append(root)
+            root = self.parents[root]
 
-    def get_merges(self):
-        """Get dict of barcodes to merge in style of current_barcode -> new_barcode"""
-        return {current: new for current, new in self.iter_merges()}
+        # compress the path and return
+        for ancestor in path:
+            self.parents[ancestor] = root
+        return root
 
-    def iter_merges(self):
-        """Iterate over merges. Yields tuple with current_barcode and new_barcode"""
-        for component in self.components():
-            barcodes_sorted = sorted(component)
-            barcode_min = barcodes_sorted[0]
-            for barcode in barcodes_sorted[1:]:
-                yield barcode, barcode_min
+    def __contains__(self, item):
+        return item in self.parents
 
-    def merge(self, other):
-        """Merge BarcodeGraph objects"""
-        for barcode, connected_barcodes in other.graph.items():
-            self.graph[barcode] |= connected_barcodes
+    def __iter__(self):
+        """Iterate through all items ever found or unioned by this structure."""
+        return iter(self.parents)
+
+    def items(self):
+        """Iterate over tuples of items and their root"""
+        for x in self:
+            yield x, self[x]
+
+    def union(self, *objects):
+        """Find the sets containing the objects and merge them all."""
+        roots = [self[x] for x in objects]
+
+        # Use lexicographical ordering to set main root in set
+        heaviest = sorted(roots)[0]
+        for r in roots:
+            if r != heaviest:
+                self.parents[r] = heaviest
+
+    def connected_components(self):
+        """Iterator for sets"""
+        components = defaultdict(list)
+        for item, root in self.items():
+            components[root].append(item)
+
+        for component in components.values():
+            yield component
+
+    def same_component(self, *objects) -> bool:
+        """Returns true if all objects are present in the same set"""
+        if all(x in self for x in objects):
+            return len({self[x] for x in objects}) == 1
+        return False
+
+    def update(self, other):
+        """Update sets based on other UnionFind instance"""
+        for x, root in other.items():
+            self.union(x, root)
 
     @classmethod
-    def from_graph(cls, graph):
-        """Construct BarcodeGraph instance from existing graph"""
-        return cls(deepcopy(graph))
-
-    @classmethod
-    def from_merges(cls, merges):
-        """Construct BarcodeGraph instance from existing dict of merges"""
-        graph = defaultdict(set)
-        for current_barcode, new_barcode in merges.items():
-            graph[current_barcode].add(new_barcode)
-            graph[new_barcode].add(current_barcode)
-        return cls(graph)
+    def from_dict(cls, mapping):
+        return cls(mapping.copy())
 
 
 def add_arguments(parser):
