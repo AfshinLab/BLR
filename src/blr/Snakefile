@@ -53,6 +53,7 @@ if config["genome_reference"] is not None:
     # TODO Fix case where chunk contains mix of both contigs to be phased and not phased.
 
     # Generate list of contigs to phase and check against all "chunks"
+    chunks["phased"] = chunks["all"]
     if config["phasing_contigs"] is not None:
         phasing_contigs = set(config["phasing_contigs"].split(","))
 
@@ -60,13 +61,8 @@ if config["genome_reference"] is not None:
             sys.exit("The contigs in phasing_contigs does not match those found in the reference "
                      f"{config['genome_reference']}.")
 
-        for chunk in chunks["all"]:
-            if chunk[0].name in phasing_contigs:
-                chunks["phased"].append(chunk)
-            else:
-                chunks["not_phased"].append(chunk)
-    else:
-        chunks["phased"] = chunks["all"]
+        chunks["phased"] = [chunk for chunk in chunks["all"] if chunk[0].name in phasing_contigs]
+        chunks["not_phased"] = [chunk for chunk in chunks["all"] if chunk[0].name not in phasing_contigs]
 
 
 def final_input(wildcards):
