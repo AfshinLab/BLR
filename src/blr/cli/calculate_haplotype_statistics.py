@@ -15,6 +15,7 @@ import statistics
 import logging
 from xopen import xopen
 import sys
+from pysam import VariantFile
 
 from blr.utils import smart_open
 
@@ -56,85 +57,61 @@ def parse_vcf(vcf_file):
 
 
 def parse_vcf_phase(vcf_file, indels=False):
-    PS_index = None
     blocks = defaultdict(list)
-    chrom_blocks = dict()
+    chrom_blocks = defaultdict(list)
+    with VariantFile(vcf_file) as open_vcf:
+        if "PS" not in open_vcf.header.formats:
+            logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase "
+                            "block.")
 
-    for el in parse_vcf(vcf_file):
-        # Skip non-phased entries
-        if "|" not in el[9].split(':')[0]:
-            continue
+        if len(list(open_vcf.header.samples)) > 1:
+            sys.exit("VCF file must be single-sample.")
 
-        # get the index where the PS information is
-        for i, f in enumerate(el[8].split(':')):
-            if i == 0:
-                assert (f == 'GT')
-            if f == 'PS':
-                if not PS_index:
-                    PS_index = i
-                else:
-                    assert (PS_index == i)
-                break
+        sample_name = open_vcf.header.samples[0]
 
-    if not PS_index:
-        logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase block.")
+        prev_chrom = None
+        snp_ix = 0
+        for rec in open_vcf.fetch():
+            snp_ix += 1
+            sample = rec.samples[sample_name]
 
-    prev_chrom = None
-    snp_ix = 0
-    for el in parse_vcf(vcf_file):
-        consider = True
+            if not sample.phased:
+                continue
 
-        phase_data = el[9]
-        chrom = el[0]
-        a0 = el[3]
-        a1 = el[4]
-        a2 = None
+            chrom = rec.chrom
+            a0 = rec.ref
+            a1, *a2 = rec.alts
 
-        if ',' in a1:
-            alt_lst = a1.split(',')
-            if len(alt_lst) == 2:
-                a1, a2 = alt_lst
+            if len(a2) == 0:
+                a2 = None
+            elif len(a2) == 1:
+                a2 = a2[0]
             else:
-                consider = False
+                continue
 
-        dat = el[9].split(':')
-        genotype = dat[0]
+            genotype = sample["GT"]
 
-        if not (len(genotype) == 3 and genotype[0] in ['0', '1', '2'] and
-                genotype[1] in ['|'] and genotype[2] in ['0', '1', '2']):
-            consider = False
+            if len(genotype) != 2 or len(set(genotype) - {0, 1, 2}) or genotype[0] == genotype[1]:
+                continue
 
-        if genotype[0] == genotype[2]:
-            consider = False
+            if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
+                continue
 
-        if consider and not indels and (('0' in genotype and len(a0) != 1) or
-                                        ('1' in genotype and len(a1) != 1) or
-                                        ('2' in genotype and len(a2) != 1)):
-            consider = False
+            ps = sample.get("PS")
 
-        ps = None
-        if not PS_index:
-            ps = 1  # put everything in one block
-        elif consider and len(dat) > PS_index:
-            ps = dat[PS_index]
-            if ps == '.':
-                consider = False
+            if not prev_chrom:
+                prev_chrom = chrom
 
-        if not prev_chrom:
-            prev_chrom = chrom
+            # If new chromosome, add blocks to chrom_blocks and reset
+            if chrom != prev_chrom:
+                chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
+                blocks = defaultdict(list)
+                snp_ix = 0
+                prev_chrom = chrom
 
-        # If new chromosome, add blocks to chrom_blocks and reset
-        if chrom != prev_chrom:
-            chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
-            blocks = defaultdict(list)
-            snp_ix = 0
-            prev_chrom = chrom
-
-        pos = int(el[1]) - 1
-        if ps and consider and phase_data[1] == '|':
-            blocks[ps].append((snp_ix, pos, phase_data[0:1], phase_data[2:3], a0, a1, a2))
-
-        snp_ix += 1
+            pos = rec.start
+            if ps:
+                blocks[ps].append((snp_ix, pos, genotype[0], genotype[1], a0, a1, a2))
 
     # Final
     chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
@@ -420,7 +397,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels):
     if reference_vcf_file:
         chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
-        chromosomes = [c for c in chromosomes if c in set(chrom_t_blocklist)]
+        chromosomes = list(set(chromosomes) | set(chrom_t_blocklist))
         if not chromosomes:
             sys.exit(f"No matching chromsomes between 'vcf1' and 'vcf2'.")
         else:
@@ -429,6 +406,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels):
     else:
         chrom_t_blocklist = defaultdict(list)
 
+    chromosomes.sort()
     err = defaultdict(ErrorResult)
     for c in chromosomes:
         err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels)
