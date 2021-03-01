@@ -17,6 +17,7 @@ def main(commandline_arguments=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(module)s - %(levelname)s: %(message)s")
     parser = ArgumentParser(description=__doc__, prog="blr")
     parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument("--debug", action="store_true", default=False, help="Print debug messages")
     subparsers = parser.add_subparsers()
 
     # Import each module that implements a subcommand and add a subparser for it.
@@ -31,11 +32,17 @@ def main(commandline_arguments=None) -> int:
         module.add_arguments(subparser)
 
     args = parser.parse_args(commandline_arguments)
+
+    if args.debug:
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+
     if not hasattr(args, "module"):
         parser.error("Please provide the name of a subcommand to run")
     else:
         module = args.module
         del args.module
+        del args.debug
 
         # Print settings for module
         sys.stderr.write(f"SETTINGS FOR: {module.__name__.split('.')[-1]} (version: {__version__})\n")
