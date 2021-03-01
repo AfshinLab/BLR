@@ -26,7 +26,9 @@ def main(args):
     if not args.vcf2:
         logger.info("No reference vcf provided - error rates will not be computed.")
 
-    stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
+    chromosomes = args.chromosomes.split(",") if args.chromosomes else None
+
+    stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes)
 
     with smart_open(args.output) as file:
         if args.per_chrom:
@@ -361,24 +363,21 @@ class ErrorResult:
 
 
 # compute haplotype error rates between 2 VCF files
-def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels):
+def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes):
     # parse and get stuff to compute error rates
     chrom_a_blocklist = parse_vcf_phase(assembled_vcf_file, indels)
     logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
-    chromosomes = chrom_a_blocklist
+
+    chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist)
+
     if reference_vcf_file:
         chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
-        chromosomes = list(set(chromosomes) | set(chrom_t_blocklist))
-        if not chromosomes:
-            sys.exit(f"No matching chromsomes between 'vcf1' and 'vcf2'.")
-        else:
-            logger.info(f"Found {len(chromosomes)} matching chromosomes between 'vcf1' and 'vcf2'.")
-            logger.debug(f"Matching chromsomes: {','.join(chromosomes)}")
+        if not input_chromosomes:
+            chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist))
     else:
         chrom_t_blocklist = defaultdict(list)
 
-    chromosomes.sort()
     err = defaultdict(ErrorResult)
     for c in chromosomes:
         err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels)
@@ -619,4 +618,7 @@ def add_arguments(parser):
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
     parser.add_argument('--per-chrom', action="store_true", default=False,
                         help="Include separate stats for each chromosome. Default: %(default)s")
+    parser.add_argument('-c', '--chromosomes',
+                        help="Name(s) of chromsome(s) to calculate stats for. Multiple chromsomes are joined through"
+                             " commas. Default: use all chromosomes")
     parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")
