@@ -14,6 +14,9 @@ from collections import defaultdict
 import statistics
 import logging
 from xopen import xopen
+import sys
+
+from blr.utils import smart_open
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +26,17 @@ def main(args):
     if not args.vcf2:
         logger.info("No reference vcf provided - error rates will not be computed.")
 
-    stats = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
+    stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels)
 
-    if args.output:
-        with open(args.output, "w") as file:
-            print(stats.to_txt(), file=file)
-    else:
-        print(stats.to_txt())
+    with smart_open(args.output) as file:
+        if args.per_chrom:
+            for c in chromosomes:
+                print(f"----------- {c} -----------", file=file)
+                print(stats[c].to_txt(), file=file)
+            print(f"----------- All -----------", file=file)
+
+        print(stats["all"].to_txt(), file=file)
+
     logger.info("Finished")
 
 
@@ -408,16 +415,25 @@ class ErrorResult:
 def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels):
     # parse and get stuff to compute error rates
     chrom_a_blocklist = parse_vcf_phase(assembled_vcf_file, indels)
+    logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
+    chromosomes = chrom_a_blocklist
     if reference_vcf_file:
         chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
+        logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
+        chromosomes = [c for c in chromosomes if c in set(chrom_t_blocklist)]
+        if not chromosomes:
+            sys.exit(f"No matching chromsomes between 'vcf1' and 'vcf2'.")
+        else:
+            logger.info(f"Found {len(chromosomes)} matching chromosomes between 'vcf1' and 'vcf2'.")
+            logger.debug(f"Matching chromsomes: {','.join(chromosomes)}")
     else:
         chrom_t_blocklist = defaultdict(list)
 
-    chromosomes = sorted(chrom_a_blocklist)
-    err = ErrorResult()
+    err = defaultdict(ErrorResult)
     for c in chromosomes:
-        err += error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels)
-    return err
+        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels)
+        err["all"] += err[c]
+    return err, chromosomes
 
 
 def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, phase_set=None):
@@ -651,4 +667,6 @@ def add_arguments(parser):
                              "haplotype.")
     parser.add_argument('-i', '--indels', action="store_true",
                         help='Use this flag to consider indel variants. Default: %(default)s', default=False)
+    parser.add_argument('--per-chrom', action="store_true", default=False,
+                        help="Include separate stats for each chromosome. Default: %(default)s")
     parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")

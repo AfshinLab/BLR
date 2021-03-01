@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import os
 from collections import namedtuple
+import contextlib
 
 from blr import __version__
 
@@ -278,3 +279,18 @@ def parse_phaseblocks(file):
             yield Phaseblock(int(contents[4]), int(contents[6]), int(contents[8]), int(contents[10]))
         else:
             continue
+
+
+@contextlib.contextmanager
+def smart_open(filename=None):
+    # From https://stackoverflow.com/questions/17602878/how-to-handle-both-with-open-and-sys-stdout-nicely
+    if filename and filename is not None:
+        fh = open(filename, 'w')
+    else:
+        fh = sys.stdout
+
+    try:
+        yield fh
+    finally:
+        if fh is not sys.stdout:
+            fh.close()
