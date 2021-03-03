@@ -35,7 +35,7 @@ def main(args):
             for c in chromosomes:
                 print(f"----------- {c} -----------", file=file)
                 print(stats[c].to_txt(), file=file)
-            print(f"----------- All -----------", file=file)
+            print("----------- All -----------", file=file)
 
         print(stats["all"].to_txt(), file=file)
 
