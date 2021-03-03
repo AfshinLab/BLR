@@ -129,6 +129,7 @@ def get_multiqc_input(wildcards):
         "final.alignment_summary_metrics.txt",
         "final.sv_sizes.tsv",
         "blr_mqc.yaml",
+        "ideogram_mqc.html",
     ]
     if config["read_mapper"] != "lariat":
         inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
@@ -166,6 +167,16 @@ rule report_configs:
                 text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
             text += "\t</dl>".expandtabs(4)
             print(text, file=configs)
+
+
+rule generate_ideogram:
+    """Generate ideogram"""
+    output:
+        html = temp("ideogram_mqc.html")
+    input:
+        phased_vcf = "final.phased.vcf.gz"
+    script:
+        "scripts/ideogram_html.py"
 
 
 def plot_figures_input(wildcards):
