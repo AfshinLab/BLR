@@ -89,12 +89,13 @@ rule hapcut2_stats:
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""
+    log: "final.phasing_stats.log"
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " {params.vcf2}"
         " {params.indels}"
-        " -o {output.stats}"
+        " -o {output.stats} 2> {log}"
 
 
 def get_haplotag_input(wildcards):
