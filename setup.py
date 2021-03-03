@@ -45,6 +45,9 @@ setup(
         ],
         "multiqc.hooks.v1": [
             "execution_start = multiqc_blr.multiqc_blr:execution_start"
+        ],
+        "multiqc.templates.v1": [
+            "blr = multiqc_blr.templates.blr"
         ]
     },
     classifiers=[
