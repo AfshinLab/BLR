@@ -71,18 +71,26 @@ def fromat_size(length: int) -> str:
 chr_stacks = defaultdict(list)
 prev = 0
 chrom = None
+longest = (None, 0, 0)
 for phaseblock in parse_blocks(snakemake.input.phased_vcf):
     if phaseblock:
         if phaseblock.chr != chrom:
             chrom = phaseblock.chr
             prev = 0
 
+        pos, length = 0, 0
         if phaseblock.stop < prev:  # Phaseblock is completely overlapping previous
             continue
         elif phaseblock.start < prev:  # Phaseblock is partly overlapping previous
-            chr_stacks[chrom].append((prev, int(phaseblock.stop - prev)))
+            pos, length = prev, int(phaseblock.stop - prev)
         else:
-            chr_stacks[chrom].append((phaseblock.start, int(phaseblock.stop-phaseblock.start)))
+            pos, length = phaseblock.start, int(phaseblock.stop-phaseblock.start)
+
+        chr_stacks[chrom].append((pos, length))
+
+        # Find longest phaseblock
+        if length > longest[2]:
+            longest = (chrom, pos, length)
 
         prev = phaseblock.stop
 
@@ -118,6 +126,7 @@ chromsomes with phaseblocks overlayed. Click on a chromsome to enlarge it."
         "rgba(63, 191, 63, 0.65)",  # Green
         "rgba(63, 127, 191, 0.65)"  # Blue
     ]
+    longest_color = "rgba(191, 63, 63, 0.65)"  # Red
     # Separate entries for each chromosome
     for chrom, phaseblocks in chr_stacks.items():
         html += "            "
@@ -127,6 +136,12 @@ chromsomes with phaseblocks overlayed. Click on a chromsome to enlarge it."
         blocks = []
         for (start, length), color in zip(phaseblocks, cycle(colors)):
             size = fromat_size(length)
+
+            # Highlight longest phaseblock in different color
+            if longest == (chrom, start, length):
+                color = longest_color
+                size += " (TOP)"
+
             blocks.append(f"['{chr_id}_{start}','{size}',{start},{length},'{color}']")
 
         html += ",".join(blocks)
