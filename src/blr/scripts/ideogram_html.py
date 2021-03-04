@@ -106,8 +106,10 @@ with open(snakemake.output.html, "w") as out:
 <!--
 id: 'phaseblock-overview-{unique_id}'
 section_name: 'Phaseblock overview'
-description: "Generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Shows ideogram of \
-chromsomes with phaseblocks overlayed. Click on a chromsome to enlarge it."
+description: "Ideogram of chromsomes with phaseblocks overlayed in alternating green and blue. \
+              Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
+              chromsome to enlarge it. Click on the chromosome once again to return to the overview. Hover over block \
+              to get the phaseblock location along with it size. The longest phaseblock is highlighted in red." 
 -->
 
 <div class="ideogram-{unique_id}">
