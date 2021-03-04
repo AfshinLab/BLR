@@ -9,7 +9,7 @@ from multiqc import config
 from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 
-from multiqc_blr.utils import bin_sum
+from multiqc_blr.utils import bin_sum, get_tail_x
 
 
 # Initialise the main MultiQC logger
@@ -265,6 +265,7 @@ class MultiqcModule(BaseMultiqcModule):
 
     def gather_molecule_lengths(self):
         data_lengths = dict()
+        xmax = 100
         for f in self.find_log_files('stats/molecule_lengths', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_lengths", "")
 
@@ -276,6 +277,8 @@ class MultiqcModule(BaseMultiqcModule):
             sample_data = pd.read_csv(f["f"], sep="\t")
             sample_data["LengthSumNorm"] = sample_data["LengthSum"] / sample_data["LengthSum"].sum()
             data_lengths[sample_name] = {int(row.Bin/1000): row.LengthSumNorm for row in sample_data.itertuples()}
+
+            xmax = max(get_tail_x(data_lengths[sample_name]), xmax)
 
         # Filter out samples to ignore
         data_lengths = self.ignore_samples(data_lengths)
@@ -289,6 +292,7 @@ class MultiqcModule(BaseMultiqcModule):
             'title': "Stats: Molecule lengths",
             'xlab': "Molecule length (kbp)",
             'ylab': 'Total DNA density',
+            'xmax': xmax,
             'tt_label': '{point.x} kbp: {point.y:.4f}',
         }
         plot_html = linegraph.plot(data_lengths, pconfig)
@@ -369,6 +373,7 @@ class MultiqcModule(BaseMultiqcModule):
 
     def gather_stats(self):
         names = ["MB", "MC", "RB"]
+        xmax = {"MB": 10, "RB": 20}
         data = {name: dict() for name in names}
         for f in self.find_log_files('stats/general_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
@@ -396,6 +401,7 @@ class MultiqcModule(BaseMultiqcModule):
             data["MB"][sample_name] = {
                 mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
             }
+            xmax["MB"] = max(get_tail_x(data["MB"][sample_name]), xmax["MB"])
 
             total_count = sum(s[1] for s in sample_data["MC"])
             data["MC"][sample_name] = {
@@ -406,6 +412,7 @@ class MultiqcModule(BaseMultiqcModule):
             data["RB"][sample_name] = {
                 reads_bin: 100 * count / total_count for reads_bin, count in sample_data["RB"]
             }
+            xmax["RB"] = max(get_tail_x(data["RB"][sample_name], threshold=0.99), xmax["RB"])
 
         # Filter out samples to ignore
         data = {name: self.ignore_samples(d) for name, d in data.items()}
@@ -423,6 +430,7 @@ class MultiqcModule(BaseMultiqcModule):
                     'title': "Stats: Molecules per barcode",
                     'xlab': "Molecules per barcode",
                     'ylab': 'Fraction of total',
+                    'xmax': xmax["MB"],
                     'yCeiling': 100,
                     'yLabelFormat': '{value}%',
                     'tt_label': '{point.x} molecules: {point.y:.1f}%',
@@ -457,6 +465,7 @@ class MultiqcModule(BaseMultiqcModule):
                     'title': "Stats: Reads per barcode",
                     'xlab': "Read count bin",
                     'ylab': 'Fraction of total',
+                    'xmax': xmax["RB"],
                     'yCeiling': 100,
                     'yLabelFormat': '{value}%',
                     'tt_label': 'Read count {point.x}: {point.y:.1f}%',
