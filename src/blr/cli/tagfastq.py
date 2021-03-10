@@ -109,6 +109,7 @@ def run_tagfastq(
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
         uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
+        chunks = None
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
@@ -180,25 +181,31 @@ def run_tagfastq(
                 writer.write(read1, read2)
 
         # Empty final cache
+        if chunks is not None:
+            chunks.write_chunk()
+
         if mapper == "ema":
-            chunks.write_chunk()
-
-            for entry in chunks.parse_chunks():
-                r1 = dnaio.Sequence(*entry[1:4])
-                r2 = dnaio.Sequence(*entry[4:7])
-                writer.write(r1, r2)
-                summary["Read pairs written"] += 1
-
+            write_ema_output(chunks, writer, summary)
         elif mapper == "lariat":
-            chunks.write_chunk()
-
-            for entry in chunks.parse_chunks():
-                print(*entry[1:10], sep="\n", file=writer)
-                summary["Read pairs written"] += 1
+            write_lariat_output(chunks, writer, summary)
 
     print_stats(summary, __name__)
 
     logger.info("Finished")
+
+
+def write_ema_output(chunks, writer, summary):
+    for entry in chunks.parse_chunks():
+        r1 = dnaio.Sequence(*entry[1:4])
+        r2 = dnaio.Sequence(*entry[4:7])
+        writer.write(r1, r2)
+        summary["Read pairs written"] += 1
+
+
+def write_lariat_output(chunks, writer, summary):
+    for entry in chunks.parse_chunks():
+        print(*entry[1:10], sep="\n", file=writer)
+        summary["Read pairs written"] += 1
 
 
 def parse_corrected_barcodes(open_file, summary, mapper, template, skip_singles=False):

@@ -12,7 +12,7 @@ from contextlib import ExitStack
 from itertools import product
 
 from blr.utils import print_stats
-from blr.cli.tagfastq import Output, ChunkHandler
+from blr.cli.tagfastq import Output, ChunkHandler, write_ema_output, write_lariat_output
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,7 @@ def run_process_stlfr(
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
+        chunks = None
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
             heaps = BarcodeHeap()
@@ -122,21 +123,13 @@ def run_process_stlfr(
                 writer.write(read1, read2)
 
         # Empty final cache
+        if chunks is not None:
+            chunks.write_chunk()
+
         if mapper == "ema":
-            chunks.write_chunk()
-
-            for entry in chunks.parse_chunks():
-                r1 = dnaio.Sequence(*entry[1:4])
-                r2 = dnaio.Sequence(*entry[4:7])
-                writer.write(r1, r2)
-                summary["Read pairs written"] += 1
-
+            write_ema_output(chunks, writer, summary)
         elif mapper == "lariat":
-            chunks.write_chunk()
-
-            for entry in chunks.parse_chunks():
-                print(*entry[1:10], sep="\n", file=writer)
-                summary["Read pairs written"] += 1
+            write_lariat_output(chunks, writer, summary)
 
     print_stats(summary, __name__)
     logger.info("Finished")
