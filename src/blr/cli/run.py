@@ -3,9 +3,10 @@ Run the BLR pipeline
 
 This is a small wrapper around Snakemake that sets some default parameters
 """
-import sys
-import logging
 from importlib_resources import path as resource_path
+import logging
+import sys
+
 from snakemake import snakemake
 from snakemake.utils import available_cpu_count
 

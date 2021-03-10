@@ -5,11 +5,12 @@ A molecule is defined by having 1) minimum --threshold reads and including all r
 a maximum distance of --window between any given reads.
 """
 
-import pysam
-import logging
 from collections import Counter, OrderedDict, defaultdict
-import pandas as pd
+import logging
 import statistics
+
+import pandas as pd
+import pysam
 
 from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
 

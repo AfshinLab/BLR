@@ -11,9 +11,10 @@ https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_st
 # Email  : pedge@eng.ucsd.edu
 
 from collections import defaultdict
-import statistics
 import logging
+import statistics
 import sys
+
 from pysam import VariantFile
 
 from blr.utils import smart_open

@@ -3,13 +3,14 @@ Process stLFR reads with existing barcodes in header. Barcodes of type '21_325_3
 barcode sequences are translated to IUPAC bases.
 """
 
-import logging
-import sys
-import dnaio
-from tqdm import tqdm
 from collections import Counter
 from contextlib import ExitStack
 from itertools import product
+import logging
+import sys
+
+from tqdm import tqdm
+import dnaio
 
 from blr.utils import print_stats
 from blr.cli.tagfastq import Output, ChunkHandler, write_ema_output, write_lariat_output

@@ -1,15 +1,15 @@
 """
 Create and initialize a new analysis directory.
 """
+from importlib_resources import read_binary
 import logging
 import os
 import os.path
-import sys
 from pathlib import Path
-from importlib_resources import read_binary
+import sys
 from typing import List
 
-from ..utils import guess_paired_path, ACCEPTED_LIBRARY_TYPES
+from blr.utils import guess_paired_path, ACCEPTED_LIBRARY_TYPES
 from blr.cli.config import change_config
 
 logger = logging.getLogger(__name__)

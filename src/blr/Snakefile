@@ -1,9 +1,10 @@
+from collections import defaultdict
+import os
+import pickle
 import sys
+
 import pandas as pd
 from snakemake.utils import validate
-from collections import defaultdict
-import pickle
-import os
 
 from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind

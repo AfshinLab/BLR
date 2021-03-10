@@ -2,8 +2,8 @@
 Merge barcodes by re-tagging reads in BAM with new barcodes.
 """
 
-import logging
 from collections import Counter
+import logging
 
 from blr.utils import PySAMIO, get_bamtag, print_stats, tqdm
 

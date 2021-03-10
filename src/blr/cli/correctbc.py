@@ -4,12 +4,13 @@ Correct single count barcodes by finding matching multiple count barcodes within
 This is the method used in Chen et al. 2019 (doi: 10.1101/gr.260380.119) to correct TELL-seq barcodes which are
 partialy degenerate.
 """
-import dnaio
 from collections import Counter
-import logging
-from dataclasses import dataclass
 from contextlib import contextmanager
+from dataclasses import dataclass
+import logging
 import sys
+
+import dnaio
 
 from blr.utils import tqdm, print_stats
 

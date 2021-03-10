@@ -1,14 +1,15 @@
 """
 Update configuration file. If no --set option is given the current settings are printed.
 """
-import sys
+from importlib_resources import path as resource_path
 import logging
+from pathlib import Path
+from shutil import get_terminal_size
+import sys
+from typing import List, Tuple
+
 from ruamel.yaml import YAML
 from snakemake.utils import validate
-from importlib_resources import path as resource_path
-from pathlib import Path
-from typing import List, Tuple
-from shutil import get_terminal_size
 
 logger = logging.getLogger(__name__)
 DEFAULT_PATH = Path("blr.yaml")

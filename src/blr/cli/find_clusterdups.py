@@ -10,13 +10,14 @@ Condition to call cluster duplicate:
     5 +/- 1 bp are allowed. For 10x Chromium libraries any overlaps are allowed.
 """
 
-from pysam import AlignmentFile, AlignedSegment, set_verbosity
 from argparse import ArgumentError
-import logging
 from collections import Counter, deque, OrderedDict, defaultdict
-import pickle
-import numpy as np
+import logging
 from math import ceil
+import pickle
+
+from pysam import AlignmentFile, AlignedSegment, set_verbosity
+import numpy as np
 
 from blr.utils import get_bamtag, print_stats, tqdm, ACCEPTED_LIBRARY_TYPES
 

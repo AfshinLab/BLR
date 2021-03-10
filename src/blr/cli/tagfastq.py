@@ -18,16 +18,17 @@ the read by including it in the header.
     <HEADER> ==> <RAW_BARCODE> ==> <CORRECTED_BARCODE>
 """
 
+from collections import Counter
+from contextlib import ExitStack
+import heapq
+from itertools import islice
 import logging
+from pathlib import Path
 import sys
+import tempfile
+
 import dnaio
 from xopen import xopen
-from itertools import islice
-from collections import Counter
-import heapq
-from pathlib import Path
-import tempfile
-from contextlib import ExitStack
 
 from blr.utils import tqdm, print_stats
 

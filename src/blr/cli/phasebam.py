@@ -11,9 +11,10 @@ Outputs:
   - BAM file with haplotype and phase set tag, where that combination corresponds to a continuously phased region.
 """
 
-import pysam
-import logging
 from collections import Counter, OrderedDict
+import logging
+
+import pysam
 
 from blr.utils import print_stats, get_bamtag, PySAMIO, tqdm
 

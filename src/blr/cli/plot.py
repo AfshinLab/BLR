@@ -1,15 +1,16 @@
 """
 Plot data from
 """
-import logging
-import pandas as pd
-import numpy as np
 from collections import defaultdict, Counter
+import logging
+import os
+from pathlib import Path
+
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.colors import LogNorm
-from pathlib import Path
-import os
+import numpy as np
 
 from blr.utils import print_stats, calculate_N50
 from blr import __version__

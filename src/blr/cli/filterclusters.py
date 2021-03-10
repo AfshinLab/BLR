@@ -2,8 +2,8 @@
 Removes barcode and molecule tags from reads which barcode matches the input set of barcodes.
 """
 
-import logging
 from collections import Counter
+import logging
 
 from blr.utils import get_bamtag, PySAMIO, print_stats, tqdm
 

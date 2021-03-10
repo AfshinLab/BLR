@@ -6,10 +6,10 @@ File format:
  - blank rows allowed
  - variable=value
 """
-import logging
-from pathlib import Path
 from importlib_resources import open_text
+import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

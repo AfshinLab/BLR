@@ -1,12 +1,11 @@
 """
 Filter BAM for select SAM tag values.
 """
-import logging
 from collections import Counter
-from tqdm import tqdm
+import logging
 import os
 
-from blr.utils import get_bamtag, print_stats, PySAMIO
+from blr.utils import get_bamtag, print_stats, PySAMIO, tqdm
 
 logger = logging.getLogger(__name__)
 
