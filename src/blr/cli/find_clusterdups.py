@@ -240,9 +240,9 @@ def query_barcode_duplicates(dup_positions, barcode_graph, threshold: float, win
 
 def get_non_acceptable_overlap_func(library_type: str):
     if library_type in {"blr", "stlfr"}:  # Tn5-type tagmentation
-        return lambda x: x < -10 or x > -8
+        return lambda x: x < 0 and x not in {-8, -9, -10}
     elif library_type in {"tellseq"}:  # MuA-type tagmentation
-        return lambda x: x < -6 or x > -4
+        return lambda x: x < 0 and x not in {-4, -5, -6}
     else:
         return lambda x: False
 
