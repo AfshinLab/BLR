@@ -213,7 +213,7 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, skip_singles=
     corrected_barcodes = dict()
     canonical_seqs = list()
     heap_index = {}
-    for index, cluster in tqdm(enumerate(open_file), desc="Clusters processed"):
+    for cluster in tqdm(open_file, desc="Clusters processed"):
         canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
         summary["Corrected barcodes"] += 1
         summary["Reads with corrected barcodes"] += int(size)
