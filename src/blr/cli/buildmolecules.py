@@ -321,7 +321,7 @@ def compute_molecule_stats_dataframe(bc_to_mol_dict):
     """
     molecule_data = list()
     while bc_to_mol_dict:
-        barcode, molecules = bc_to_mol_dict.popitem()
+        _, molecules = bc_to_mol_dict.popitem()
         molecule_data.extend(molecules)
 
     return pd.DataFrame(molecule_data)
