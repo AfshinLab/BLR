@@ -147,14 +147,13 @@ def count_consecutive_switches(t1_dict, hap, allele):
     first_SNP = True
     switched = False
 
-    for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in hap:
+    for _, pos, a1, a2, _, _, _ in hap:
         x = t1_dict[pos]  # base in true haplotype
         y = a1 if allele == 0 else a2  # base in assembled haplotype
         if x == '-' or y == '-':
             if first_SNP:
                 continue
-            else:
-                break
+            break
         elif first_SNP:
             switched = (t1_dict[pos] != y)
             first_SNP = False
@@ -170,7 +169,7 @@ def count_consecutive_switches(t1_dict, hap, allele):
 def merge_dicts(d1, d2):
     d3 = d2.copy()
     for k, v in d1.items():
-        assert (k not in d3)
+        assert k not in d3
         d3[k] = v
     return d3
 
@@ -269,8 +268,7 @@ class ErrorResult:
         poss_sw = self.get_poss_sw()
         if poss_sw > 0:
             return float(switch_count) / poss_sw
-        else:
-            return 0
+        return 0
 
     def get_mismatch_rate(self):
         mismatch_count = self.get_mismatch_count()
@@ -278,24 +276,21 @@ class ErrorResult:
 
         if poss_mm > 0:
             return float(mismatch_count) / poss_mm
-        else:
-            return 0
+        return 0
 
     def get_switch_mismatch_rate(self):
         poss_mm = self.get_poss_mm()
 
         if poss_mm > 0:
             return float(self.get_switch_count() + self.get_mismatch_count()) / poss_mm
-        else:
-            return 0
+        return 0
 
     def get_flat_error_rate(self):
         flat_count = self.get_flat_count()
         poss_flat = self.get_poss_flat()
         if poss_flat > 0:
             return float(flat_count) / poss_flat
-        else:
-            return 0
+        return 0
 
     def get_AN50(self):
         AN50 = 0
@@ -306,8 +301,7 @@ class ErrorResult:
             phased_sum += phased
             if phased_sum > self.get_num_snps() / 2.0:
                 AN50 = span
-                break
-        return AN50
+                return AN50
 
     def get_N50_phased_portion(self):
         N50 = 0
@@ -321,8 +315,7 @@ class ErrorResult:
             total += span
             if total > L / 2.0:
                 N50 = span
-                break
-        return N50
+                return N50
 
     def get_median_block_length(self):
         spanlst = sum(self.N50_spanlst.values(), [])
