@@ -149,8 +149,7 @@ def translate_indeces(index_string, barcodes, summary):
     elif len(index_string.split("_")) < 3:
         summary["Skipped barcode of incorrect length"] += 1
         return None
-    else:
-        return barcodes.get(index_string)
+    return barcodes.get(index_string)
 
 
 class BarcodeGenerator:
@@ -173,13 +172,13 @@ class BarcodeGenerator:
     def get(self, index_string):
         if index_string in self.translate_barcode:
             return self.translate_barcode[index_string]
+
+        if self._index_to_string is not None:
+            barcode = "".join([self._index_to_string[int(i)] for i in index_string.split("_") if i != ""])
         else:
-            if self._index_to_string is not None:
-                barcode = "".join([self._index_to_string[int(i)] for i in index_string.split("_") if i != ""])
-            else:
-                barcode = next(self._barcode_generator)
-            self.translate_barcode[index_string] = barcode
-            return barcode
+            barcode = next(self._barcode_generator)
+        self.translate_barcode[index_string] = barcode
+        return barcode
 
     def _parse_barcodes(self):
         with open(self._barcodes_file) as f:
