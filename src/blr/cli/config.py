@@ -100,8 +100,7 @@ def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
     if "../" in value and (workdir / value).exists():
         if (workdir / value).is_symlink():
             return str((workdir / value).absolute())
-        else:
-            return str((workdir / value).resolve(True))
+        return str((workdir / value).resolve(True))
     return value
 
 
