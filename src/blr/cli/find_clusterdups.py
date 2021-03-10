@@ -217,8 +217,7 @@ def get_barcode_threshold(dup_positions, quantile: float = 0.99, min_threshold=6
     barcode_coverage = np.array([len(position.barcodes) for position in dup_positions.values()])
     if barcode_coverage.size > 0:
         return max(min_threshold, ceil(np.quantile(barcode_coverage, quantile)))
-    else:
-        return min_threshold
+    return min_threshold
 
 
 def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, non_acceptable_overlap,
@@ -227,7 +226,7 @@ def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, n
     Query barcode duplicates from list of duplicate positions. Position are filtered using the set threshold.
     """
     buffer_dup_pos = deque()
-    for position, tracked_position in tqdm(dup_positions.items(), desc="Seeding dups"):
+    for _, tracked_position in tqdm(dup_positions.items(), desc="Seeding dups"):
         if len(tracked_position.barcodes) < threshold:
             summary["Filtered barcode duplicate positions"] += 1
             seed_duplicates(
@@ -246,8 +245,7 @@ def get_non_acceptable_overlap_func(library_type: str):
         return lambda x: x < 0 and x not in {-8, -9, -10}
     elif library_type in {"tellseq"}:  # MuA-type tagmentation
         return lambda x: x < 0 and x not in {-4, -5, -6}
-    else:
-        return lambda x: False
+    return lambda x: False
 
 
 class PositionTracker:
@@ -269,8 +267,7 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap,
-                    summary):
+def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap):
     """
     Identifies connected barcodes i.e. barcodes sharing two duplicate positions within the current window which is used
     to construct a graph. For Tn5 type libraries, overlapping positions are not compared unless they are allowed by Tn5
@@ -298,7 +295,7 @@ def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int
                     uf.union(*barcode_intersect)
             else:
                 # Remove positions outside of window (at end of list) since positions are sorted.
-                for i in range(len(buffer_dup_pos) - index):
+                for _ in range(len(buffer_dup_pos) - index):
                     buffer_dup_pos.pop()
                 break
 
