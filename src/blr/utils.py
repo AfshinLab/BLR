@@ -5,7 +5,7 @@ import pysam
 from dataclasses import dataclass
 import numpy as np
 import os
-from collections import namedtuple
+from collections import namedtuple, Counter
 import contextlib
 
 from blr import __version__
@@ -71,32 +71,34 @@ def get_bamtag(pysam_read, tag):
         return None
 
 
-def print_stats(summary, name=None, value_width=15, print_to=sys.stderr):
-    """
-    Prints stats in nice table with two column for the key and value pairs in summary
-    :param summary: collections.Coutner object
-    :param name: name of script for header e.g. '__name__'
-    :param value_width: width for values column in table
-    :param print_to: Where to direct output
-    """
-    # Get widths for formatting
-    max_name_width = max(map(len, summary.keys()), default=10)
-    width = value_width + max_name_width + 1
+class Summary(Counter):
 
-    # Header
-    print("="*width, file=print_to)
-    print(f"STATS SUMMARY - {name}", file=print_to)
-    print("-"*width, file=print_to)
+    def print_stats(self, name=None, value_width=15, print_to=sys.stderr):
+        """
+        Prints stats in nice table with two column for the key and value pairs in summary
+        :param name: name of script for header e.g. '__name__'
+        :param value_width: width for values column in table
+        :param print_to: Where to direct output. Default: stderr
+        """
+        # Get widths for formatting
+        max_name_width = max(map(len, self.keys()), default=10)
+        width = value_width + max_name_width + 1
 
-    # Print stats in columns
-    for name, value in summary.items():
-        if type(value) is int:
-            print(f"{name:<{max_name_width}} {value:>{value_width},}", file=print_to)
-        elif type(value) is float:
-            print(f"{name:<{max_name_width}} {value:>{value_width+4},.3f}", file=print_to)
-        else:
-            print(f"{name:<{max_name_width}} {value:>{value_width}}", file=print_to)
-    print("="*width, file=print_to)
+        # Header
+        print("="*width, file=print_to)
+        print(f"STATS SUMMARY - {name}", file=print_to)
+        print("-"*width, file=print_to)
+
+        # Print stats in columns
+        for name, value in self.items():
+            value_str = str(value)
+            if type(value) is int:
+                value_str = f"{value:>{value_width},}"
+            elif type(value) is float:
+                value_str = f"{value:>{value_width+4},.3f}"
+
+            print(f"{name:<{max_name_width}} {value_str}", file=print_to)
+        print("="*width, file=print_to)
 
 
 class PySAMIO:

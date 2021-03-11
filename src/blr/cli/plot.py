@@ -12,7 +12,7 @@ import matplotlib
 from matplotlib.colors import LogNorm
 import numpy as np
 
-from blr.utils import print_stats, calculate_N50
+from blr.utils import Summary, calculate_N50
 from blr import __version__
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ SIZE_WIDE = (10, 6)
 
 
 def main(args):
-    summary = Counter()
+    summary = Summary()
 
     # Fix for running matplotlib in background on SSH.
     # https://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
@@ -55,7 +55,7 @@ def main(args):
         proc_func(files, args.output_dir, summary)
 
     if summary:
-        print_stats(summary, __name__)
+        summary.print_stats(__name__)
 
 
 def process_barcode_clstr(files, directory: Path, summary):

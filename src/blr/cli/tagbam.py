@@ -5,7 +5,7 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 from collections import Counter
 import logging
 
-from blr.utils import print_stats, PySAMIO, get_bamtag, tqdm
+from blr.utils import Summary, PySAMIO, get_bamtag, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def run_tagbam(
     else:
         processing_function = mode_samtags_underline_separation
 
-    summary = Counter()
+    summary = Summary()
 
     # Read SAM/BAM files and transfer barcode information from alignment name to SAM tag
     with PySAMIO(input, output, __name__) as (infile, outfile):
@@ -44,7 +44,7 @@ def run_tagbam(
             processing_function(read, sample_number, summary)
             outfile.write(read)
 
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
     logger.info("Finished")
 
 

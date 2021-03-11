@@ -12,14 +12,14 @@ import sys
 
 import dnaio
 
-from blr.utils import tqdm, print_stats
+from blr.utils import tqdm, Summary
 
 
 logger = logging.getLogger(__name__)
 
 
 def main(args):
-    summary = Counter()
+    summary = Summary()
 
     barcodes = count_barcodes(args.uncorrected_barcodes)
     summary["Total barcodes "] += len(barcodes)
@@ -39,7 +39,7 @@ def main(args):
         for barcode in singles:
             print(barcode, 1, barcode, sep="\t", file=output)
 
-    print_stats(summary, __name__)
+    summary.print_stats(__name__)
 
 
 @contextmanager

@@ -2,10 +2,9 @@
 Merge barcodes by re-tagging reads in BAM with new barcodes.
 """
 
-from collections import Counter
 import logging
 
-from blr.utils import PySAMIO, get_bamtag, print_stats, tqdm
+from blr.utils import PySAMIO, get_bamtag, Summary, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ def run_mergeclusters(
     output: str,
     barcode_tag: str,
 ):
-    summary = Counter()
+    summary = Summary()
     merge_dict = dict()
     with open(input_merges) as file:
         for line in file:
@@ -43,7 +42,7 @@ def run_mergeclusters(
             out.write(read)
 
     logger.info("Finished")
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
 
 
 def add_arguments(parser):

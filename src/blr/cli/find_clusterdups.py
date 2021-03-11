@@ -11,7 +11,7 @@ Condition to call cluster duplicate:
 """
 
 from argparse import ArgumentError
-from collections import Counter, deque, OrderedDict, defaultdict
+from collections import deque, OrderedDict, defaultdict
 import logging
 from math import ceil
 import pickle
@@ -19,7 +19,7 @@ import pickle
 from pysam import AlignmentFile, AlignedSegment, set_verbosity
 import numpy as np
 
-from blr.utils import get_bamtag, print_stats, tqdm, ACCEPTED_LIBRARY_TYPES
+from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def run_find_clusterdups(
 ):
     non_acceptable_overlap = get_non_acceptable_overlap_func(library_type)
     logger.info("Starting Analysis")
-    summary = Counter()
+    summary = Summary()
     positions = OrderedDict()
     dup_positions = OrderedDict()
     chrom_prev = None
@@ -126,7 +126,7 @@ def run_find_clusterdups(
                     print(old_barcode, new_barcode, sep=",", file=file)
 
     logger.info("Finished")
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
 
 
 def paired_reads(path: str, min_mapq: int, summary):
@@ -237,7 +237,6 @@ def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, n
                 position_barcodes=tracked_position.barcodes,
                 window=window,
                 non_acceptable_overlap=non_acceptable_overlap,
-                summary=summary
             )
 
 

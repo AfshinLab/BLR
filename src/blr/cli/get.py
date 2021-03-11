@@ -1,11 +1,10 @@
 """
 Filter BAM for select SAM tag values.
 """
-from collections import Counter
 import logging
 import os
 
-from blr.utils import get_bamtag, print_stats, PySAMIO, tqdm
+from blr.utils import get_bamtag, Summary, PySAMIO, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 def main(args):
     logger.info("Starting")
 
-    summary = Counter()
+    summary = Summary()
     values = get_values(args.values)
     counts = {value: 0 for value in values}
     summary["Values to collect"] = len(values)
@@ -29,7 +28,7 @@ def main(args):
                 openout.write(read)
 
     print_counts(counts)
-    print_stats(summary, __name__)
+    summary.print_stats(__name__)
 
     logger.info("Finished")
 

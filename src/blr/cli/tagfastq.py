@@ -18,7 +18,6 @@ the read by including it in the header.
     <HEADER> ==> <RAW_BARCODE> ==> <CORRECTED_BARCODE>
 """
 
-from collections import Counter
 from contextlib import ExitStack
 import heapq
 from itertools import islice
@@ -30,7 +29,7 @@ import tempfile
 import dnaio
 from xopen import xopen
 
-from blr.utils import tqdm, print_stats
+from blr.utils import tqdm, Summary
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,7 @@ def run_tagfastq(
         sample_number: int,
 ):
     logger.info("Starting")
-    summary = Counter()
+    summary = Summary()
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
     template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
@@ -190,7 +189,7 @@ def run_tagfastq(
         elif mapper == "lariat":
             write_lariat_output(chunks, writer, summary)
 
-    print_stats(summary, __name__)
+    summary.print_stats(__name__)
 
     logger.info("Finished")
 

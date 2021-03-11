@@ -5,14 +5,14 @@ A molecule is defined by having 1) minimum --threshold reads and including all r
 a maximum distance of --window between any given reads.
 """
 
-from collections import Counter, OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict
 import logging
 import statistics
 
 import pandas as pd
 import pysam
 
-from blr.utils import PySAMIO, get_bamtag, print_stats, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
+from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def run_buildmolecules(
     min_mapq: int,
     library_type: str
 ):
-    summary = Counter()
+    summary = Summary()
 
     # Build molecules from BCs and reads
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
@@ -78,7 +78,7 @@ def run_buildmolecules(
         df.to_csv(stats_tsv, sep="\t", index=False)
         if not df.empty:
             update_summary_from_molecule_stats(df, summary)
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
 
 
 def parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):

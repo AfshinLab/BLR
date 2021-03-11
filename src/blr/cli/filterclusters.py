@@ -2,10 +2,9 @@
 Removes barcode and molecule tags from reads which barcode matches the input set of barcodes.
 """
 
-from collections import Counter
 import logging
 
-from blr.utils import get_bamtag, PySAMIO, print_stats, tqdm
+from blr.utils import get_bamtag, PySAMIO, Summary, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ def run_filterclusters(
 ):
     tags_to_remove = [barcode_tag, molecule_tag]
     removed_tags = {tag: set() for tag in tags_to_remove}
-    summary = Counter()
+    summary = Summary()
     logger.info("Starting")
 
     logger.info("Read list of barcodes to filter")
@@ -59,7 +58,7 @@ def run_filterclusters(
 
     logger.info("Finished")
 
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
 
 
 def strip_barcode(pysam_read, tags_to_be_removed, removed_tags):

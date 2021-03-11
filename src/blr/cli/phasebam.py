@@ -16,7 +16,7 @@ import logging
 
 import pysam
 
-from blr.utils import print_stats, get_bamtag, PySAMIO, tqdm
+from blr.utils import Summary, get_bamtag, PySAMIO, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def main(args):
     logger.info("Starting analysis")
     anomaly_file = open(args.anomaly_file_name, 'w')
-    summary = Counter()
+    summary = Summary()
 
     # Save hetSNV info
     phased_snv_dict = get_phased_snvs_hapcut2_format(args.hapcut2_phase_file, args.min_switch_error,
@@ -68,7 +68,7 @@ def main(args):
     summary["Total reads phased (%)"] = 100 * summary["Total reads phased"]/summary["Total reads"]
 
     anomaly_file.close()
-    print_stats(summary, name=__name__)
+    summary.print_stats(name=__name__)
     logger.info("Finished")
 
 

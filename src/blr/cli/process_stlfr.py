@@ -3,7 +3,6 @@ Process stLFR reads with existing barcodes in header. Barcodes of type '21_325_3
 barcode sequences are translated to IUPAC bases.
 """
 
-from collections import Counter
 from contextlib import ExitStack
 from itertools import product
 import logging
@@ -12,7 +11,7 @@ import sys
 from tqdm import tqdm
 import dnaio
 
-from blr.utils import print_stats
+from blr.utils import Summary
 from blr.cli.tagfastq import Output, ChunkHandler, write_ema_output, write_lariat_output
 
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ def run_process_stlfr(
 ):
     logger.info("Starting")
 
-    summary = Counter()
+    summary = Summary()
 
     barcodes = BarcodeGenerator(barcode_file)
 
@@ -132,7 +131,7 @@ def run_process_stlfr(
         elif mapper == "lariat":
             write_lariat_output(chunks, writer, summary)
 
-    print_stats(summary, __name__)
+    summary.print_stats(__name__)
     logger.info("Finished")
 
 
