@@ -19,7 +19,7 @@ the read by including it in the header.
 """
 
 from contextlib import ExitStack
-import heapq
+from heapq import merge
 from itertools import islice
 import logging
 from pathlib import Path
@@ -60,6 +60,8 @@ def main(args):
         input2=args.input2,
         output1=args.output1,
         output2=args.output2,
+        output_bins=args.output_bins,
+        nr_bins=args.nr_bins,
         barcode_tag=args.barcode_tag,
         sequence_tag=args.sequence_tag,
         mapper=args.mapper,
@@ -76,6 +78,8 @@ def run_tagfastq(
         input2: str,
         output1: str,
         output2: str,
+        output_bins: str,
+        nr_bins: int,
         barcode_tag: str,
         sequence_tag: str,
         mapper: str,
@@ -95,19 +99,25 @@ def run_tagfastq(
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
-    # If no output1 is given output is sent to stdout
-    if not output1:
-        logger.info("Writing output to stdout.")
-        output1 = sys.stdout.buffer
-        output2 = None
-
-    out_interleaved = not output2
-    logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
+    out_interleaved = not output2 or not output1
+    bin_size = int(summary["Reads with corrected barcodes"] / nr_bins)
+    if output_bins is not None:
+        logger.info(f"Writing output as binned interleaved FASTQ to {output_bins}.")
+        output_bins = Path(output_bins)
+        output_bins.mkdir(exist_ok=True)
+        output1, output2 = None, None
+    else:
+        if not output1:
+            logger.info("Writing output to stdout.")
+            output1 = sys.stdout.buffer
+            output2 = None
+        logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
-        writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
+        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper,
+                                            bins_dir=output_bins, bin_size=bin_size))
         uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
         chunks = None
         if mapper in ["ema", "lariat"]:
@@ -157,7 +167,6 @@ def run_tagfastq(
                     read1.name,
                     read1.sequence,
                     read1.qualities,
-                    read2.name,
                     read2.sequence,
                     read2.qualities,
                 )
@@ -174,7 +183,7 @@ def run_tagfastq(
                     f"{corrected_barcode_seq}-{sample_number}",
                     corrected_barcode_qual,
                     sample_index,
-                    sample_index_qual
+                    sample_index_qual,
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -197,14 +206,15 @@ def run_tagfastq(
 def write_ema_output(chunks, writer, summary):
     for entry in chunks.parse_chunks():
         r1 = dnaio.Sequence(*entry[1:4])
-        r2 = dnaio.Sequence(*entry[4:7])
-        writer.write(r1, r2)
+        r2 = dnaio.Sequence(entry[1], *entry[4:6])
+        writer.write(r1, r2, heap=entry[0])
         summary["Read pairs written"] += 1
 
 
 def write_lariat_output(chunks, writer, summary):
     for entry in chunks.parse_chunks():
-        print(*entry[1:10], sep="\n", file=writer)
+        lines = "\n".join(entry[1:]) + "\n"
+        writer.write(lines, heap=entry[0])
         summary["Read pairs written"] += 1
 
 
@@ -321,27 +331,82 @@ class BarcodeReader:
 
 
 class Output:
-    def __init__(self, file1, file2=None, interleaved=False, mapper=None):
-        self.mapper = mapper
-        if self.mapper == "lariat":
+    """
+    Output handler for different output formats required by different mappers.
+    """
+    BIN_FASTQ_TEMPLATE = "ema-bin-*"  # Same name as in `ema preproc`.
+
+    def __init__(self, file1=None, file2=None, interleaved=False, mapper=None, bins_dir=None, bin_size=None):
+        self._mapper = mapper
+
+        self._bin_nr = 0
+        self._reads_written = 0
+        self._bin_size = bin_size
+        self._bins_dir = bins_dir
+        self._prev_heap = None
+        self._bin_filled = False
+        self._pre_write = lambda *args: None
+        self._post_write = lambda *args: None
+
+        self._open_file = None
+        if file1 is not None:
+            self._setup_single_output(file1, file2, interleaved)
+        elif bins_dir is not None:
+            self._open_new_bin()
+            self._pre_write = self._open_new_bin_if_full
+            self._post_write = self._check_bin_full
+        else:
+            sys.exit("Either file1 or bins_dir need to be provided.")
+
+    def _setup_single_output(self, file1, file2, interleaved):
+        if self._mapper == "lariat":
             self._open_file = xopen(file1, mode='w')
-            if file2:
+            if file2 is not None:
                 Path(file2).touch()
         else:
-            if interleaved:
-                self._open_file = dnaio.open(file1, interleaved=True, mode="w", fileformat="fastq")
-            else:
-                self._open_file = dnaio.open(file1, file2=file2, mode="w", fileformat="fastq")
+            self._open_file = dnaio.open(file1, file2=file2, interleaved=interleaved, mode="w", fileformat="fastq")
+
+    def _open_new_bin(self):
+        if self._open_file is not None:
+            self._open_file.close()
+        bin_nr_str = str(self._bin_nr).zfill(3)
+        file_name = self._bins_dir / Output.BIN_FASTQ_TEMPLATE.replace("*", bin_nr_str)
+        self._open_file = self._open_file = dnaio.open(file_name, interleaved=True, mode="w", fileformat="fastq")
+        self._bin_nr += 1
+
+    def _open_new_bin_if_full(self, heap):
+        # Start a new bin if the current is full while not splitting heaps over separate bins
+        if self._bin_filled and heap != self._prev_heap:
+            self._bin_filled = False
+            self._reads_written = 0
+            self._open_new_bin()
+        self._prev_heap = heap
+
+    def _check_bin_full(self):
+        if self._reads_written > self._bin_size:
+            self._bin_filled = True
+
+    def write(self, read1, read2=None, heap=None):
+        self._pre_write(heap)
+
+        # Write reads to output file
+        if self._mapper == "lariat":
+            self._open_file.write(read1)
+        else:
+            self._open_file.write(read1, read2)
+        self._reads_written += 1
+
+        self._post_write()
 
     def __enter__(self):
-        return self._open_file
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._open_file.close()
 
 
 class ChunkHandler:
-    def __init__(self, chunk_size: int = 1_000_000):
+    def __init__(self, chunk_size: int = 100_000):
         # Required for ema sorted output
         # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
         self._output_chunk = list()
@@ -349,6 +414,7 @@ class ChunkHandler:
         self._chunk_id = 0
         self._tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
         self._chunk_file_template = "chunk_*.tsv"
+        self._chunk_files = []
         self._chunk_sep = "\t"
         self._tmp_writer = self.create_writer()
 
@@ -362,14 +428,15 @@ class ChunkHandler:
         if hasattr(self, "_tmp_writer"):
             self._tmp_writer.close()
         tmpfile = self._tmpdir / self._chunk_file_template.replace("*", str(self._chunk_id))
+        self._chunk_files.append(tmpfile)
         self._chunk_id += 1
         return open(tmpfile, "w")
 
     def build_chunk(self, *args: str):
         """Add entry to write to temporary file, first argument should be the heap index"""
-        self._output_chunk.append(self._chunk_sep.join(list(args) + ["\n"]))
+        self._output_chunk.append(self._chunk_sep.join(list(args)) + "\n")
 
-        if len(self._output_chunk) == self._chunk_size:
+        if len(self._output_chunk) > self._chunk_size:
             self.write_chunk()
             self._tmp_writer = self.create_writer()
 
@@ -379,16 +446,18 @@ class ChunkHandler:
         self._output_chunk.clear()
 
     def parse_chunks(self):
+        if not self._tmp_writer.closed:
+            self._tmp_writer.close()
+
         with ExitStack() as chunkstack:
             logger.info("Opening chunks for merge")
-            chunks = [chunkstack.enter_context(open(chunk)) for chunk in self._tmpdir.iterdir()]
-
+            chunks = [chunkstack.enter_context(chunk.open(mode="r")) for chunk in self._chunk_files]
             logger.info("Merging chunks")
-            for entry in heapq.merge(*chunks, key=self._get_heap):
-                yield entry.split(self._chunk_sep)
+            for entry in merge(*chunks, key=self._get_heap):
+                yield entry.strip().split(self._chunk_sep)
 
     def _get_heap(self, x):
-        return int(x.split(self._chunk_sep, maxsplit=1)[0])
+        return int(x.split(self._chunk_sep)[0])
 
 
 def add_arguments(parser):
@@ -407,7 +476,8 @@ def add_arguments(parser):
     parser.add_argument(
         "input2", nargs='?',
         help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved.")
-    parser.add_argument(
+    output = parser.add_mutually_exclusive_group(required=False)
+    output.add_argument(
         "--output1", "--o1",
         help="Output FASTQ/FASTA file name for read1. If not specified the result is written to "
              "stdout as interleaved. If output1 given but not output2, output will be written as "
@@ -416,6 +486,15 @@ def add_arguments(parser):
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
              "result is written as interleaved .")
+    output.add_argument(
+        "--output-bins",
+        help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "
+             f"directory. Entries will be grouped based on barcode. Only used for ema mapping."
+    )
+    parser.add_argument(
+        "--nr-bins", type=int, default=100,
+        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s"
+    )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
         help="SAM tag for storing the error corrected barcode. Default: %(default)s")
@@ -423,8 +502,9 @@ def add_arguments(parser):
         "-s", "--sequence-tag", default="RX",
         help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s")
     parser.add_argument(
-        "-m", "--mapper",
-        help="Specify read mapper for labeling reads with barcodes. "
+        "-m", "--mapper", default="bowtie2", choices=["bowtie2", "minimap2", "bwa", "ema", "lariat"],
+        help="Specify read mapper for labeling reads with barcodes. Selecting 'ema' or 'lariat' produces output "
+             "required for these particular mappers. Default: %(default)s."
     )
     parser.add_argument(
         "--skip-singles", default=False, action="store_true",
