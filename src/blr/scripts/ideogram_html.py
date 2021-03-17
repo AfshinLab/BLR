@@ -72,7 +72,7 @@ chr_stacks = defaultdict(list)
 prev = 0
 chrom = None
 longest = (None, 0, 0)
-for phaseblock in parse_blocks(snakemake.input.phased_vcf):
+for phaseblock in parse_blocks(snakemake.input.phased_vcf):  # noqa: F821
     if phaseblock:
         if phaseblock.chr != chrom:
             chrom = phaseblock.chr
@@ -100,7 +100,7 @@ for phaseblock in parse_blocks(snakemake.input.phased_vcf):
 letters = "abcdefghijklmnopqrstuvwxyz"
 unique_id = "".join(random.sample(letters, 10))
 
-with open(snakemake.output.html, "w") as out:
+with open(snakemake.output.html, "w") as out:  # noqa: F821
     # Based on https://eweitz.github.io/ideogram/annotations-overlaid
     html = f"""
 <!--
@@ -109,7 +109,7 @@ section_name: 'Phaseblock overview'
 description: "Ideogram of chromsomes with phaseblocks overlayed in alternating green and blue. \
               Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
               chromsome to enlarge it. Click on the chromosome once again to return to the overview. Hover over block \
-              to get the phaseblock location along with it size. The longest phaseblock is highlighted in red." 
+              to get the phaseblock location along with it size. The longest phaseblock is highlighted in red."
 -->
 
 <div class="ideogram-{unique_id}">
@@ -156,6 +156,6 @@ description: "Ideogram of chromsomes with phaseblocks overlayed in alternating g
   };
 
   var ideogram = new Ideogram(config);
-</script>    
+</script>
 """
     out.write(html)
