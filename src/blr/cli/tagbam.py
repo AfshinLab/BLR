@@ -2,7 +2,6 @@
 Strips headers from tags and depending on mode, set the appropriate SAM tag.
 """
 
-from collections import Counter
 import logging
 
 from blr.utils import Summary, PySAMIO, get_bamtag, tqdm
