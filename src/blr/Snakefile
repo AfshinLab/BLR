@@ -197,6 +197,8 @@ rule map_sort_ema_bins:
     log:
         map = "{dir}/ema-bin-{bin_nr}.mapping.log",
         sort = "{dir}/ema-bin-{bin_nr}.sorting.log"
+    params:
+        tmpdir = "-T $TMPDIR" if "TMPDIR" in os.environ else ""
     shell:
         "ema align"
         " -t {threads}"
@@ -211,6 +213,7 @@ rule map_sort_ema_bins:
         " -@ {threads}"
         " -O bam"
         " -l 0"
+        "{params.tmpdir}"
         " -o {output.bam}"
         " - 2> {log.sort}"
 
