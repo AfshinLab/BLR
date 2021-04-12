@@ -32,7 +32,7 @@ for os in ${targets}; do
     env_yml=environment.$os.lock.yml
     printf "channels:\n  - conda-forge\n  - bioconda\n  - defaults\n" > ~/.condarc
     printf "subdir: %s-64\nsubdirs:\n  - %s-64\n  - noarch\n" $os $os >> ~/.condarc
-    conda env create -n $env -f environment.yml
+    mamba env create -n $env -f environment.yml
     conda env export -n $env | grep -Ev '^(name|prefix):' > ${env_yml}
     conda env remove -n $env
     echo "Created ${env_yml}"
