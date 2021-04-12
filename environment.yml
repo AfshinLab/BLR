@@ -16,7 +16,7 @@ dependencies:
   - cutadapt=2.5
   - hapcut2=1.3.2
   - samtools
-  - snakemake-minimal>=5.32.0  # Limit until https://github.com/snakemake/snakemake/issues/413 is solved
+  - snakemake-minimal>=5.32.0
   - starcode
   - tqdm
   - importlib_resources
