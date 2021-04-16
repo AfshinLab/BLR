@@ -86,8 +86,8 @@ properties:
     default: whatshap
   heap_space:
     type: integer
-    description: Heap space to run java scripts with (gatk).
-    default: 10
+    description: Memory per core for heap space max limit
+    default: 6
   library_type:
     type: string
     pattern: "blr|10x|stlfr|tellseq"

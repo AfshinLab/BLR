@@ -661,6 +661,7 @@ rule call_variants:
     log: "{base}.call_variants.log"
     threads: 2
     run:
+        heap_space = config["heap_space"] * threads
         commands = {
             "freebayes":
                  "freebayes"
@@ -688,7 +689,7 @@ rule call_variants:
                 " --threads {threads}"
                 " -o {output.vcf} 2>> {log}",
             "gatk":
-                "gatk --java-options '-Xmx{config[heap_space]}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
+                "gatk --java-options '-Xmx{heap_space}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
                 " -R {config[genome_reference]}"
                 " -I {input.bam}"
                 " -O {output.vcf}"
@@ -927,7 +928,7 @@ rule collect_insert_size_metrics:
         bam = "final.bam"
     log: "collect_insert_size_metrics.log"
     shell:
-        "picard CollectInsertSizeMetrics"
+        "picard -Xmx{config[heap_space]}g CollectInsertSizeMetrics"
         " I={input.bam}"
         " O={output.metrics}"
         " H={output.hist}"
@@ -941,7 +942,7 @@ rule collect_duplicate_metrics:
         bam = "final.bam"
     log: "collect_duplicate_metrics.log"
     shell:
-        "picard CollectDuplicateMetrics"
+        "picard -Xmx{config[heap_space]}g CollectDuplicateMetrics"
         " I={input.bam}"
         " M={output.metrics}"
         " ASSUME_SORTED=true"
@@ -955,7 +956,7 @@ rule collect_alignment_summary_metrics:
         bam = "final.bam"
     log: "collect_alignment_summary_metrics.log"
     shell:
-        "picard CollectAlignmentSummaryMetrics"
+        "picard -Xmx{config[heap_space]}g CollectAlignmentSummaryMetrics"
         " I={input.bam}"
         " O={output.metrics}"
         " MAX_INSERT_SIZE=2000"
