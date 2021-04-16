@@ -458,6 +458,7 @@ rule mark_duplicates:
         " USE_JDK_INFLATER=true"
         " ASSUME_SORTED=true"
         " MAX_RECORDS_IN_RAM=250000"
+        " VALIDATION_STRINGENCY=LENIENT"
         " &> {log}"
 
 
@@ -929,7 +930,8 @@ rule collect_insert_size_metrics:
         "picard CollectInsertSizeMetrics"
         " I={input.bam}"
         " O={output.metrics}"
-        " H={output.hist} 2> {log}"
+        " H={output.hist}"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule collect_duplicate_metrics:
@@ -942,7 +944,8 @@ rule collect_duplicate_metrics:
         "picard CollectDuplicateMetrics"
         " I={input.bam}"
         " M={output.metrics}"
-        " ASSUME_SORTED=true 2> {log}"
+        " ASSUME_SORTED=true"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule collect_alignment_summary_metrics:
@@ -956,7 +959,8 @@ rule collect_alignment_summary_metrics:
         " I={input.bam}"
         " O={output.metrics}"
         " MAX_INSERT_SIZE=2000"
-        " ASSUME_SORTED=true 2> {log}"
+        " ASSUME_SORTED=true"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule concat_lsv_calls:
