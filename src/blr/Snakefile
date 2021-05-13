@@ -147,7 +147,7 @@ rule multiqc_summarize:
     log:
         "multiqc.log"
     shell:
-        "multiqc . 2> {log}"
+        "multiqc . --template blr 2> {log}"
 
 
 rule report_configs:
