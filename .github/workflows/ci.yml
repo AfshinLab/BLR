@@ -12,6 +12,7 @@ jobs:
   run:
     name: Run pipeline
     timeout-minutes: 10
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Cache conda
