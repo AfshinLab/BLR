@@ -21,9 +21,9 @@ jobs:
           # Increase this value to reset cache if env file has not changed
           CACHE_NUMBER: 0
         with:
-          path: ~/conda_pkgs_dir
-          key:
-            ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{hashFiles('environment.linux.lock.yml') }}
+          path: ~/conda_pkgs_dir/usr/share/miniconda/envs/testenv
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.linux.lock.yml') }}
+          restore-keys: ${{ runner.os }}-conda-
       - uses: conda-incubator/setup-miniconda@v2
         with:
           mamba-version: "*"
