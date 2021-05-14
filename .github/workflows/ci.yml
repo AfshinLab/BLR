@@ -17,7 +17,7 @@ jobs:
       - name: Cache conda
         uses: actions/cache@v2
         env:
-          # Increase this value to reset cache if etc/example-environment.yml has not changed
+          # Increase this value to reset cache if env file has not changed
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
@@ -31,13 +31,18 @@ jobs:
           environment-file: environment.linux.lock.yml
           auto-update-conda: false
           use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
-      - name: Update environment
+      - name: Update env
+        shell: bash -l {0}
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          conda activate testenv
+          mamba install -n testenv flake8 pytest
+      - name: Env info
         shell: bash -l {0}
         run: |
           conda info
           mamba info
-          conda activate testenv
-          mamba install -n testenv flake8 pytest
+          conda list
       - name: Run flake8
         shell: bash -l {0}
         run: |
