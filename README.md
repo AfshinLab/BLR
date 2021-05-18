@@ -71,7 +71,23 @@ Now unit testing can be run locally from within the BLR directory using:
 
 This is useful if you want to test your changes before submitting them as a PR.
 
-### 4. MultiQC plugin
+### 4. Merging different analysis runs
+
+If you have two or more libraries run on the same sample it is possible to merge these inorder to increase coverage. First analysis should be run separately for each library. Make sure that different `sample_nr` (set using `blr config`) have been assigned to each library in order to not mix overlapping barcodes. The files that will be merged from each library is the filtered BAM (`final.bam`), the molecule stats TSV (`final.molecule_stats.tsv`) and the clustered barcodes (`barcodes.clstr`).
+
+To merge the different runs we initialize a new analysis folder using `blr init`. In this example we have analysed two blr library runs called `MySample_1` and `MySample_2`. Using the command below we can initialize a new folder called `MySample_merged`.
+
+    blr init -w /path/to/MySample_1 -w /path/to/MySample_2 --library-type blr MySample_merged
+
+Configs can then be updated as usual using `blr config`.
+
+In order to merge the files and run analysis on the merged files a special subscript need to be run. This is done by running:
+
+    blr run anew
+
+Using this the files will be merged and the workflow run from varinat calling and on.
+
+### 5. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called MultiQC_BLR. If you wish to run MultiQC without this plugin include `--disable-blr-plugin` in your multiqc command.
 
