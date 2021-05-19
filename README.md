@@ -19,7 +19,8 @@ The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping a
 - [1. Setup analysis](#1-setup-an-analysis-folder)
 - [2. Run analysis](#2-running-an-analysis)
 - [3. Test files](#3-test-files)
-- [4. MultiQC plugin](#3-multiqc-plugin)
+- [4. Merging different analysis runs](#4-merging-different-analysis-runs)
+- [5. MultiQC plugin](#5-multiqc-plugin)
 
 ### 1. Setup an analysis folder
 
