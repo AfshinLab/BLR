@@ -215,7 +215,9 @@ rule map_sort_ema_bins:
         " - 2> {log.sort}"
 
 
-if config["library_type"] == "10x" and config["read_mapper"] == "ema":
+if config["library_type"] in {"10x", "blr"} \
+        and config["read_mapper"] == "ema" \
+        and config["fastq_bins"] > 1:
     ruleorder: merge_mapped_ema_bins > map_sort
 else:
     ruleorder: map_sort > merge_mapped_ema_bins
@@ -223,13 +225,19 @@ else:
 
 rule merge_mapped_ema_bins:
     output:
-        bam = "initialmapping.bam"
+        bam = "initialmapping.bam",
+        mapping_log = "initialmapping.mapping.log",
+        sorting_log = "initialmapping.sorting.log",
     input:
         bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
                                    nr=[str(i).zfill(3) for i in range(config['fastq_bins'])])
     threads: 20
     shell:
         "samtools merge -cp -@ {threads} {output.bam} {input.bams}"
+        " &&"
+        " cat {config[ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
+        " &&"
+        " cat {config[ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
 
 
 rule map_sort:
