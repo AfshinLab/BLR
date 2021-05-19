@@ -101,12 +101,12 @@ The `-d` option prepends the directory name to each sample allowing differentiat
 ## One-time installation
 
 - [1. Setup Conda](#1-prerequisite-conda)
-- [2. Install BLR](#2-install-blr)
+- [2. Setup environment and install BLR](#2-setup-environment-and-install-blr)
 - [3. Optional installations](#3-optional-installations)
 
 ### 1. Prerequisite: Conda
 
-Install [miniconda](https://docs.conda.io/en/latest/miniconda.html). You could also try copy-pasting the following to your terminal. This will download miniconda, install it to you `$HOME` folder.
+Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if not already installed. You could also try copy-pasting the following to your terminal. This will download miniconda, install it to you `$HOME` folder.
 
     if [[ $OSTYPE = "linux-gnu" ]]; then 
         wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -116,13 +116,9 @@ Install [miniconda](https://docs.conda.io/en/latest/miniconda.html). You could a
     bash miniconda.sh -b -p $HOME/miniconda
     source $HOME/miniconda/etc/profile.d/conda.sh
 
-Enable the [bioconda channel](http://bioconda.github.io/)
+### 2. Setup environment and install BLR
 
-    conda config --add channels bioconda
-
-### 2. Install BLR
-
-Clone the git repository.
+Clone the BLR repository.
 
     git clone https://github.com/FrickTobias/BLR.git
 
@@ -131,13 +127,15 @@ Create a conda environment, in which all dependencies will be installed. Idealy,
     conda env create -n blr -f environment.linux.lock.yml
     conda activate blr
 
-Install blr into the environment in "editable install" mode.
+Install blr into the environment.
 
-    pip install -e .
+    pip install .
 
-This will install blr in such a way that you can still modify the source code and get any changes immediately without re-installing.
+For development it can be useful to install `blr` in editable mode in this case use `pip install -e .`. This will install blr in such a way that you can still modify the source code and get any changes immediately without re-installing.
 
 ### 3. Optional installations
+
+Here are some optional installs that are required if a specific software is requested.
 
 #### 3.1 DeepVariant
 
@@ -156,7 +154,7 @@ To use [lariat](https://github.com/10XGenomics/lariat) for alignment you need to
 
     blr config --set read_mapper lariat
 
-#### 3.3 NAIBR
+#### 3.3 NAIBR (older versions)
 
 The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR) will be downloaded and used automatically. If you want to use another version of NAIBR this can be set through:
 
