@@ -79,11 +79,6 @@ properties:
     description: Which variant caller to use.
     pattern: "gatk|bcftools|freebayes|deepvariant"
     default: freebayes
-  haplotag_tool:
-    type: string
-    description: Which haplotype tagging tool to use.
-    pattern: "blr|whatshap"
-    default: whatshap
   heap_space:
     type: integer
     description: Memory per core for heap space max limit

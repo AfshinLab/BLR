@@ -49,9 +49,6 @@ variant_caller: freebayes # Choose freebayes, gatk or bcftools
 filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
 phase_indels: true # Phase INDELs along with SNPs
 
-# Tool for tagging haplotype information from phasing onto BAM.
-haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
-
 ##############################
 # Software-specific settings #
 ##############################

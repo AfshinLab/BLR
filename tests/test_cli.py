@@ -292,8 +292,7 @@ def test_plot_figures(workdir):
     assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 4
 
 
-@pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
-def test_haplotag(workdir, haplotype_tool):
+def test_haplotag(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
