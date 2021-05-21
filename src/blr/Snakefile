@@ -222,6 +222,7 @@ rule map_sort_ema_bins:
         " |"
         " samtools sort "
         " -@ {threads}"
+        " -m {config[heap_space]}"
         " -O bam"
         " -l 0"
         "{params.tmpdir}"
@@ -335,6 +336,7 @@ rule map_sort:
             command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
+            " -m {config[heap_space]}"
             " -o {output.bam}" +
             tmpdir +
             " 2> {log.sort}"
