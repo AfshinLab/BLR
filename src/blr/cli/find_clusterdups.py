@@ -242,7 +242,7 @@ def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, n
 
 
 def get_non_acceptable_overlap_func(library_type: str):
-    if library_type in {"blr", "stlfr"}:  # Tn5-type tagmentation
+    if library_type in {"dbs", "blr", "stlfr"}:  # Tn5-type tagmentation, TODO remove blr
         return lambda x: x < 0 and x not in {-8, -9, -10}
     elif library_type in {"tellseq"}:  # MuA-type tagmentation
         return lambda x: x < 0 and x not in {-4, -5, -6}
@@ -423,6 +423,6 @@ def add_arguments(parser):
         help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s"
     )
     parser.add_argument(
-        "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
+        "-l", "--library-type", default="dbs", choices=ACCEPTED_LIBRARY_TYPES,
         help="Library type of data. Default: %(default)s"
     )

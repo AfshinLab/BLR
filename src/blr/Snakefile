@@ -5,12 +5,18 @@ import sys
 
 import pandas as pd
 from snakemake.utils import validate
+from snakemake.logging import Logger
 
 from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
+
+# TODO remove in next version
+if config["library_type"] == "blr":
+    Logger().warning("DEPRECIATION: The 'blr' option for library type will soon be replaced with 'dbs'. "
+                     "Replace 'blr' with 'dbs' for library_type in the future.")
 
 # TODO include handling of reads from `longranger basic` that already have barcodes extracted and trimmed? See issue
 #  in ema when discussed https://github.com/arshajii/ema/issues/15
@@ -20,7 +26,7 @@ config["ema_bins_dir"] = "fastq_bins"
 
 
 # Import rules for trimming fastq files.
-if config["library_type"] == "blr":
+if config["library_type"] in {"blr", "dbs"}:  # TODO Remove blr
     include: "rules/trim_blr.smk"
 elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
@@ -180,7 +186,7 @@ rule generate_ideogram:
 
 
 def plot_figures_input(wildcards):
-    if config["library_type"] in {"blr", "tellseq"}:
+    if config["library_type"] in {"dbs", "blr", "tellseq"}:
         return "final.molecule_stats.filtered.tsv", "barcodes.clstr"
     else:
         return "final.molecule_stats.filtered.tsv"

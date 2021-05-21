@@ -90,7 +90,7 @@ properties:
     default: 6
   library_type:
     type: string
-    pattern: "blr|10x|stlfr|tellseq"
+    pattern: "dbs|blr|10x|stlfr|tellseq" # TODO Remove blr
     description: Library type
   barcode_whitelist:
     type: [ "string", "null" ]

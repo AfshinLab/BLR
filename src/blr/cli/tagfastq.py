@@ -432,7 +432,7 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-p", "--pattern-match",
-        help="IUPAC barcode string to match against corrected barcodes e.g. for BLR it is usualy "
+        help="IUPAC barcode string to match against corrected barcodes e.g. for DBS it is usualy "
              "BDHVBDHVBDHVBDHVBDHV. Non-matched barcodes will be removed."
     )
     parser.add_argument(

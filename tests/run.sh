@@ -30,7 +30,7 @@ pytest -v tests/
 
 # Test full run on BLR library.
 rm -rf outdir-bowtie2
-blr init --r1=blr-testdata/blr_reads.1.fastq.gz -l blr outdir-bowtie2
+blr init --r1=blr-testdata/blr_reads.1.fastq.gz -l dbs outdir-bowtie2
 blr config \
     --file outdir-bowtie2/blr.yaml \
     --set genome_reference ../blr-testdata/ref.fasta \
