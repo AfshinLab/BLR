@@ -27,7 +27,7 @@ config["ema_bins_dir"] = "fastq_bins"
 
 # Import rules for trimming fastq files.
 if config["library_type"] in {"blr", "dbs"}:  # TODO Remove blr
-    include: "rules/trim_blr.smk"
+    include: "rules/trim_dbs.smk"
 elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
 elif config["library_type"] == "stlfr":

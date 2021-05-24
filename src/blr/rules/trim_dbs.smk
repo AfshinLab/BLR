@@ -1,10 +1,10 @@
 """
-Rules for trimming and demultiplexing of raw BLR FASTQ files.
+Rules for trimming and demultiplexing of raw DBS FASTQ files.
 
 READ1 LAYOUT
 
 5'-CAGTTGATCATCAGCAGGTAATCTGG BDVHBDVHBDVHBDVHBDVH CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG NNNN...NNNN (CTGTCTCTTATACACATCT)-3'
-   <------------h1----------> <-------DBS--------> <-----------------h2------------------> <---gDNA--> <---------h3-------->
+   <------------h1----------> <-----Barcode------> <-----------------h2------------------> <---gDNA--> <---------h3-------->
     h1 may inlude frameshift                                                                           Presence depends on
     oligos varying from 0-4                                                                            insert length
     extra oligos in 5' end
@@ -72,13 +72,13 @@ rule tag:
         " 2> {log}"
 
 
-rule extract_DBS:
+rule extract_barcode:
     """Extract barcode sequence from read1 FASTQ"""
     output:
         fastq="barcodes.fasta.gz"
     input:
          fastq="reads.1.fastq.gz"
-    log: "cutadapt_extract_DBS.log"
+    log: "cutadapt_extract_barcode.log"
     threads: 20
     shell:
         "cutadapt"
@@ -95,7 +95,7 @@ rule extract_DBS:
 
 
 rule starcode_clustering:
-    """Cluster DBS barcodes using starcode"""
+    """Cluster barcodes using starcode"""
     output:
         "barcodes.clstr"
     input:
