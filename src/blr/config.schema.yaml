@@ -150,6 +150,10 @@ properties:
     type: ["string", "null"]
     description: Chromosomes/contigs to perform phasing on. Must be a continous string with comma separated contigs.
     default: null
+  contigs_skipped:
+    type: ["string", "null"]
+    description: Regex pattern for chromosomes to skip in primary analysis.
+    default: null
   naibr_path:
     type: ["string", "null"]
     description: Path to NAIBR folder
