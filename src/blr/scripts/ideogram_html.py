@@ -115,6 +115,9 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
 <div class="ideogram-{unique_id}">
 </div>
 <script type="text/javascript">
+  var blue = 'rgba(63, 127, 191, 0.65)';
+  var green = 'rgba(63, 191, 63, 0.65)';
+  var red = 'rgba(191, 63, 63, 0.65)';
   var config = {{
     container: '.ideogram-{unique_id}',
     organism: 'human',
@@ -125,11 +128,8 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
         "keys":["chr","name","start","length","color"],
         "annots":[
 """
-    colors = [
-        "rgba(63, 191, 63, 0.65)",  # Green
-        "rgba(63, 127, 191, 0.65)"  # Blue
-    ]
-    longest_color = "rgba(191, 63, 63, 0.65)"  # Red
+    colors = ["blue", "green"]
+    longest_color = "red"  # Red
     # Separate entries for each chromosome
     for nr, (chrom, phaseblocks) in enumerate(chr_stacks.items()):
         html += "            "
@@ -145,7 +145,7 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
                 color = longest_color
                 size += " (TOP)"
 
-            blocks.append(f"['{chr_id}_{start}', '{size}', {start}, {length}, '{color}']")
+            blocks.append(f"['{chr_id}_{start}', '{size}', {start}, {length}, {color}]")
 
         html += ",\n                ".join(blocks)
         html += "\n            ]},"
