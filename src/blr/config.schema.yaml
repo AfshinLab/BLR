@@ -164,3 +164,8 @@ properties:
     type: ["string", "null"]
     description: Bed file containing region to skip
     default: null
+  ideogram_assembly:
+    type: "string"
+    description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
+    default: GRCh38
+    pattern: "GRCh38|GRCh37"

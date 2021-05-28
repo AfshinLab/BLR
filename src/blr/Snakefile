@@ -175,6 +175,8 @@ rule generate_ideogram:
         html = temp("ideogram_mqc.html")
     input:
         phased_vcf = "final.phased.vcf.gz"
+    params:
+        assembly = config["ideogram_assembly"]
     script:
         "scripts/ideogram_html.py"
 

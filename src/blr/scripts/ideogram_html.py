@@ -107,9 +107,9 @@ with open(snakemake.output.html, "w") as out:  # noqa: F821
 id: 'phaseblock-overview-{unique_id}'
 section_name: 'Phaseblock overview'
 description: "Ideogram of chromsomes with phaseblocks overlayed in alternating green and blue. \
-              Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
-              chromsome to enlarge it. Click on the chromosome once again to return to the overview. Hover over block \
-              to get the phaseblock location along with it size. The longest phaseblock is highlighted in red."
+Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
+chromsome to enlarge it. Click on the chromosome once again to return to the overview. Hover over block \
+to get the phaseblock location along with it size. The longest phaseblock is highlighted in red."
 -->
 
 <div class="ideogram-{unique_id}">
@@ -118,6 +118,7 @@ description: "Ideogram of chromsomes with phaseblocks overlayed in alternating g
   var config = {{
     container: '.ideogram-{unique_id}',
     organism: 'human',
+    assembly: '{snakemake.params.assembly}',
     chrHeight: 500,
     chrMargin: 1,
     annotations: {{
@@ -130,11 +131,11 @@ description: "Ideogram of chromsomes with phaseblocks overlayed in alternating g
     ]
     longest_color = "rgba(191, 63, 63, 0.65)"  # Red
     # Separate entries for each chromosome
-    for chrom, phaseblocks in chr_stacks.items():
+    for nr, (chrom, phaseblocks) in enumerate(chr_stacks.items()):
         html += "            "
         chr_id = chrom.replace("chr", "")
-        html += f"{{'chr': '{chr_id}', 'annots':["
-
+        html += f"{{'chr': '{chr_id}', 'annots':[\n"
+        html += "                "
         blocks = []
         for (start, length), color in zip(phaseblocks, cycle(colors)):
             size = fromat_size(length)
@@ -144,10 +145,12 @@ description: "Ideogram of chromsomes with phaseblocks overlayed in alternating g
                 color = longest_color
                 size += " (TOP)"
 
-            blocks.append(f"['{chr_id}_{start}','{size}',{start},{length},'{color}']")
+            blocks.append(f"['{chr_id}_{start}', '{size}', {start}, {length}, '{color}']")
 
-        html += ",".join(blocks)
-        html += "]},"
+        html += ",\n                ".join(blocks)
+        html += "\n            ]},"
+        if nr < len(chr_stacks) - 1:
+            html += "\n"
 
     html += """
         ]},

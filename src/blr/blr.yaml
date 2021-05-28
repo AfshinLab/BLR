@@ -62,3 +62,4 @@ min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
 naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling
 naibr_blacklist: # Bed file containing region to skip
+ideogram_assembly: GRCh38 # Human genome assembly used, options are 'GRCh38' and 'GRCh37'.
