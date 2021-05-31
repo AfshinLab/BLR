@@ -90,7 +90,7 @@ def _workdir(tmp_path_factory):
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
             ("phasing_contigs", "null"),
-            ("heap_space", "3")
+            ("heap_space", "1")
         ]
     )
     # chromosomes B, C and D end up in the same chunk
@@ -229,7 +229,10 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper), ("phasing_contigs", "null")]
+        [("genome_reference", REFERENCE_GENOME),
+         ("read_mapper", read_mapper),
+         ("phasing_contigs", "null"),
+         ("heap_space", "1")]
     )
     run(workdir=workdir, targets=["initialmapping.bam"])
     if read_mapper == "lariat":
