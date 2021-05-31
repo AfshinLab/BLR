@@ -99,6 +99,7 @@ for phaseblock in parse_blocks(snakemake.input.phased_vcf):  # noqa: F821
 #
 letters = "abcdefghijklmnopqrstuvwxyz"
 unique_id = "".join(random.sample(letters, 10))
+assembly = snakemake.params.assembly  # noqa: F821
 
 with open(snakemake.output.html, "w") as out:  # noqa: F821
     # Based on https://eweitz.github.io/ideogram/annotations-overlaid
@@ -121,7 +122,7 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
   var config = {{
     container: '.ideogram-{unique_id}',
     organism: 'human',
-    assembly: '{snakemake.params.assembly}',
+    assembly: '{assembly}',
     chrHeight: 500,
     chrMargin: 1,
     annotations: {{
