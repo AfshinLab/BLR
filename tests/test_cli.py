@@ -90,7 +90,7 @@ def _workdir(tmp_path_factory):
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
             ("phasing_contigs", "null"),
-            ("heap_space", "3")
+            ("heap_space", "1")
         ]
     )
     # chromosomes B, C and D end up in the same chunk
