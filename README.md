@@ -6,7 +6,7 @@
 
 - [About the pipeline](#About-the-pipeline)
 - [Usage](#Usage)
-- [One-time installation](#One-time-installation)
+- [Installation](#Installation)
 - [Development](#development)
 - [Old version](#Old-version)
 
@@ -98,13 +98,13 @@ The plugin allows for comparison between different runs. In this case go to the 
 
 The `-d` option prepends the directory name to each sample allowing differentiation between the runs.
 
-## One-time installation
+## Installation
 
-- [1. Setup Conda](#1-prerequisite-conda)
-- [2. Setup environment and install BLR](#2-setup-environment-and-install-blr)
+- [1. Setup conda](#1-setup-conda)
+- [2. Create environment and install `blr`](#2-create-environment-and-install-blr)
 - [3. Optional installations](#3-optional-installations)
 
-### 1. Prerequisite: Conda
+### 1. Setup conda
 
 Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if not already installed. You could also try copy-pasting the following to your terminal. This will download miniconda, install it to you `$HOME` folder.
 
@@ -116,7 +116,7 @@ Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if not alrea
     bash miniconda.sh -b -p $HOME/miniconda
     source $HOME/miniconda/etc/profile.d/conda.sh
 
-### 2. Setup environment and install BLR
+### 2. Create environment and install `blr`
 
 Clone the BLR repository.
 
@@ -127,7 +127,7 @@ Create a conda environment, in which all dependencies will be installed. Idealy,
     conda env create -n blr -f environment.linux.lock.yml
     conda activate blr
 
-Install blr into the environment.
+Install `blr` into the environment.
 
     pip install .
 
