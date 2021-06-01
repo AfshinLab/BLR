@@ -49,4 +49,4 @@ the subcommand ``tagbam`` the command is:
 This command will generate a file called ``blr_tagbam.prof`` with all the profiling information. This 
 can then be used with Python's standard library module 
 `pstat <https://docs.python.org/3/library/profile.html#pstats.Stats>`_ 
-or for example `Snakevix <https://jiffyclub.github.io/snakeviz/>`_ which allows interaction through the browser. 
+or for example `Snakeviz <https://jiffyclub.github.io/snakeviz/>`_ which allows interaction through the browser. 
