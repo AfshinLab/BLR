@@ -233,7 +233,8 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
         [("genome_reference", REFERENCE_GENOME),
          ("read_mapper", read_mapper),
          ("phasing_contigs", "null"),
-         ("heap_space", "1")]
+         ("heap_space", "1"),
+         ("fastq_bins", "5")]
     )
     run(workdir=workdir, targets=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
     if read_mapper == "lariat":
