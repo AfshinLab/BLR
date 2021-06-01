@@ -10,7 +10,7 @@ import sys
 from typing import List
 
 from blr.utils import guess_paired_path, ACCEPTED_LIBRARY_TYPES
-from blr.cli.config import change_config
+from blr.cli.config import change_config, load_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,11 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
             logger.error(f"The workdirs must contain the file '{file}'")
             sys.exit(1)
 
-    # TODO Add warning if multiple workdirs are passed but they use the same 'sample_nr' to tag barcodes
+    configs = list(get_configs(workdirs))
+    if len({c["sample_nr"] for c in configs}) != len(workdirs):
+        logger.warning("The sample_nr should be different for each analysis run in order to not merge unrelated"
+                       "barcodes")
+
     # TODO Enable re-tagging files is share same 'sample_nr'?
 
     if " " in str(directory):
@@ -162,3 +166,10 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
     logger.info(f"Directory {directory} initialized.")
     logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
     logger.info(f"Run 'cd {directory} && blr run anew' to start the analysis.")
+
+
+def get_configs(workdirs: List[Path]):
+    for w in workdirs:
+        config_path = w / CONFIGURATION_FILE_NAME
+        configs, _ = load_yaml(config_path)
+        yield configs

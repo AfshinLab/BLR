@@ -1,37 +1,25 @@
-name: CI
+name: CI macos
 
 on: 
-  pull_request:
   schedule:
-    - cron: 0 7 * * 1,3,5
+    - cron: 0 8 7 * *
 
 jobs:
   run:
     name: Run pipeline
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache conda
-        uses: actions/cache@v2
-        env:
-          # Increase this value to reset cache if env file has not changed
-          CACHE_NUMBER: 0
-        with:
-          path: ~/conda_pkgs_dir/usr/share/miniconda/envs/testenv
-          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.linux.lock.yml') }}
-          restore-keys: ${{ runner.os }}-conda-
       - uses: conda-incubator/setup-miniconda@v2
         with:
           mamba-version: "*"
           use-mamba: true
           activate-environment: testenv
-          environment-file: environment.linux.lock.yml
+          environment-file: environment.osx.lock.yml
           auto-update-conda: false
-          use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Update env
         shell: bash -l {0}
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           conda activate testenv
           mamba install -n testenv flake8 pytest

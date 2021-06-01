@@ -15,6 +15,7 @@ from collections import deque, OrderedDict, defaultdict
 import logging
 from math import ceil
 import pickle
+from typing import Dict
 
 from pysam import AlignmentFile, AlignedSegment, set_verbosity
 import numpy as np
@@ -326,7 +327,7 @@ class UnionFind:
         """Create a new  union-find structure."""
         self.parents = mapping if isinstance(mapping, dict) else {}
 
-    def __getitem__(self, object):
+    def __getitem__(self, object: str) -> str:
         """Find and return the name of the set containing the object."""
 
         # check for previously unknown object
@@ -346,7 +347,7 @@ class UnionFind:
             self.parents[ancestor] = root
         return root
 
-    def __contains__(self, item):
+    def __contains__(self, item: str):
         return item in self.parents
 
     def __iter__(self):
@@ -383,13 +384,13 @@ class UnionFind:
             return len({self[x] for x in objects}) == 1
         return False
 
-    def update(self, other):
+    def update(self, other: 'UnionFind'):
         """Update sets based on other UnionFind instance"""
         for x, root in other.items():
             self.union(x, root)
 
     @classmethod
-    def from_dict(cls, mapping):
+    def from_dict(cls, mapping: Dict[str, str]):
         return cls(mapping.copy())
 
 

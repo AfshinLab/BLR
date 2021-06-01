@@ -6,7 +6,7 @@ import dnaio
 from xopen import xopen
 
 from blr.__main__ import main as blr_main
-from blr.cli.init import init, init_from_dir
+from blr.cli.init import CONFIGURATION_FILE_NAME, init, init_from_dir
 from blr.cli.run import run
 from blr.cli.config import change_config
 from blr.utils import get_bamtag
@@ -89,7 +89,8 @@ def _workdir(tmp_path_factory):
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
-            ("phasing_contigs", "null")
+            ("phasing_contigs", "null"),
+            ("heap_space", "1")
         ]
     )
     # chromosomes B, C and D end up in the same chunk
@@ -229,8 +230,10 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
     init(workdir, TESTDATA_BLR_READ1, "blr")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper), ("phasing_contigs", "null"),
-         ("fastq_bins", "5")]
+        [("genome_reference", REFERENCE_GENOME),
+         ("read_mapper", read_mapper),
+         ("phasing_contigs", "null"),
+         ("heap_space", "1")]
     )
     run(workdir=workdir, targets=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
     if read_mapper == "lariat":
@@ -294,8 +297,7 @@ def test_plot_figures(workdir):
     assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 4
 
 
-@pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
-def test_haplotag(workdir, haplotype_tool):
+def test_haplotag(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
@@ -328,6 +330,30 @@ def test_init_from_workdir(tmp_path, workdir):
          ("chunk_size", "50000")]
         )
     run(workdir=new_workdir, snakefile="run_anew.smk")
+
+
+def test_merge_workdirs(tmp_path, workdir):
+    other_workdir = tmp_path / "other"
+    merge_workdir = tmp_path / "merge"
+
+    # Generate all require files in workdir
+    run(workdir=workdir, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
+
+    # Copy and change sample_nr to simulate other library
+    shutil.copytree(workdir, other_workdir)
+    change_config(
+        other_workdir / CONFIGURATION_FILE_NAME,
+        [("sample_nr", "2")]
+    )
+
+    # Initialize new dir based on old and run setup.
+    init_from_dir(merge_workdir, [workdir, other_workdir], "blr")
+    change_config(
+        merge_workdir / DEFAULT_CONFIG,
+        [("genome_reference", REFERENCE_GENOME),
+         ("chunk_size", "50000")]
+        )
+    run(workdir=merge_workdir, snakefile="run_anew.smk")
 
 
 def test_lsv_calling(workdir):

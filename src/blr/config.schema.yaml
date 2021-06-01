@@ -79,15 +79,10 @@ properties:
     description: Which variant caller to use.
     pattern: "gatk|bcftools|freebayes|deepvariant"
     default: freebayes
-  haplotag_tool:
-    type: string
-    description: Which haplotype tagging tool to use.
-    pattern: "blr|whatshap"
-    default: whatshap
   heap_space:
     type: integer
-    description: Heap space to run java scripts with (gatk).
-    default: 10
+    description: Memory per core for heap space max limit
+    default: 6
   library_type:
     type: string
     pattern: "blr|10x|stlfr|tellseq"
@@ -169,3 +164,8 @@ properties:
     type: ["string", "null"]
     description: Bed file containing region to skip
     default: null
+  ideogram_assembly:
+    type: "string"
+    description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
+    default: GRCh38
+    pattern: "GRCh38|GRCh37"

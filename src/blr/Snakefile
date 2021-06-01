@@ -129,6 +129,7 @@ def get_multiqc_input(wildcards):
         "final.alignment_summary_metrics.txt",
         "final.sv_sizes.tsv",
         "blr_mqc.yaml",
+        "ideogram_mqc.html",
     ]
     if config["read_mapper"] != "lariat":
         inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
@@ -147,7 +148,7 @@ rule multiqc_summarize:
     log:
         "multiqc.log"
     shell:
-        "multiqc . 2> {log}"
+        "multiqc . --template blr 2> {log}"
 
 
 rule report_configs:
@@ -166,6 +167,18 @@ rule report_configs:
                 text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
             text += "\t</dl>".expandtabs(4)
             print(text, file=configs)
+
+
+rule generate_ideogram:
+    """Generate ideogram"""
+    output:
+        html = temp("ideogram_mqc.html")
+    input:
+        phased_vcf = "final.phased.vcf.gz"
+    params:
+        assembly = config["ideogram_assembly"]
+    script:
+        "scripts/ideogram_html.py"
 
 
 def plot_figures_input(wildcards):
@@ -197,6 +210,8 @@ rule map_sort_ema_bins:
     log:
         map = "{dir}/ema-bin-{bin_nr}.mapping.log",
         sort = "{dir}/ema-bin-{bin_nr}.sorting.log"
+    params:
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
     shell:
         "ema align"
         " -t {threads}"
@@ -209,8 +224,10 @@ rule map_sort_ema_bins:
         " |"
         " samtools sort "
         " -@ {threads}"
+        " -m {config[heap_space]}G"
         " -O bam"
         " -l 0"
+        "{params.tmpdir}"
         " -o {output.bam}"
         " - 2> {log.sort}"
 
@@ -329,6 +346,7 @@ rule map_sort:
             command + " 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
+            " -m {config[heap_space]}G"
             " -o {output.bam}" +
             tmpdir +
             " 2> {log.sort}"
@@ -463,6 +481,7 @@ rule mark_duplicates:
         " USE_JDK_INFLATER=true"
         " ASSUME_SORTED=true"
         " MAX_RECORDS_IN_RAM=250000"
+        " VALIDATION_STRINGENCY=LENIENT"
         " &> {log}"
 
 
@@ -665,6 +684,7 @@ rule call_variants:
     log: "{base}.call_variants.log"
     threads: 2
     run:
+        heap_space = config["heap_space"] * threads
         commands = {
             "freebayes":
                  "freebayes"
@@ -692,7 +712,7 @@ rule call_variants:
                 " --threads {threads}"
                 " -o {output.vcf} 2>> {log}",
             "gatk":
-                "gatk --java-options '-Xmx{config[heap_space]}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
+                "gatk --java-options '-Xmx{heap_space}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
                 " -R {config[genome_reference]}"
                 " -I {input.bam}"
                 " -O {output.vcf}"
@@ -931,10 +951,11 @@ rule collect_insert_size_metrics:
         bam = "final.bam"
     log: "collect_insert_size_metrics.log"
     shell:
-        "picard CollectInsertSizeMetrics"
+        "picard -Xmx{config[heap_space]}g CollectInsertSizeMetrics"
         " I={input.bam}"
         " O={output.metrics}"
-        " H={output.hist} 2> {log}"
+        " H={output.hist}"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule collect_duplicate_metrics:
@@ -944,10 +965,11 @@ rule collect_duplicate_metrics:
         bam = "final.bam"
     log: "collect_duplicate_metrics.log"
     shell:
-        "picard CollectDuplicateMetrics"
+        "picard -Xmx{config[heap_space]}g CollectDuplicateMetrics"
         " I={input.bam}"
         " M={output.metrics}"
-        " ASSUME_SORTED=true 2> {log}"
+        " ASSUME_SORTED=true"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule collect_alignment_summary_metrics:
@@ -957,11 +979,12 @@ rule collect_alignment_summary_metrics:
         bam = "final.bam"
     log: "collect_alignment_summary_metrics.log"
     shell:
-        "picard CollectAlignmentSummaryMetrics"
+        "picard -Xmx{config[heap_space]}g CollectAlignmentSummaryMetrics"
         " I={input.bam}"
         " O={output.metrics}"
         " MAX_INSERT_SIZE=2000"
-        " ASSUME_SORTED=true 2> {log}"
+        " ASSUME_SORTED=true"
+        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
 rule concat_lsv_calls:

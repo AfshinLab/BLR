@@ -29,8 +29,18 @@ setup(
     },
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    package_data={"blr": ["Snakefile", "rules/*.smk", "config.schema.yaml", "blr.yaml", "multiqc_config.yaml",
-                          "naibr.config", "naibr-environment.yml"]},
+    package_data={
+        "blr": [
+            "Snakefile",
+            "rules/*.smk",
+            "config.schema.yaml",
+            "blr.yaml",
+            "multiqc_config.yaml",
+            "naibr.config",
+            "naibr-environment.yml",
+            "run_anew.smk",
+        ]
+    },
     entry_points={
         "console_scripts": [
             "blr = blr.__main__:main"
@@ -45,6 +55,9 @@ setup(
         ],
         "multiqc.hooks.v1": [
             "execution_start = multiqc_blr.multiqc_blr:execution_start"
+        ],
+        "multiqc.templates.v1": [
+            "blr = multiqc_blr.templates.blr"
         ]
     },
     classifiers=[

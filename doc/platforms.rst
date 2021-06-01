@@ -1,14 +1,13 @@
 Platforms
 ==========
-This text contains information about the different linked-read platforms supported by the pipeline and which requirements for input and possible preprocessing they have.
+This text contains information about the different linked-read platforms supported or not supported by the pipeline and which requirements for input and possible preprocessing they have.
 
 - BLR_ (fully supported)
 - `10x Genomics`_ (supported)
 - stLFR_ (supported)
 - TELL-seq_ (supported)
-- CPT-seq_ (comming soon)
-- Haplotagging_ (comming soon)
-
+- CPT-seq_ (not supported)
+- Haplotagging_ (not supported)
 
 
 BLR
@@ -67,8 +66,8 @@ TELL-seq is based on the technology from `Chen et al. 2020 <https://doi.org/10.1
 
 CPT-seq
 -------
-Technology based `Amini et al. 2014 <https://doi.org/10.1038/ng.3119>`_ and the follow-up CPTv2-seq from `Zhang et al. 2017 <https://doi.org/10.1038/nbt.3897>`_. These technologies were developed by Illumin but are not commercially available.
+Technology based `Amini et al. 2014 <https://doi.org/10.1038/ng.3119>`_ and the follow-up CPTv2-seq from `Zhang et al. 2017 <https://doi.org/10.1038/nbt.3897>`_. These technologies were developed by Illumin but are not commercially available. Due to the limited number of available datasets and limited use these technolgies will not be supported.
 
 Haplotagging
 ------------
-Haplotagging is based on the technology presented in `Meier et al. 2020 <https://doi.org/10.1101/2020.05.25.113688>`_. The technology uses barcoded beads covered with Tn5 tagmentase to cut and barcode individual long DNA fragments in solution. The beads are coated in a combination of two barcodes AB and CB that become inserted at the 5' and 3' of each cut fragment. Barcodes are combinatorialy generated with about 85 million possible combinations in total.
+Haplotagging is based on the technology presented in `Meier et al. 2020 <https://doi.org/10.1101/2020.05.25.113688>`_. The technology uses barcoded beads covered with Tn5 tagmentase to cut and barcode individual long DNA fragments in solution. The beads are coated in a combination of two barcodes AB and CB that become inserted at the 5' and 3' of each cut fragment. Barcodes are combinatorialy generated with about 85 million possible combinations in total. This platform is not yet supported as it is not yet published and no public data currently exists.

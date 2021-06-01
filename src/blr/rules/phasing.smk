@@ -86,6 +86,7 @@ rule hapcut2_stats:
         stats = "final.phasing_stats.txt"
     input:
         vcf1 = "final.phased.vcf.gz",
+        vcf1_index = "final.phased.vcf.gz.tbi",
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""
@@ -98,20 +99,6 @@ rule hapcut2_stats:
         " -o {output.stats} 2> {log}"
 
 
-def get_haplotag_input(wildcards):
-    inputfiles = {"bam": f"{wildcards.base}.calling.bam"}
-    if config["haplotag_tool"] == "blr":
-        inputfiles.update({
-            "hapcut2_phase_file": f"{wildcards.base}.calling.phase"
-        })
-    elif config["haplotag_tool"] == "whatshap":
-        inputfiles.update({
-            "vcf": f"{wildcards.base}.calling.phased.vcf.gz",
-            "vcf_index": f"{wildcards.base}.calling.phased.vcf.gz.tbi",
-        })
-    return inputfiles
-
-
 rule haplotag:
     """
     Transfer haplotype information from the phased VCF file to the bam file.
@@ -120,32 +107,21 @@ rule haplotag:
     output:
         bam = "{base}.calling.phased.bam"
     input:
-        unpack(get_haplotag_input)
+        bam = "{base}.calling.bam",
+        vcf = "{base}.calling.phased.vcf.gz",
+        vcf_index = "{base}.calling.phased.vcf.gz.tbi"
     log: "{base}.haplotag.log"
-    run:
+    params:
         ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else ""
-
-        commands = {
-            "whatshap":
-                "whatshap haplotag"
-                " {input.vcf}"
-                " {input.bam}"
-                " --linked-read-distance-cutoff {config[window_size]}"
-                " --reference {config[genome_reference]}"
-                " -o {output.bam}"
-                " {ignore_readgroups}",
-            "blr":
-                "blr phasebam"
-                " --molecule-tag {config[molecule_tag]}"
-                " --phase-set-tag {config[phase_set_tag]}"
-                " --haplotype-tag {config[haplotype_tag]}"
-                " --min-mapq {config[min_mapq]}"
-                " -o {output.bam}"
-                " {input.bam}"
-                " {input.hapcut2_phase_file}"
-        }
-        command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log}")
+    shell:
+        "whatshap haplotag"
+        " {input.vcf}"
+        " {input.bam}"
+        " --linked-read-distance-cutoff {config[window_size]}"
+        " --reference {config[genome_reference]}"
+        " -o {output.bam}"
+        " {params.ignore_readgroups}"
+        " 2> {log}"
 
 
 

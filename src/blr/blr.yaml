@@ -52,13 +52,10 @@ variant_caller: freebayes # Choose freebayes, gatk or bcftools
 filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
 phase_indels: true # Phase INDELs along with SNPs
 
-# Tool for tagging haplotype information from phasing onto BAM.
-haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
-
 ##############################
 # Software-specific settings #
 ##############################
-heap_space: 10 # GATK: Maximum heap space (~memory) to run java script with, as number of Gb.
+heap_space: 6 # Memory per core for heap space max limit
 barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
 barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
@@ -68,3 +65,4 @@ min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
 naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling
 naibr_blacklist: # Bed file containing region to skip
+ideogram_assembly: GRCh38 # Human genome assembly used, options are 'GRCh38' and 'GRCh37'.
