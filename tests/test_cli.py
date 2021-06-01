@@ -127,7 +127,8 @@ def test_default_read_mapper(workdir):
 def test_trim_blr(workdir, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("read_mapper", read_mapper)]
+        [("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed, force_run=["trim"])
@@ -232,9 +233,10 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
         [("genome_reference", REFERENCE_GENOME),
          ("read_mapper", read_mapper),
          ("phasing_contigs", "null"),
-         ("heap_space", "1")]
+         ("heap_space", "1"),
+         ("fastq_bins", "5")]
     )
-    run(workdir=workdir, targets=["initialmapping.bam"])
+    run(workdir=workdir, targets=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
     if read_mapper == "lariat":
         n_input_fastq_reads = 2 * count_lariat_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
     else:

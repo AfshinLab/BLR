@@ -46,11 +46,22 @@ rule trim:
         " > {log}"
 
 
+if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
+    output_name = os.path.join(config['ema_bins_dir'], "ema-bin-{nr}")
+    output_nrs = [str(i).zfill(3) for i in range(config['fastq_bins'])]
+    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"
+    ruleorder: merge_bins > tag
+else:
+    output_name = "trimmed.barcoded.{nr}.fastq.gz"
+    output_nrs = ["1", "2"]
+    output_cmd = f" --o1 {output_name.format(nr=output_nrs[0])} --o2 {output_name.format(nr=output_nrs[1])}"
+    ruleorder: tag > merge_bins
+
+
 rule tag:
     """Tag reads with uncorrected and corrected barcode."""
     output:
-        r1_fastq="trimmed.barcoded.1.fastq.gz",
-        r2_fastq="trimmed.barcoded.2.fastq.gz"
+        expand(output_name, nr=output_nrs)
     input:
         interleaved_fastq="trimmed.fastq",
         uncorrected_barcodes="barcodes.fasta.gz",
@@ -59,8 +70,7 @@ rule tag:
     threads: 1
     shell:
         "blr tagfastq"
-        " --o1 {output.r1_fastq}"
-        " --o2 {output.r2_fastq}"
+        " {output_cmd}"
         " -b {config[cluster_tag]}"
         " -s {config[sequence_tag]}"
         " --mapper {config[read_mapper]}"
@@ -77,7 +87,7 @@ rule extract_DBS:
     output:
         fastq="barcodes.fasta.gz"
     input:
-         fastq="reads.1.fastq.gz"
+        fastq="reads.1.fastq.gz"
     log: "cutadapt_extract_DBS.log"
     threads: 20
     shell:
@@ -111,3 +121,27 @@ rule starcode_clustering:
         " -r {config[barcode_ratio]}"
         " --print-clusters"
         " 2> {log}"
+
+
+rule merge_bins:
+    """Merge bins of trimmed and barcoded reads together"""
+    output:
+        r1_fastq="trimmed.barcoded.1.fastq.gz",
+        r2_fastq="trimmed.barcoded.2.fastq.gz"
+    input:
+        bins = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}"),
+                      nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
+    run:
+        modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
+        shell(
+            "cat {input.bins}" +
+            modify_header +
+            " |"
+            " paste - - - - - - - -"
+            " |"
+            " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
+            " |"
+            " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
+            " &&"
+            " rm {input.bins}"
+        )

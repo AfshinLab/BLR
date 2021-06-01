@@ -61,7 +61,7 @@ def run_process_stlfr(
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
-        writer = stack.enter_context(Output(output1, output2, interleaved=out_interleaved, mapper=mapper))
+        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper))
         chunks = None
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
@@ -100,7 +100,6 @@ def run_process_stlfr(
                     read1.name,
                     read1.sequence,
                     read1.qualities,
-                    read2.name,
                     read2.sequence,
                     read2.qualities,
                 )
