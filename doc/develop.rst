@@ -35,3 +35,18 @@ where that information is defined.
     "MI", "-m, --molecule-tag", "SAM tag for storing molecule index specifying a identified molecule
     for each barcode. Note that the index is only unique within the particular chunk."
     "RX", "-s, --sequence-tag", "SAM tag for storing the uncorrected barcode sequence."
+
+Profiling
+---------
+
+To run profiling on a particular subcommand you can use the ``--profile`` argument. For example with 
+the subcommand ``tagbam`` the command is:
+
+..  code-block:: bash
+
+    blr --profile tagbam input.bam -o output.bam
+
+This command will generate a file called ``blr_tagbam.prof`` with all the profiling information. This 
+can then be used with Python's standard library module 
+`pstat <https://docs.python.org/3/library/profile.html#pstats.Stats>`_ 
+or for example `Snakevix <https://jiffyclub.github.io/snakeviz/>`_ which allows interaction through the browser. 

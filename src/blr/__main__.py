@@ -18,6 +18,7 @@ def main(commandline_arguments=None) -> int:
     parser = ArgumentParser(description=__doc__, prog="blr")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--debug", action="store_true", default=False, help="Print debug messages")
+    parser.add_argument("--profile", action="store_true", default=False, help="Save profile info to blr.prof")
     subparsers = parser.add_subparsers()
 
     # Import each module that implements a subcommand and add a subparser for it.
@@ -41,15 +42,26 @@ def main(commandline_arguments=None) -> int:
         parser.error("Please provide the name of a subcommand to run")
     else:
         module = args.module
+        subcommand = module.main
         del args.module
         del args.debug
+        profile = args.profile
+        del args.profile
 
         # Print settings for module
-        sys.stderr.write(f"SETTINGS FOR: {module.__name__.split('.')[-1]} (version: {__version__})\n")
+        module_name = module.__name__.split('.')[-1]
+        sys.stderr.write(f"SETTINGS FOR: {module_name} (version: {__version__})\n")
         for object_variable, value in vars(args).items():
             sys.stderr.write(f" {object_variable}: {value}\n")
 
-        module.main(args)
+        if profile:
+            import cProfile
+            profile_file = f'blr_{module_name}.prof'
+            cProfile.runctx("subcommand(args)", globals(), dict(subcommand=subcommand, args=args),
+                            filename=profile_file)
+            logger.info(f"Writing profiling stats to '{profile_file}'.")
+        else:
+            subcommand(args)
 
     return 0
 
