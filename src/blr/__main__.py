@@ -18,7 +18,8 @@ def main(commandline_arguments=None) -> int:
     parser = ArgumentParser(description=__doc__, prog="blr")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--debug", action="store_true", default=False, help="Print debug messages")
-    parser.add_argument("--profile", action="store_true", default=False, help="Save profile info to blr.prof")
+    parser.add_argument("--profile", action="store_true", default=False,
+                        help="Save profile info to blr_<subcommand>.prof")
     subparsers = parser.add_subparsers()
 
     # Import each module that implements a subcommand and add a subparser for it.
