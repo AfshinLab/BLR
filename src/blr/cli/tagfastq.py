@@ -104,7 +104,6 @@ def run_tagfastq(
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
     out_interleaved = not output2 or not output1
-    bin_size = int(summary["Reads with corrected barcodes"] / nr_bins)
     if output_bins is not None:
         logger.info(f"Writing output as binned interleaved FASTQ to {output_bins}.")
         output_bins = Path(output_bins)
@@ -126,7 +125,7 @@ def run_tagfastq(
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved,
                                             file_nobc1=output_nobc1, file_nobc2=output_nobc2, mapper=mapper,
-                                            bins_dir=output_bins, bin_size=bin_size))
+                                            bins_dir=output_bins))
         uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
         chunks = None
         if mapper in ["ema", "lariat"]:
@@ -206,6 +205,11 @@ def run_tagfastq(
         # Empty final cache
         if chunks is not None:
             chunks.write_chunk()
+
+        if output_bins is not None:
+            bin_size = (summary["Read pairs read"] - summary["Reads missing barcode"]) // nr_bins
+            logger.info(f"Using bin of size {bin_size}.")
+            writer.set_bin_size(bin_size)
 
         if mapper == "ema":
             write_ema_output(chunks, writer, summary)
@@ -351,12 +355,12 @@ class Output:
     BIN_FASTQ_TEMPLATE = "ema-bin-*"  # Same name as in `ema preproc`.
 
     def __init__(self, file1=None, file2=None, interleaved=False, file_nobc1=None, file_nobc2=None, mapper=None,
-                 bins_dir=None, bin_size=None):
+                 bins_dir=None):
         self._mapper = mapper
 
         self._bin_nr = 0
         self._reads_written = 0
-        self._bin_size = bin_size
+        self._bin_size = None
         self._bins_dir = bins_dir
         self._prev_heap = None
         self._bin_filled = False
@@ -378,6 +382,9 @@ class Output:
             self._open_file_nobc = self._setup_single_output(file_nobc1, file_nobc2,
                                                              interleaved=file_nobc2 is None)
 
+    def set_bin_size(self, value):
+        self._bin_size = value
+
     def _setup_single_output(self, file1, file2, interleaved):
         if self._mapper == "lariat":
             if file2 is not None:
@@ -398,13 +405,15 @@ class Output:
         # Start a new bin if the current is full while not splitting heaps over separate bins
         if self._bin_filled and heap != self._prev_heap:
             self._bin_filled = False
-            self._reads_written = 0
             self._open_new_bin()
+            logger.debug(f"Bin overflow = {self._reads_written} ")
+
         self._prev_heap = heap
 
     def _check_bin_full(self):
         if self._reads_written > self._bin_size:
             self._bin_filled = True
+            self._reads_written = 0
 
     def write(self, read1, read2=None, heap=None):
         self._pre_write(heap)

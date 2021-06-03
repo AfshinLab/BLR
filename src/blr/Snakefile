@@ -263,7 +263,7 @@ rule map_sort_nobc:
         " - 2> {log.sort}"
 
 
-if config["library_type"] in {"10x", "blr"} \
+if config["library_type"] in {"10x", "blr", "tellseq"} \
         and config["read_mapper"] == "ema" \
         and config["fastq_bins"] > 1:
     ruleorder: merge_mapped_ema_bins > map_sort
