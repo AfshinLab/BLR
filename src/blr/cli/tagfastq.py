@@ -60,6 +60,8 @@ def main(args):
         input2=args.input2,
         output1=args.output1,
         output2=args.output2,
+        output_nobc1=args.output_nobc1,
+        output_nobc2=args.output_nobc2,
         output_bins=args.output_bins,
         nr_bins=args.nr_bins,
         barcode_tag=args.barcode_tag,
@@ -78,6 +80,8 @@ def run_tagfastq(
         input2: str,
         output1: str,
         output2: str,
+        output_nobc1: str,
+        output_nobc2: str,
         output_bins: str,
         nr_bins: int,
         barcode_tag: str,
@@ -113,10 +117,15 @@ def run_tagfastq(
             output2 = None
         logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
+    if output_nobc1 is not None and mapper != "ema":
+        logger.warning(f"Writing non barcoded reads to {output_nobc1} is only available with option '--mapper ema'.")
+        output_nobc1, output_nobc2 = None, None
+
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
-        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper,
+        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved,
+                                            file_nobc1=output_nobc1, file_nobc2=output_nobc2, mapper=mapper,
                                             bins_dir=output_bins, bin_size=bin_size))
         uncorrected_barcode_reader = stack.enter_context(BarcodeReader(uncorrected_barcodes))
         chunks = None
@@ -155,6 +164,11 @@ def run_tagfastq(
                     read2.name = " ".join([new_name, nr_and_index2])
             else:
                 summary["Reads missing barcode"] += 1
+
+                # Write non barcoded reads to separate file if exists for ema.
+                if mapper == "ema" and output_nobc1 is not None:
+                    summary["Read pairs written"] += 1
+                    writer.write_nobc(read1, read2)
 
                 # EMA and lairat aligner cannot handle reads without barcodes so these are skipped.
                 if mapper in ["ema", "lariat"]:
@@ -336,7 +350,8 @@ class Output:
     """
     BIN_FASTQ_TEMPLATE = "ema-bin-*"  # Same name as in `ema preproc`.
 
-    def __init__(self, file1=None, file2=None, interleaved=False, mapper=None, bins_dir=None, bin_size=None):
+    def __init__(self, file1=None, file2=None, interleaved=False, file_nobc1=None, file_nobc2=None, mapper=None,
+                 bins_dir=None, bin_size=None):
         self._mapper = mapper
 
         self._bin_nr = 0
@@ -350,7 +365,7 @@ class Output:
 
         self._open_file = None
         if file1 is not None:
-            self._setup_single_output(file1, file2, interleaved)
+            self._open_file = self._setup_single_output(file1, file2, interleaved)
         elif bins_dir is not None:
             self._open_new_bin()
             self._pre_write = self._open_new_bin_if_full
@@ -358,13 +373,18 @@ class Output:
         else:
             sys.exit("Either file1 or bins_dir need to be provided.")
 
+        self._open_file_nobc = None
+        if file_nobc1 is not None:
+            self._open_file_nobc = self._setup_single_output(file_nobc1, file_nobc2,
+                                                             interleaved=file_nobc2 is None)
+
     def _setup_single_output(self, file1, file2, interleaved):
         if self._mapper == "lariat":
-            self._open_file = xopen(file1, mode='w')
             if file2 is not None:
                 Path(file2).touch()
+            return xopen(file1, mode='w')
         else:
-            self._open_file = dnaio.open(file1, file2=file2, interleaved=interleaved, mode="w", fileformat="fastq")
+            return dnaio.open(file1, file2=file2, interleaved=interleaved, mode="w", fileformat="fastq")
 
     def _open_new_bin(self):
         if self._open_file is not None:
@@ -397,6 +417,13 @@ class Output:
         self._reads_written += 1
 
         self._post_write()
+
+    def write_nobc(self, read1, read2=None):
+        if self._open_file_nobc is not None:
+            if self._mapper == "lariat":
+                self._open_file_nobc.write(read1)
+            else:
+                self._open_file_nobc.write(read1, read2)
 
     def __enter__(self):
         return self
@@ -485,7 +512,15 @@ def add_arguments(parser):
     parser.add_argument(
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
-             "result is written as interleaved .")
+             "result is written as interleaved.")
+    parser.add_argument(
+        "--output-nobc1", "--n1",
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read1 reads. "
+             "If output_nobc1 given but not output_nobc2, output will be written as interleaved to "
+             "output_nobc1.")
+    parser.add_argument(
+        "--output-nobc2", "--n2",
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads.")
     output.add_argument(
         "--output-bins",
         help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "

@@ -231,6 +231,37 @@ rule map_sort_ema_bins:
         " -o {output.bam}"
         " - 2> {log.sort}"
 
+rule map_sort_nobc:
+    """Only for read_mapper=ema. Map and Sort non barcoded reads with BWA"""
+    output:
+        bam = "initialmapping_nobc.bam"
+    input:
+        r1_fastq = "trimmed.non_barcoded.1.fastq.gz",
+        r2_fastq = "trimmed.non_barcoded.2.fastq.gz"
+    threads: 4
+    log:
+        map = "initialmapping_nobc.mapping.log",
+        sort = "initialmapping_nobc.sorting.log"
+    params:
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
+    shell: 
+        "bwa mem"
+        " -t {threads}"
+        " -R {readgroup}"
+        " {config[genome_reference]}"
+        " {input.r1_fastq}"
+        " {input.r2_fastq}"
+        " 2> {log.map}"
+        " |"
+        " samtools sort "
+        " -@ {threads}"
+        " -m {config[heap_space]}G"
+        " -O bam"
+        " -l 0"
+        "{params.tmpdir}"
+        " -o {output.bam}"
+        " - 2> {log.sort}"
+
 
 if config["library_type"] in {"10x", "blr"} \
         and config["read_mapper"] == "ema" \
@@ -247,10 +278,11 @@ rule merge_mapped_ema_bins:
         sorting_log = "initialmapping.sorting.log",
     input:
         bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
-                                   nr=[str(i).zfill(3) for i in range(config['fastq_bins'])])
+                                   nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
+        bam_nobc = "initialmapping_nobc.bam"
     threads: 20
     shell:
-        "samtools merge -cp -@ {threads} {output.bam} {input.bams}"
+        "samtools merge -cp -@ {threads} {output.bam} {input.bams} {input.bam_nobc}"
         " &&"
         " cat {config[ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
         " &&"

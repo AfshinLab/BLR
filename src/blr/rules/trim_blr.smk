@@ -49,19 +49,24 @@ rule trim:
 if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
     output_name = os.path.join(config['ema_bins_dir'], "ema-bin-{nr}")
     output_nrs = [str(i).zfill(3) for i in range(config['fastq_bins'])]
-    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"
+    tag_output = expand(output_name, nr=output_nrs)
+    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"    
     ruleorder: merge_bins > tag
 else:
-    output_name = "trimmed.barcoded.{nr}.fastq.gz"
-    output_nrs = ["1", "2"]
-    output_cmd = f" --o1 {output_name.format(nr=output_nrs[0])} --o2 {output_name.format(nr=output_nrs[1])}"
+    tag_output = expand("trimmed.barcoded.{nr}.fastq.gz", nr=["1", "2"])
+    output_cmd = f" --output1 {tag_output[0]} --output2 {tag_output[1]}"
     ruleorder: tag > merge_bins
+
+if config["read_mapper"] == "ema":
+    # Add non barcoded reads to output
+    tag_output += expand("trimmed.non_barcoded.{nr}.fastq.gz", nr=["1", "2"])
+    output_cmd += f" --output-nobc1 {tag_output[-2]} --output-nobc2 {tag_output[-1]}"
 
 
 rule tag:
     """Tag reads with uncorrected and corrected barcode."""
     output:
-        expand(output_name, nr=output_nrs)
+        tag_output
     input:
         interleaved_fastq="trimmed.fastq",
         uncorrected_barcodes="barcodes.fasta.gz",
