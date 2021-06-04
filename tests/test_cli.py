@@ -199,7 +199,8 @@ def test_trim_tellseq(tmp_path, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", read_mapper)]
+         ("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
