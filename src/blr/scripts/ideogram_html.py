@@ -1,11 +1,17 @@
 """
 Generate ideogram HTML code for MultiQC report integration with the Ideogram.js library
 See: https://github.com/eweitz/ideogram
+
+Use indepentant from snakemake with command:
+
+    python ideogram_html.py input.vcf.gz ideogram_mqc.html GRCh38
+
 """
 from collections import namedtuple, defaultdict
 from itertools import cycle
 from pysam import VariantFile
 import random
+import sys
 
 
 def parse_vcf_phase(vcf_file):
@@ -65,45 +71,45 @@ def fromat_size(length: int) -> str:
         return str(length) + " bp"
 
 
-#
-# Extract phaseblocks from phased VCF
-#
-chr_stacks = defaultdict(list)
-prev = 0
-chrom = None
-longest = (None, 0, 0)
-for phaseblock in parse_blocks(snakemake.input.phased_vcf):  # noqa: F821
-    if phaseblock:
-        if phaseblock.chr != chrom:
-            chrom = phaseblock.chr
-            prev = 0
+def main(phased_vcf, out_html, assembly):
+    #
+    # Extract phaseblocks from phased VCF
+    #
+    chr_stacks = defaultdict(list)
+    prev = 0
+    chrom = None
+    longest = (None, 0, 0)
+    for phaseblock in parse_blocks(phased_vcf):  # noqa: F821
+        if phaseblock:
+            if phaseblock.chr != chrom:
+                chrom = phaseblock.chr
+                prev = 0
 
-        pos, length = 0, 0
-        if phaseblock.stop < prev:  # Phaseblock is completely overlapping previous
-            continue
-        elif phaseblock.start < prev:  # Phaseblock is partly overlapping previous
-            pos, length = prev, int(phaseblock.stop - prev)
-        else:
-            pos, length = phaseblock.start, int(phaseblock.stop-phaseblock.start)
+            pos, length = 0, 0
+            if phaseblock.stop < prev:  # Phaseblock is completely overlapping previous
+                continue
+            elif phaseblock.start < prev:  # Phaseblock is partly overlapping previous
+                pos, length = prev, int(phaseblock.stop - prev)
+            else:
+                pos, length = phaseblock.start, int(phaseblock.stop-phaseblock.start)
 
-        chr_stacks[chrom].append((pos, length))
+            chr_stacks[chrom].append((pos, length))
 
-        # Find longest phaseblock
-        if length > longest[2]:
-            longest = (chrom, pos, length)
+            # Find longest phaseblock
+            if length > longest[2]:
+                longest = (chrom, pos, length)
 
-        prev = phaseblock.stop
+            prev = phaseblock.stop
 
-#
-# Generate HTML for ideogram
-#
-letters = "abcdefghijklmnopqrstuvwxyz"
-unique_id = "".join(random.sample(letters, 10))
-assembly = snakemake.params.assembly  # noqa: F821
+    #
+    # Generate HTML for ideogram
+    #
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    unique_id = "".join(random.sample(letters, 10))
 
-with open(snakemake.output.html, "w") as out:  # noqa: F821
-    # Based on https://eweitz.github.io/ideogram/annotations-overlaid
-    html = f"""
+    with open(out_html, "w") as out:  # noqa: F821
+        # Based on https://eweitz.github.io/ideogram/annotations-overlaid
+        html = f"""
 <!--
 id: 'phaseblock-overview-{unique_id}'
 section_name: 'Phaseblock overview'
@@ -116,10 +122,10 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
 <div class="ideogram-{unique_id}">
 </div>
 <script type="text/javascript">
-  var blue = 'rgba(63, 127, 191, 0.65)';
-  var green = 'rgba(63, 191, 63, 0.65)';
-  var red = 'rgba(191, 63, 63, 0.65)';
-  var config = {{
+var blue = 'rgba(63, 127, 191, 0.65)';
+var green = 'rgba(63, 191, 63, 0.65)';
+var red = 'rgba(191, 63, 63, 0.65)';
+var config = {{
     container: '.ideogram-{unique_id}',
     organism: 'human',
     assembly: '{assembly}',
@@ -129,37 +135,54 @@ to get the phaseblock location along with it size. The longest phaseblock is hig
         "keys":["chr","name","start","length","color"],
         "annots":[
 """
-    colors = ["blue", "green"]
-    longest_color = "red"  # Red
-    # Separate entries for each chromosome
-    for nr, (chrom, phaseblocks) in enumerate(chr_stacks.items()):
-        html += "            "
-        chr_id = chrom.replace("chr", "")
-        html += f"{{'chr': '{chr_id}', 'annots':[\n"
-        html += "                "
-        blocks = []
-        for (start, length), color in zip(phaseblocks, cycle(colors)):
-            size = fromat_size(length)
+        colors = ["blue", "green"]
+        longest_color = "red"  # Red
+        # Separate entries for each chromosome
+        for nr, (chrom, phaseblocks) in enumerate(chr_stacks.items()):
+            html += "            "
+            chr_id = chrom.replace("chr", "")
+            html += f"{{'chr': '{chr_id}', 'annots':[\n"
+            html += "                "
+            blocks = []
+            for (start, length), color in zip(phaseblocks, cycle(colors)):
+                size = fromat_size(length)
 
-            # Highlight longest phaseblock in different color
-            if longest == (chrom, start, length):
-                color = longest_color
-                size += " (TOP)"
+                # Highlight longest phaseblock in different color
+                if longest == (chrom, start, length):
+                    color = longest_color
+                    size += " (TOP)"
 
-            blocks.append(f"['{chr_id}_{start}', '{size}', {start}, {length}, {color}]")
+                blocks.append(f"['{chr_id}_{start}', '{size}', {start}, {length}, {color}]")
 
-        html += ",\n                ".join(blocks)
-        html += "\n            ]},"
-        if nr < len(chr_stacks) - 1:
-            html += "\n"
+            html += ",\n                ".join(blocks)
+            html += "\n            ]},"
+            if nr < len(chr_stacks) - 1:
+                html += "\n"
 
-    html += """
+        html += """
         ]},
     annotationsLayout: 'overlay',
     orientation: 'horizontal'
-  };
+};
 
-  var ideogram = new Ideogram(config);
+var ideogram = new Ideogram(config);
 </script>
 """
-    out.write(html)
+        out.write(html)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if len(sys.argv) == 4:
+            phased_vcf = sys.argv[1]
+            html = sys.argv[2]
+            assembly = sys.argv[3]
+        else:
+            print(__doc__)
+            sys.exit(1)
+    else:
+        phased_vcf = snakemake.input.phased_vcf
+        html = snakemake.output.html
+        assembly = snakemake.params.assembly
+
+    main(phased_vcf, html, assembly)
