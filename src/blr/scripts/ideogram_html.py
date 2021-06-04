@@ -79,7 +79,7 @@ def main(phased_vcf, out_html, assembly):
     prev = 0
     chrom = None
     longest = (None, 0, 0)
-    for phaseblock in parse_blocks(phased_vcf):  # noqa: F821
+    for phaseblock in parse_blocks(phased_vcf):
         if phaseblock:
             if phaseblock.chr != chrom:
                 chrom = phaseblock.chr
@@ -107,7 +107,7 @@ def main(phased_vcf, out_html, assembly):
     letters = "abcdefghijklmnopqrstuvwxyz"
     unique_id = "".join(random.sample(letters, 10))
 
-    with open(out_html, "w") as out:  # noqa: F821
+    with open(out_html, "w") as out:
         # Based on https://eweitz.github.io/ideogram/annotations-overlaid
         html = f"""
 <!--
@@ -181,8 +181,8 @@ if __name__ == "__main__":
             print(__doc__)
             sys.exit(1)
     else:
-        phased_vcf = snakemake.input.phased_vcf
-        html = snakemake.output.html
-        assembly = snakemake.params.assembly
+        phased_vcf = snakemake.input.phased_vcf  # noqa: F821
+        html = snakemake.output.html  # noqa: F821
+        assembly = snakemake.params.assembly  # noqa: F821
 
     main(phased_vcf, html, assembly)

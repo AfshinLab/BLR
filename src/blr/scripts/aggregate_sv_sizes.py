@@ -37,10 +37,10 @@ def main(input_tsv, output_tsv):
         "PassFilter"
     ]
 
-    data = pd.read_csv(input_tsv, sep="\t", header=0, names=names)  # noqa: F821
+    data = pd.read_csv(input_tsv, sep="\t", header=0, names=names)
     counts = Counter()
     lengths = defaultdict(list)
-    with open(output_tsv, "w") as file:  # noqa: F821
+    with open(output_tsv, "w") as file:
         # Remove filtered SVs
         data = data[data["PassFilter"] == "PASS"]
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
             print(__doc__)
             sys.exit(1)
     else:
-        input_tsv = snakemake.input.tsv
-        output_tsv = snakemake.output.tsv
+        input_tsv = snakemake.input.tsv  # noqa: F821
+        output_tsv = snakemake.output.tsv  # noqa: F821
 
     main(input_tsv, output_tsv)

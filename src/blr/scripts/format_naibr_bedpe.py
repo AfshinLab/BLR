@@ -17,12 +17,12 @@ def main(tsv, bedpe):
     zygosity = {"1,1": "HOM", "2,2": "HOM", "1,2": "HET",
                 "2,1": "HET"}  # From https://github.com/raphael-group/NAIBR/issues/10
     names = ["Chr1", "Break1", "Chr2", "Break2", "SplitMolecules", "DiscordantReads", "Orientation",
-            "Haplotype", "Score", "PassFilter"]
-    data = pd.read_csv(tsv, sep="\t", header=0, names=names)  # noqa: F821
-    with open(bedpe, "w") as file:  # noqa: F821
+             "Haplotype", "Score", "PassFilter"]
+    data = pd.read_csv(tsv, sep="\t", header=0, names=names)
+    with open(bedpe, "w") as file:
         # Header
         print("#chrom1", "start1", "stop1", "chrom2", "start2", "stop2", "sv_type", "sv_id", "sv_length", "qual_score",
-            "filter", "info", sep="\t", file=file)
+              "filter", "info", sep="\t", file=file)
 
         for nr, row in enumerate(data.itertuples(index=False)):
             # Use BEDPE format according to LinkedSV: https://github.com/WGLab/LinkedSV#-sv-call-file
@@ -59,7 +59,7 @@ if __name__ == "__main__":
             print(__doc__)
             sys.exit(1)
     else:
-        tsv = snakemake.input.tsv
-        bedpe = snakemake.output.bedpe
+        tsv = snakemake.input.tsv  # noqa: F821
+        bedpe = snakemake.output.bedpe  # noqa: F821
 
     main(tsv, bedpe)
