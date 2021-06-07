@@ -26,7 +26,7 @@ def main(args):
 
 def run(yaml_file=DEFAULT_PATH, changes_set=None, update_from: Path = None):
     if update_from is not None:
-        configs, _ = logger(update_from)
+        configs, _ = load_yaml(update_from)
         changes_set = update_changes_set(changes_set, configs)
 
     if changes_set:
