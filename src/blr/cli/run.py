@@ -45,6 +45,10 @@ def add_arguments(parser):
         help="Print the file graph showing input/output file from rules in the graphviz dot language (requires "
              "graphviz to be installed). Default: %(default)s. To get output to pdf file, pipe output into dot "
              "as follows: blr run --filegraph | dot -Tpdf > filegraph.pdf")
+    arg("--snakemake-kws", nargs=2, metavar=("KEY", "VALUE"), action="append", default=[],
+        help=f"Additional snakemake arguments not yet added to {__name__}. See the Snakemake API ("
+             "https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html#) for options. Note that some "
+             "options may still not be available.")
     arg('targets', nargs='*', default=[],
         help="File(s) to create. If omitted, the full pipeline is run. Include 'anew' if initializing from a "
              "previous analysis run(s).")
@@ -62,6 +66,7 @@ def main(args):
                 force_run=args.force_run,
                 printdag=args.dag,
                 printfilegraph=args.filegraph,
+                snake_kws=dict(args.snakemake_kws),
                 targets=None,
                 snakefile="run_anew.smk")
             args.targets.remove("anew")
@@ -74,6 +79,7 @@ def main(args):
             force_run=args.force_run,
             printdag=args.dag,
             printfilegraph=args.filegraph,
+            snake_kws=dict(args.snakemake_kws),
             targets=args.targets)
     except SnakemakeError:
         sys.exit(1)
@@ -89,10 +95,13 @@ def run(
     force_run=None,
     printdag: bool = False,
     printfilegraph: bool = False,
+    snake_kws=None,
     targets=None,
     workdir=None,
     snakefile="Snakefile"
 ):
+    snake_kws = {} if snake_kws is None else snake_kws
+
     # snakemake sets up its own logging, and this cannot be easily changed
     # (setting keep_logger=True crashes), so remove our own log handler
     # for now
@@ -114,7 +123,8 @@ def run(
             workdir=workdir,
             use_conda=True,
             printreason=dryrun,
-            log_handler=[print_log_on_error]
+            log_handler=[print_log_on_error],
+            **snake_kws
         )
     if not success:
         raise SnakemakeError()
