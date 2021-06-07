@@ -74,7 +74,6 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
 
         prev_value = item[keys[-1]] if keys[-1] in item else "NOT SET"
         if prev_value != value:
-            print(prev_value, type(prev_value), value, type(value), prev_value != value)
             item[keys[-1]] = value
             logger.info(f"Changing value of '{key}': {prev_value} --> {value}.")
 
