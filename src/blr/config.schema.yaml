@@ -23,7 +23,7 @@ properties:
     default: HP
   read_mapper:
     type: string
-    pattern: "bwa|bowtie2|minimap2|ema|lariat"
+    pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
     description: Which read mapper to use
     default: bowtie2
   genome_reference:
@@ -42,18 +42,22 @@ properties:
     type: string
     description: h1 adaptor sequnce, appears before barcode in read1
     default: CAGTTGATCATCAGCAGGTAATCTGG
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   h2:
     type: string
     description: h2 adaptor sequence, appears after barcode in read1
     default: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   h3:
     type: string
     description: h3 adaptor sequence, appears after genomics insert in read1 and read2.
     default: CTGTCTCTTATACACATCT
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   barcode:
     type: string
     description: Barcode sequence
     default: BDHVBDHVBDHVBDHVBDHV
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   reference_variants:
     type: [ "string", "null" ]
     description: Path to reference variants, if not provided then variant will be called by freebayes
@@ -77,7 +81,7 @@ properties:
   variant_caller:
     type: string
     description: Which variant caller to use.
-    pattern: "gatk|bcftools|freebayes|deepvariant"
+    pattern: "(gatk)|(bcftools)|(freebayes)|(deepvariant)"
     default: freebayes
   heap_space:
     type: integer
@@ -85,7 +89,7 @@ properties:
     default: 6
   library_type:
     type: string
-    pattern: "blr|10x|stlfr|tellseq"
+    pattern: "(blr)|(10x)|(stlfr)|(tellseq)"
     description: Library type
   barcode_whitelist:
     type: [ "string", "null" ]
@@ -107,6 +111,7 @@ properties:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
     default: CTGTCTCTTATACACATCT
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   chunk_size:
     type: integer
     default: 20000000
@@ -126,12 +131,13 @@ properties:
   tellseq_correction:
     type: string
     description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
-    pattern: "cluster|correct_singles"
+    pattern: "(cluster)|(correct_singles)"
     default: correct_singles
   tellseq_barcode:
     type: string
     description: Barcode sequence
     default: NNHNNYRNNNNYRNNHNN
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   sample_nr:
     type: integer
     default: 1
@@ -168,4 +174,8 @@ properties:
     type: "string"
     description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
     default: GRCh38
-    pattern: "GRCh38|GRCh37"
+    pattern: "(GRCh38)|(GRCh37)"
+
+required:
+  - genome_reference
+  - library_type
