@@ -64,4 +64,5 @@ jobs:
           conda activate testenv
           pip install -e .
           blr -h
+          echo "1"
           # tests/run.sh
