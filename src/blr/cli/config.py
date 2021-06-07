@@ -74,6 +74,7 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
 
         prev_value = item[keys[-1]] if keys[-1] in item else "NOT SET"
         if prev_value != value:
+            print(prev_value, type(prev_value), value, type(value), prev_value != value)
             item[keys[-1]] = value
             logger.info(f"Changing value of '{key}': {prev_value} --> {value}.")
 
@@ -117,7 +118,7 @@ def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
 def update_changes_set(changes_set: List[Tuple[str, str]], configs: Dict) -> List[Tuple[str, str]]:
     """Update changes_set list of tuples with configs in dict configs"""
     configs = flatten(configs)
-    configs = {k: str(v) for k, v in configs.items()}
+    configs = {k: str(v) if v is not None else "null" for k, v in configs.items()}
 
     # Merge configs from yaml with those in changes_set
     configs_primary = dict(changes_set)
