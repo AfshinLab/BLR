@@ -17,15 +17,17 @@ chunkssize: 20000000 # Chunk size for parallelization
 # Comma separated entries of contigs to phase
 phasing_contigs: chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22
 
-#################
-# Trim settings #
-#################
+##########################
+# Preprocessing settings #
+##########################
 # BLR libraries
 h1: CAGTTGATCATCAGCAGGTAATCTGG # h1 adaptor sequnce, appears before barcode in read1
 h2: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG # h2 adaptor sequence, appears after barcode in read1
 h3: CTGTCTCTTATACACATCT # h3 adaptor sequence, appears after genomics insert in read1 and read2.
 barcode: BDHVBDHVBDHVBDHVBDHV # Barcode sequence
 min_count: 1 # Minimum number of reads per barcode to tag reads with barcode
+barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
+barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 
 # 10x libraries
 barcode_whitelist: # Path to barcode whitelist.
@@ -57,8 +59,6 @@ phase_indels: true # Phase INDELs along with SNPs
 # Software-specific settings #
 ##############################
 heap_space: 6 # Memory per core for heap space max limit
-barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
-barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
 coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
