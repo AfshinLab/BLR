@@ -25,6 +25,7 @@ h1: CAGTTGATCATCAGCAGGTAATCTGG # h1 adaptor sequnce, appears before barcode in r
 h2: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG # h2 adaptor sequence, appears after barcode in read1
 h3: CTGTCTCTTATACACATCT # h3 adaptor sequence, appears after genomics insert in read1 and read2.
 barcode: BDHVBDHVBDHVBDHVBDHV # Barcode sequence
+min_count: 1 # Minimum number of reads per barcode to tag reads with barcode
 
 # 10x libraries
 barcode_whitelist: # Path to barcode whitelist.

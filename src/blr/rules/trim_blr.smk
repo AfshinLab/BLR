@@ -81,6 +81,7 @@ rule tag:
         " --mapper {config[read_mapper]}"
         " --pattern-match {config[barcode]}"
         " --sample-nr {config[sample_nr]}"
+        " --min-count {config[min_count]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.interleaved_fastq}"

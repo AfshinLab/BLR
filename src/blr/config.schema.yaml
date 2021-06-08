@@ -58,6 +58,10 @@ properties:
     description: Barcode sequence
     default: BDHVBDHVBDHVBDHVBDHV
     pattern: "^[AGCTYRWSKMBDVHN]+$"
+  min_count: 
+    type: integer
+    default: 1 
+    description: Minimum number of reads per barcode to tag reads with barcode
   reference_variants:
     type: [ "string", "null" ]
     description: Path to reference variants, if not provided then variant will be called by freebayes
