@@ -102,7 +102,7 @@ rule fastqc_raw_reads:
         zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
     input:
         reads = "trimmed.barcoded.{nr}.fastq.gz",
-    log: "trimmed.barcoded.{nr,[12]}_fastqc.log"
+    log: "trimmed.barcoded.{nr,[12]}_fastqc.html.log"
     threads: 2  # Fix java.lang.OutOfMemoryError (https://github.com/s-andrews/FastQC/issues/24)
     shell:
         "fastqc"
@@ -146,7 +146,7 @@ rule multiqc_summarize:
     input:
         get_multiqc_input
     log:
-        "multiqc.log"
+        "multiqc_report.html.log"
     shell:
         "multiqc . --template blr 2> {log}"
 
@@ -194,7 +194,7 @@ rule plot_figures:
         images = directory("figures"),
         stats = "final.stats.txt"
     input: plot_figures_input
-    log: "final.plot.log"
+    log: "final.stats.txt.log"
     shell:
         "blr plot"
         " {input}"
@@ -208,8 +208,8 @@ rule map_sort_ema_bins:
         interleaved_fastq = "{dir}/ema-bin-{bin_nr}"
     threads: 4
     log:
-        map = "{dir}/ema-bin-{bin_nr}.mapping.log",
-        sort = "{dir}/ema-bin-{bin_nr}.sorting.log"
+        map = "{dir}/ema-bin-{bin_nr}.bam.mapping.log",
+        sort = "{dir}/ema-bin-{bin_nr}.bam.sorting.log"
     params:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
     shell:
@@ -240,8 +240,8 @@ rule map_sort_nobc:
         r2_fastq = "trimmed.non_barcoded.2.fastq.gz"
     threads: 4
     log:
-        map = "initialmapping_nobc.mapping.log",
-        sort = "initialmapping_nobc.sorting.log"
+        map = "initialmapping_nobc.bam.mapping.log",
+        sort = "initialmapping_nobc.bam.sorting.log"
     params:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
     shell: 
@@ -274,8 +274,8 @@ else:
 rule merge_mapped_ema_bins:
     output:
         bam = "initialmapping.bam",
-        mapping_log = "initialmapping.mapping.log",
-        sorting_log = "initialmapping.sorting.log",
+        mapping_log = "initialmapping.bam.mapping.log",
+        sorting_log = "initialmapping.bam.sorting.log",
     input:
         bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
                                    nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
@@ -298,8 +298,8 @@ rule map_sort:
         r2_fastq = "trimmed.barcoded.2.fastq.gz"
     threads: 20
     log:
-        map = "read_mapping.log",
-        sort = "sorting.log"
+        map = "initialmapping.bam.mapping.log",
+        sort = "initialmapping.bam.sorting.log"
     run:
         commands = {
             "bwa":
@@ -416,7 +416,7 @@ rule get_unmapped_reads:
     input:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai"
-    log: "unmapped.log"
+    log: "unmapped.bam.log"
     params:
         tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']} -o",
         outtype = "-bh" if skip_tagbam else "-h"
@@ -430,7 +430,7 @@ rule tagbam:
     input:
         bam = "{base}.sorted.bam"
     log:
-        "{base}.tagbam.log"
+        "{base}.sorted.tag.bam.log"
     shell:
         "blr tagbam "
         " -o {output.bam}"
@@ -445,7 +445,7 @@ rule find_clusterdups:
         pickle = temporary("{base}.sorted.tag.clusterdups.pickle")
     input:
         bam = "{base}.sorted.tag.bam"
-    log: "{base}.find_clusterdups.log"
+    log: "{base}.sorted.tag.clusterdups.pickle.log"
     shell:
         "blr find_clusterdups"
         " {input.bam}"
@@ -483,7 +483,7 @@ rule merge_clusterdups:
     input:
         bam = "{base}.sorted.tag.bam",
         merges = "final.barcode-merges.csv"
-    log: "{base}.merge_clusterdups.log"
+    log: "{base}.sorted.tag.bcmerge.bam.log"
     shell:
         "blr merge_clusterdups"
         " {input.bam}"
@@ -499,7 +499,7 @@ rule mark_duplicates:
         metrics = "{base}.sorted.tag.bcmerge.mkdup_metrics.txt"
     input:
         bam = "{base}.sorted.tag.bcmerge.bam"
-    log: "{base}.mark_duplicates.log"
+    log: "{base}.sorted.tag.bcmerge.mkdup.bam.log"
     shell:
         "picard -Xmx{config[heap_space]}g MarkDuplicates"
         " INPUT={input.bam}"
@@ -524,7 +524,7 @@ rule buildmolecules:
         stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
-    log: "{base}.buildmolecules.log"
+    log: "{base}.sorted.tag.bcmerge.mkdup.mol.bam.log"
     shell:
         "blr buildmolecules"
         " {input.bam}"
@@ -596,7 +596,7 @@ rule filterclusters:
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
         barcodes = "final.barcodes_filtered_out.tsv"
-    log: "{base}.filterclusters.log"
+    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.log"
     shell:
         "blr filterclusters"
         " {input.bam}"
@@ -616,7 +616,7 @@ rule bam_to_fastq:
         r2_fastq = "reads.2.final.fastq.gz"
     input:
         bam = "final.bam"
-    log: "samtools-fastq.log"
+    log: "reads.1.final.fastq.gz.log"
     threads: 20
     shell:
         "samtools fastq"
@@ -630,10 +630,10 @@ rule bam_to_fastq:
 rule recal_base_qual_scores:
     """Recalibrate base calling qualities"""
     output:
-        recal_table = "{base}.gatk_BQSR_table.txt"
+        recal_table = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt"
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam"
-    log: "{base}.recal_base_qual_scores.log"
+    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g BaseRecalibrator"
         " -R {config[genome_reference]}"
@@ -649,8 +649,8 @@ rule apply_recal:
         recal_bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
     input:
         bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        recal_table = "{base}.gatk_BQSR_table.txt"
-    log: "{base}.apply_recal.log"
+        recal_table = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt"
+    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g ApplyBQSR"
         " --bqsr-recal-file {input.recal_table}"
@@ -713,8 +713,8 @@ rule call_variants:
     input:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
-    log: "{base}.call_variants.log"
-    threads: 2
+    log: "{base}.variants.called.vcf.log"
+    threads: 2 # TODO single thread for freebayes. 
     run:
         heap_space = config["heap_space"] * threads
         commands = {
@@ -769,7 +769,7 @@ rule extract_called:
         vcf = temporary("{base}.variants.called.{type,(SNP|INDEL)}.vcf")
     input:
         vcf = "{base}.variants.called.vcf"
-    log: "{base}.variants.called.{type,(SNP|INDEL)}.log"
+    log: "{base}.variants.called.{type,(SNP|INDEL)}.vcf.log"
     shell:
         "gatk SelectVariants"
         " -V {input.vcf}"
@@ -784,7 +784,7 @@ rule filter_called_snps:
         vcf = temporary("{base}.variants.called.SNP.filtered.vcf")
     input:
         vcf = "{base}.variants.called.SNP.vcf"
-    log: "{base}.variants.called.SNP.filtered.log"
+    log: "{base}.variants.called.SNP.filtered.vcf.log"
     shell:
         # TODO Include genotype filtration for AD < 2
         "gatk VariantFiltration"
@@ -805,7 +805,7 @@ rule filter_called_indels:
         vcf = temporary("{base}.variants.called.INDEL.filtered.vcf")
     input:
         vcf = "{base}.variants.called.INDEL.vcf"
-    log: "{base}.variants.called.INDEL.filtered.log"
+    log: "{base}.variants.called.INDEL.filtered.vcf.log"
     shell:
         # TODO Include genotype filtration for AD < 4
         "gatk VariantFiltration"
@@ -826,7 +826,7 @@ rule merge_filtered_snps_indels:
     input:
         vcf_snps = "{base}.variants.called.SNP.filtered.vcf",
         vcf_indels = "{base}.variants.called.INDEL.filtered.vcf"
-    log: "{base}.variants.called.filtered.log"
+    log: "{base}.variants.called.filtered.vcf.log"
     shell:
         "picard MergeVcfs"
         " --CREATE_INDEX false"
@@ -967,7 +967,7 @@ rule whatshap_stats:
     input:
         phased_vcf = "final.phased.vcf.gz",
         phased_vcf_index = "final.phased.vcf.gz.tbi"
-    log: "whatshap_stats.log"
+    log: "final.whatshap_stats.tsv.log"
     shell:
          "whatshap stats"
          " --tsv {output.tsv}"
@@ -981,7 +981,7 @@ rule collect_insert_size_metrics:
         hist = "final.insert_size_histogram.pdf",
     input:
         bam = "final.bam"
-    log: "collect_insert_size_metrics.log"
+    log: "inal.insert_size_metrics.txt.log"
     shell:
         "picard -Xmx{config[heap_space]}g CollectInsertSizeMetrics"
         " I={input.bam}"
@@ -995,7 +995,7 @@ rule collect_duplicate_metrics:
         metrics = "final.duplicate_metrics.txt"
     input:
         bam = "final.bam"
-    log: "collect_duplicate_metrics.log"
+    log: "final.duplicate_metrics.txt.log"
     shell:
         "picard -Xmx{config[heap_space]}g CollectDuplicateMetrics"
         " I={input.bam}"
@@ -1009,7 +1009,7 @@ rule collect_alignment_summary_metrics:
         metrics = "final.alignment_summary_metrics.txt"
     input:
         bam = "final.bam"
-    log: "collect_alignment_summary_metrics.log"
+    log: "final.alignment_summary_metrics.txt.log"
     shell:
         "picard -Xmx{config[heap_space]}g CollectAlignmentSummaryMetrics"
         " I={input.bam}"

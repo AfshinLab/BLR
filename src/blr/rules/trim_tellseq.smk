@@ -59,7 +59,7 @@ rule tag_tellseq_reads:
         r2_fastq="reads.2.fastq.gz",
         uncorrected_barcodes="barcodes.fastq.gz",
         corrected_barcodes="barcodes.clstr"
-    log: "tag_tellseq_reads.log"
+    log: "tagfastq.log"
     threads: 1
     shell:
         "blr tagfastq"

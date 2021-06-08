@@ -29,7 +29,7 @@ rule trim:
     input:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",
-    log: "cutadapt_trim.log"
+    log: "trimmed.fastq.log"
     threads: workflow.cores - 1  # rule tag needs one thread
     shell:
         "cutadapt"
@@ -71,7 +71,7 @@ rule tag:
         interleaved_fastq="trimmed.fastq",
         uncorrected_barcodes="barcodes.fasta.gz",
         corrected_barcodes="barcodes.clstr"
-    log: "tag_fastq.log"
+    log: "tagfastq.log"
     threads: 1
     shell:
         "blr tagfastq"
@@ -93,7 +93,7 @@ rule extract_DBS:
         fastq="barcodes.fasta.gz"
     input:
         fastq="reads.1.fastq.gz"
-    log: "cutadapt_extract_DBS.log"
+    log: "barcode.fasta.gz.log"
     threads: 20
     shell:
         "cutadapt"
@@ -116,7 +116,7 @@ rule starcode_clustering:
     input:
         "barcodes.fasta.gz"
     threads: 20
-    log: "starcode_clustering.log"
+    log: "barcode.clstr.log"
     shell:
         "pigz -cd {input} |"
         " starcode"

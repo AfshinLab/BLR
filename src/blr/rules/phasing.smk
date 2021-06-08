@@ -23,7 +23,7 @@ rule hapcut2_extracthairs:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf
-    log: "{base}.hapcut2_extracthairs.log"
+    log: "{base}.calling.unlinked.txt.log"
     params:
         indels = "1" if config["phase_indels"] else "0"
     shell:
@@ -47,7 +47,7 @@ rule hapcut2_linkfragments:
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf,
         unlinked = "{base}.calling.unlinked.txt"
-    log: "{base}.hapcut2_linkfragments.log"
+    log: "{base}.calling.linked.txt.log"
     shell:
         "LinkFragments.py"
         " --bam {input.bam}"
@@ -66,7 +66,7 @@ rule hapcut2_phasing:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf
-    log: "{base}.hapcut2_phasing.log"
+    log: "{base}.calling.phase.log"
     shell:
         "hapcut2"
         " --nf 1"
@@ -90,7 +90,7 @@ rule hapcut2_stats:
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""
-    log: "final.phasing_stats.log"
+    log: "final.phasing_stats.txt.log"
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
@@ -110,7 +110,7 @@ rule haplotag:
         bam = "{base}.calling.bam",
         vcf = "{base}.calling.phased.vcf.gz",
         vcf_index = "{base}.calling.phased.vcf.gz.tbi"
-    log: "{base}.haplotag.log"
+    log: "{base}.calling.phased.bam.log"
     params:
         ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else ""
     shell:
@@ -140,7 +140,7 @@ rule build_config:
     output:
         config = "chunks/{chunk}.naibr.config"
     input: unpack(bams_for_lsv_calling)
-    log: "chunks/{chunk}.build_config.log"
+    log: "chunks/{chunk}.naibr.config.log"
     params:
         cwd = os.getcwd(),
         blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
@@ -179,7 +179,7 @@ rule lsv_calling:
     input:
         config = "{base}.naibr.config",
         naibr_path = "NAIBR"
-    log: "{base}.lsv_calling.log"
+    log: "{base}.naibr_sv_calls.tsv.log"
     threads: 2
     conda: "../naibr-environment.yml"
     params:
