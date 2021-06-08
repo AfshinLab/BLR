@@ -67,7 +67,7 @@ def main(args):
         barcode_tag=args.barcode_tag,
         sequence_tag=args.sequence_tag,
         mapper=args.mapper,
-        skip_singles=args.skip_singles,
+        min_count=args.min_count,
         pattern_match=args.pattern_match,
         sample_number=args.sample_nr,
     )
@@ -87,7 +87,7 @@ def run_tagfastq(
         barcode_tag: str,
         sequence_tag: str,
         mapper: str,
-        skip_singles: bool,
+        min_count: int,
         pattern_match: str,
         sample_number: int,
 ):
@@ -98,7 +98,7 @@ def run_tagfastq(
     template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
     with open(corrected_barcodes, "r") as reader:
         corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
-                                                            skip_singles=skip_singles)
+                                                            min_count=min_count)
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
@@ -236,13 +236,13 @@ def write_lariat_output(chunks, writer, summary):
         summary["Read pairs written"] += 1
 
 
-def parse_corrected_barcodes(open_file, summary, mapper, template, skip_singles=False):
+def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
     corrected canonical sequence
     :param open_file: starcode tabular output file.
     :param summary: collections.Counter object
-    :param skip_singles: bool. Skip clusters of size 1
+    :param min_count: int. Skip clusters with fewer than min_count reads.
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
     corrected_barcodes = dict()
@@ -254,8 +254,9 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, skip_singles=
         summary["Reads with corrected barcodes"] += int(size)
         summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
 
-        if skip_singles and int(size) == 1:
-            summary["Clusters size 1 skipped"] += 1
+        if int(size) < min_count:
+            summary["Barcodes with too few reads"] += 1
+            summary["Reads with barcodes with too few reads"] += int(size)
             continue
 
         if template and not match_template(canonical_seq, template):
@@ -551,8 +552,8 @@ def add_arguments(parser):
              "required for these particular mappers. Default: %(default)s."
     )
     parser.add_argument(
-        "--skip-singles", default=False, action="store_true",
-        help="Skip adding barcode information for corrected barcodes with only one supporting read pair"
+        "-c", "--min-count", default=0, type=int,
+        help="Minimum number of reads per barcode to tag read name. Default: %(default)s."
     )
     parser.add_argument(
         "-p", "--pattern-match",

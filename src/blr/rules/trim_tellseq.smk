@@ -68,7 +68,7 @@ rule tag_tellseq_reads:
         " -s {config[sequence_tag]}"
         " --mapper {config[read_mapper]}"
         " --pattern-match {config[tellseq_barcode]}"
-        " --skip-singles"
+        " --min-count 2"
         " --sample-nr {config[sample_nr]}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
