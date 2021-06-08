@@ -70,7 +70,7 @@ rule tag:
     input:
         interleaved_fastq="trimmed.fastq",
         uncorrected_barcodes="barcodes.fasta.gz",
-        corrected_barcodes="barcodes.clstr"
+        corrected_barcodes="barcodes.clstr.gz"
     log: "tagfastq.log"
     threads: 1
     shell:
@@ -113,7 +113,7 @@ rule extract_DBS:
 rule starcode_clustering:
     """Cluster DBS barcodes using starcode"""
     output:
-        "barcodes.clstr"
+        temp("barcodes.clstr")
     input:
         "barcodes.fasta.gz"
     threads: 20

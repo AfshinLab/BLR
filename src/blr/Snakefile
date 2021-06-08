@@ -183,7 +183,7 @@ rule generate_ideogram:
 
 def plot_figures_input(wildcards):
     if config["library_type"] in {"blr", "tellseq"}:
-        return "final.molecule_stats.filtered.tsv", "barcodes.clstr"
+        return "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"
     else:
         return "final.molecule_stats.filtered.tsv"
 
@@ -1034,3 +1034,16 @@ rule concat_lsv_calls:
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
+
+
+ruleorder: compress_vcf > gzip
+
+
+rule gzip:
+    """Compress file using pigz"""
+    output: 
+        "{file}.gz"
+    input: 
+        "{file}"
+    shell:
+        "pigz --stdout {input} > {output}"

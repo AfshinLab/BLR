@@ -29,7 +29,7 @@ rule final:
     input:
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
-        "barcodes.clstr",
+        "barcodes.clstr.gz",
         "final.molecule_stats.filtered.tsv",
         "unmapped.bam",
         expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks),
@@ -123,7 +123,7 @@ rule concat_or_link_input_molecule_stats:
 
 rule concat_barcode_clstrs:
     output:
-        clstr = "barcodes.clstr"
+        clstr = "barcodes.clstr.gz"
     input:
         dir = "inputs"
     run:

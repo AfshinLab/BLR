@@ -10,7 +10,7 @@ rule tellseq_link_barcodes:
 rule tellseq_barcodes_correction:
     """Correct barcodes"""
     output:
-        "barcodes.clstr"
+        temp("barcodes.clstr")
     input:
         "barcodes.fastq.gz"
     threads: 20 if config["tellseq_correction"] == "cluster" else 1
@@ -58,7 +58,7 @@ rule tag_tellseq_reads:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",
         uncorrected_barcodes="barcodes.fastq.gz",
-        corrected_barcodes="barcodes.clstr"
+        corrected_barcodes="barcodes.clstr.gz"
     log: "tagfastq.log"
     threads: 1
     shell:

@@ -96,7 +96,7 @@ def run_tagfastq(
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
     template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
-    with open(corrected_barcodes, "r") as reader:
+    with xopen(corrected_barcodes) as reader:
         corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
                                                             min_count=min_count)
 
