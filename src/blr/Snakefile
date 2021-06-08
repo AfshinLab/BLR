@@ -714,7 +714,7 @@ rule call_variants:
         bam = "{base}.calling.bam",
         bai = "{base}.calling.bam.bai",
     log: "{base}.variants.called.vcf.log"
-    threads: 2 # TODO single thread for freebayes. 
+    threads: 2 if config["variant_caller"] in {"gatk", "bcftools"} else 1
     run:
         heap_space = config["heap_space"] * threads
         commands = {
