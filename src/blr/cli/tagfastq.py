@@ -1,6 +1,8 @@
 """
-Tag FASTQ/FASTA headers with corrected barcodes from separate raw barcode FASTQ with matching
-headers and starcode CLSTR output file with corrected barcodes.
+Tag FASTQ headers with barcodes.
+
+Takes in separate raw barcode FASTQ with matching headers and CLSTR file with corrected barcodes. Header formatting
+depends on which mapper is requested.
 
 ABOUT:
 

@@ -1,5 +1,5 @@
 """
-Run the BLR pipeline
+Run the BLR pipeline.
 
 This is a small wrapper around Snakemake that sets some default parameters
 """

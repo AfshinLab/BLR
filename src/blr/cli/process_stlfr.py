@@ -1,6 +1,7 @@
 """
-Process stLFR reads with existing barcodes in header. Barcodes of type '21_325_341' where numbers correspond to
-barcode sequences are translated to IUPAC bases.
+Process stLFR reads with existing barcodes in header.
+
+Barcodes of type '21_325_341' where numbers correspond to barcode sequences are translated to IUPAC bases.
 """
 
 from contextlib import ExitStack
