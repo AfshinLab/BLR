@@ -40,8 +40,8 @@ blr config \
     --set max_molecules_per_bc 1 \
     --set heap_space 1 \
     --set chunk_size 10000 \
-    --set phasing_contigs null
-    --set skip_contigs null
+    --set phasing_contigs null \
+    --set contigs_skipped null
 
 cd outdir-bowtie2
 blr run
