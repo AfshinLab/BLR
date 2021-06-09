@@ -5,7 +5,7 @@ import pysam
 from dataclasses import dataclass
 import numpy as np
 import os
-from collections import namedtuple, Counter
+from collections import namedtuple, Counter, defaultdict
 import contextlib
 
 from blr import __version__
@@ -247,6 +247,60 @@ def chromosome_chunks(index_records, size=20_000_000):
         chunk_size += index_record.length
     if chunk:
         yield chunk
+
+
+def generate_chunks(reference, size=200_000_000, phasing_contigs_string=None, contigs_skipped=None):
+    """
+    Group contigs in reference into chunks
+    """
+    chunks = defaultdict(list)
+    if reference is not None:
+        try:
+            with open(reference + ".fai") as f:
+                reference_contigs = list(parse_fai(f))
+        except FileNotFoundError:
+            sys.exit(
+                f"The genome index file {reference}.fai is missing. Please create it with 'samtools faidx'"
+            )
+
+        # Define primary contigs which go through every processing step (possibly excluding the phasing steps).
+        primary_contigs = {c.name for c in reference_contigs}
+        if contigs_skipped is not None:
+            skip_pattern = re.compile(contigs_skipped)
+            primary_contigs = {c.name for c in reference_contigs if not re.match(skip_pattern, c.name)}
+
+        # Define phasing contigs as a subset of the primary contigs that also are phased.
+        phasing_contigs = primary_contigs.copy()
+        if phasing_contigs_string is not None:
+            phasing_contigs = set(phasing_contigs_string.split(","))
+            if not all(name in {c.name for c in reference_contigs} for name in phasing_contigs):
+                sys.exit(f"The contigs in phasing_contigs ({', '.join(phasing_contigs)}) does not match those found in"
+                         f"the reference {reference} ({', '.join(c.name for c in reference_contigs)}).")
+
+            if len(phasing_contigs-primary_contigs) > 0:
+                sys.exit("The phasing contigs should be a subset of the primary contigs. Currently the contig(s) "
+                         f"{','.join(phasing_contigs-primary_contigs)} are missing from the primary contigs. Adjust "
+                         "the 'contigs_skipped' pattern or contigs defined in 'phasing_contigs'.")
+
+        primary_not_phased = primary_contigs - phasing_contigs
+
+        # We want to make sure that contigs destined for different rules are not combined into the same chunks.
+        # Therefore we first chunk the phasing set then chunk the remaining contigs that are part of the primary set.
+        # Finally any remaining contigs are chunked.
+        chunks["phased"] = list(chromosome_chunks(filter(lambda x: x.name in phasing_contigs, reference_contigs),
+                                                  size=size))
+        chunks["primary"] = chunks["phased"].copy()
+        chunks["primary"] += list(chromosome_chunks(filter(lambda x: x.name in primary_not_phased, reference_contigs),
+                                                    size=size))
+        chunks["all"] = chunks["primary"].copy()
+        chunks["all"] += list(chromosome_chunks(filter(lambda x: x.name not in primary_contigs, reference_contigs),
+                                                size=size))
+
+        chunks["not_phased"] = [chunk for chunk in chunks["all"] if chunk[0].name not in phasing_contigs]
+        chunks["not_primary"] = [chunk for chunk in chunks["all"] if chunk[0].name not in primary_contigs]
+        chunks["primary_not_phased"] = [chunk for chunk in chunks["all"] if chunk[0].name in primary_not_phased]
+
+    return chunks
 
 
 def symlink_relpath(source, target):

@@ -7,7 +7,7 @@ import re
 import pandas as pd
 from snakemake.utils import validate
 
-from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
@@ -39,53 +39,11 @@ readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_ty
 
 
 # For parallelization, we split the initial mapped BAM file into non-overlapping "chunks",
-# which are computed from the FASTA index file
-chunks = defaultdict(list)
-if config["genome_reference"] is not None:
-    try:
-        with open(config["genome_reference"] + ".fai") as f:
-            reference_contigs = list(parse_fai(f))
-    except FileNotFoundError as e:
-        sys.exit(
-            f"The genome index file {config['genome_reference']} is missing. "
-            "Please create it with 'samtools faidx'"
-        )
-
-    # Define primary contigs which go through every processing step (possibly excluding the phasing steps). 
-    primary_contigs = {c.name for c in reference_contigs}
-    if config["contigs_skipped"] is not None:
-        skip_pattern = re.compile(config["contigs_skipped"])
-        primary_contigs = {c.name for c in reference_contigs if not re.match(skip_pattern, c.name)}
-
-    # Define phasing contigs as a subset of the primary contigs that also are phased.
-    phasing_contigs = primary_contigs.copy()
-    if config["phasing_contigs"] is not None:
-        phasing_contigs = set(config["phasing_contigs"].split(","))
-        if not all(name in {c.name for c in reference_contigs} for name in phasing_contigs):
-            sys.exit("The contigs in phasing_contigs does not match those found in the reference "
-                    f"{config['genome_reference']}.")
-        
-        if len(phasing_contigs-primary_contigs) > 0:
-            sys.exit("The phasing contigs should be a subset of the primary contigs. Currently the contig(s) "
-                     f"{','.join(phasing_contigs-primary_contigs)} are missing from the primary contigs. Adjust the "
-                      "'contigs_skipped' pattern or contigs defined in 'phasing_contigs'.")
-    
-    primary_not_phased = primary_contigs - phasing_contigs
-
-    # We want to make sure that contigs destined for different rules are not combined into the same chunks. Therefore
-    # we first chunk the phasing set then chunk the remaining contigs that are part of the primary set. Finally any 
-    # remaining contigs are chunked. 
-    chunks["phased"] = list(chromosome_chunks(filter(lambda x:x.name in phasing_contigs, reference_contigs), 
-                                              size=config["chunk_size"]))
-    chunks["primary"] = chunks["phased"].copy()
-    chunks["primary"] += list(chromosome_chunks(filter(lambda x:x.name in primary_not_phased, reference_contigs), 
-                                                size=config["chunk_size"]))
-    chunks["all"] = chunks["primary"].copy()
-    chunks["all"] += list(chromosome_chunks(filter(lambda x:x.name not in primary_contigs, reference_contigs), 
-                                            size=config["chunk_size"]))
-    
-    chunks["not_phased"] = [chunk for chunk in chunks["all"] if chunk[0].name not in phasing_contigs]
-    chunks["not_primary"] = [chunk for chunk in chunks["all"] if chunk[0].name not in primary_contigs]
+# which are computed from the FASTA index file. 
+chunks = generate_chunks(reference=config["genome_reference"], 
+                         size=config["chunk_size"], 
+                         phasing_contigs_string=config["phasing_contigs"],
+                         contigs_skipped=config["contigs_skipped"])
 
 
 def final_input(wildcards):
@@ -412,7 +370,6 @@ rule make_chunk_beds:
         expand("chunks/{chunk[0].name}.bed", chunk=chunks["all"])
     run:
         for chunk in chunks["all"]:
-            print(chunk)
             with open(f"chunks/{chunk[0].name}.bed", "w") as f:
                 for chromosome in chunk:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
@@ -904,13 +861,20 @@ rule merge_bams:
         "samtools cat -o {output.bam} {input.bams}"
 
 
+def vcfs_to_merge(wildcards):
+    input = [f"chunks/{chunk[0].name}.calling.phased.vcf" for chunk in chunks["phased"]]
+    filt = "filtered." if config["filter_variants"] else ""
+    input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["primary_not_phased"]])
+    return input
+
+
 rule concat_phased_vcfs:
     output:
         vcf = temp("final.phased.vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.calling.phased.vcf",  chunk=chunks["phased"])
+        vcfs_to_merge
     shell:
-        "bcftools concat -o {output.vcf} {input.vcf}"
+        "bcftools concat -o {output.vcf} {input}"
 
 
 rule concat_called_vcfs:
