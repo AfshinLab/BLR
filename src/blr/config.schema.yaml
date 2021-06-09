@@ -13,14 +13,6 @@ properties:
     type: string
     description: SAM tag to use for store original barcode sequence in bam file. 'RX' is 10x genomic default
     default: RX
-  phase_set_tag:
-    type: string
-    description: SAM tag to use for store phase set information, same as 10x default.
-    default: PS
-  haplotype_tag:
-    type: string
-    description: SAM tag to use for store haplotype information, same as 10x default.
-    default: HP
   read_mapper:
     type: string
     pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
