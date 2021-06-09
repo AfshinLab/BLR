@@ -61,7 +61,6 @@ phase_indels: true # Phase INDELs along with SNPs
 heap_space: 6 # Memory per core for heap space max limit
 max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
-coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
 min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
 naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling

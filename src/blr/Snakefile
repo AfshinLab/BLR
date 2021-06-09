@@ -918,13 +918,11 @@ rule mosdepth:
         bam = "final.bam",
         bai = "final.bam.bai"
     params:
-        prefix = "final",
-        bin_size = config["coverage_window_size"]
+        prefix = "final"
     threads: workflow.cores * 0.75
     shell:
         "mosdepth"
         " --threads {threads}"
-        " --by {params.bin_size}"
         " --no-per-base"
         " {params.prefix}"
         " {input.bam}"
