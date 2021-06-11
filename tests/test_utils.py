@@ -1,5 +1,5 @@
 from io import StringIO
-from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath
+from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks
 from pathlib import Path
 import os
 
@@ -32,6 +32,39 @@ def test_chromosome_chunks_exact():
     b = FastaIndexRecord("B", 500)
     chunks = list(chromosome_chunks([a, b], size=1000))
     assert chunks == [[a, b]]
+
+
+def test_generate_chunks(tmp_path):
+    fai = tmp_path / "ref.fasta.fai"
+    s = "A\t700\t0\t0\t0\n"   # Phased
+    s += "B\t400\t0\t0\t0\n"  # Phased
+    s += "C\t300\t0\t0\t0\n"  # Phased
+    s += "D\t200\t0\t0\t0\n"  # Primary
+    s += "E\t200\t0\t0\t0\n"  # Primary
+    s += "F\t100\t0\t0\t0\n"
+    with open(fai, "w") as f:
+        f.write(s)
+
+    all_contigs = {"A", "B", "C", "D", "E", "F"}
+    phasing_contigs = {"A", "B", "C"}
+    contigs_skipped = "F"
+    primary_contigs = all_contigs - set(contigs_skipped)
+
+    chunks = generate_chunks(str(tmp_path / "ref.fasta"),
+                             size=700,
+                             phasing_contigs_string=",".join(phasing_contigs),
+                             contigs_skipped=contigs_skipped)
+
+    all_chunks_contigs = {c.name for chunk in chunks["all"] for c in chunk}
+    phased_chunks_contigs = {c.name for chunk in chunks["phased"] for c in chunk}
+    primary_chunks_contigs = {c.name for chunk in chunks["primary"] for c in chunk}
+
+    assert all_chunks_contigs == all_contigs
+    assert primary_chunks_contigs == primary_contigs
+    assert phased_chunks_contigs == phasing_contigs
+
+    assert primary_chunks_contigs.issubset(all_chunks_contigs)
+    assert phased_chunks_contigs.issubset(primary_chunks_contigs)
 
 
 def test_symlink_relpath(tmpdir):

@@ -329,7 +329,9 @@ def test_init_from_workdir(tmp_path, workdir):
     change_config(
         new_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
-         ("chunk_size", "50000")]
+         ("chunk_size", "50000"),
+         ("phasing_contigs", "null"),
+         ("skip_contigs", "null")]
         )
     run(workdir=new_workdir, snakefile="run_anew.smk")
 
@@ -353,7 +355,9 @@ def test_merge_workdirs(tmp_path, workdir):
     change_config(
         merge_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
-         ("chunk_size", "50000")]
+         ("chunk_size", "50000"),
+         ("phasing_contigs", "null"),
+         ("skip_contigs", "null")]
         )
     run(workdir=merge_workdir, snakefile="run_anew.smk")
 

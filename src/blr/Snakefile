@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 from snakemake.utils import validate
 
-from blr.utils import ReadGroup, parse_fai, chromosome_chunks, symlink_relpath, parse_phaseblocks
+from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
@@ -17,7 +17,6 @@ validate(config, "config.schema.yaml")
 
 # Hidden config options
 config["ema_bins_dir"] = "fastq_bins"
-
 
 # Import rules for trimming fastq files.
 if config["library_type"] == "blr":
@@ -39,31 +38,11 @@ readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_ty
 
 
 # For parallelization, we split the initial mapped BAM file into non-overlapping "chunks",
-# which are computed from the FASTA index file
-chunks = defaultdict(list)
-if config["genome_reference"] is not None:
-    try:
-        with open(config["genome_reference"] + ".fai") as f:
-            chunks["all"] = list(chromosome_chunks(parse_fai(f), size=config["chunk_size"]))
-    except FileNotFoundError as e:
-        sys.exit(
-            f"The genome index file {config['genome_reference']} is missing. "
-            "Please create it with 'samtools faidx'"
-        )
-
-    # TODO Fix case where chunk contains mix of both contigs to be phased and not phased.
-
-    # Generate list of contigs to phase and check against all "chunks"
-    chunks["phased"] = chunks["all"]
-    if config["phasing_contigs"] is not None:
-        phasing_contigs = set(config["phasing_contigs"].split(","))
-
-        if not all(contig in {chunk[0].name for chunk in chunks["all"]} for contig in phasing_contigs):
-            sys.exit("The contigs in phasing_contigs does not match those found in the reference "
-                     f"{config['genome_reference']}.")
-
-        chunks["phased"] = [chunk for chunk in chunks["all"] if chunk[0].name in phasing_contigs]
-        chunks["not_phased"] = [chunk for chunk in chunks["all"] if chunk[0].name not in phasing_contigs]
+# which are computed from the FASTA index file. 
+chunks = generate_chunks(reference=config["genome_reference"], 
+                         size=config["chunk_size"], 
+                         phasing_contigs_string=config["phasing_contigs"],
+                         contigs_skipped=config["contigs_skipped"])
 
 
 def final_input(wildcards):
@@ -423,11 +402,11 @@ rule get_unmapped_reads:
 
 rule tagbam:
     output:
-        bam = temp("{base}.sorted.tag.bam")
+        bam = temp("{base}.tag.bam")
     input:
-        bam = "{base}.sorted.bam"
+        bam = "{base}.bam"
     log:
-        "{base}.sorted.tag.bam.log"
+        "{base}.tag.bam.log"
     shell:
         "blr tagbam "
         " -o {output.bam}"
@@ -439,10 +418,10 @@ rule tagbam:
 rule find_clusterdups:
     """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
     output:
-        pickle = temporary("{base}.sorted.tag.clusterdups.pickle")
+        pickle = temporary("{base}.clusterdups.pickle")
     input:
-        bam = "{base}.sorted.tag.bam"
-    log: "{base}.sorted.tag.clusterdups.pickle.log"
+        bam = "{base}.bam"
+    log: "{base}.clusterdups.pickle.log"
     shell:
         "blr find_clusterdups"
         " {input.bam}"
@@ -459,7 +438,7 @@ rule get_barcode_merges:
     output:
         merges = "final.barcode-merges.csv"
     input:
-        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks["all"])
+        pickle = expand("chunks/{chunk[0].name}.sorted.tag.clusterdups.pickle", chunk=chunks["primary"])
     run:
         uf = UnionFind()
         for filepath in input.pickle:
@@ -476,11 +455,11 @@ rule get_barcode_merges:
 rule merge_clusterdups:
     """Merge cluster duplicates defined as two separate cluster sharing """
     output:
-        bam = temp("{base}.sorted.tag.bcmerge.bam"),
+        bam = temp("{base}.bcmerge.bam"),
     input:
-        bam = "{base}.sorted.tag.bam",
+        bam = "{base}.bam",
         merges = "final.barcode-merges.csv"
-    log: "{base}.sorted.tag.bcmerge.bam.log"
+    log: "{base}.bcmerge.bam.log"
     shell:
         "blr merge_clusterdups"
         " {input.bam}"
@@ -492,11 +471,11 @@ rule merge_clusterdups:
 rule mark_duplicates:
     """Mark duplicates within barcodes clusters."""
     output:
-        bam = temp("{base}.sorted.tag.bcmerge.mkdup.bam"),
-        metrics = "{base}.sorted.tag.bcmerge.mkdup_metrics.txt"
+        bam = temp("{base}.mkdup.bam"),
+        metrics = "{base}.mkdup_metrics.txt"
     input:
-        bam = "{base}.sorted.tag.bcmerge.bam"
-    log: "{base}.sorted.tag.bcmerge.mkdup.bam.log"
+        bam = "{base}.bam"
+    log: "{base}.mkdup.bam.log"
     shell:
         "picard -Xmx{config[heap_space]}g MarkDuplicates"
         " INPUT={input.bam}"
@@ -517,11 +496,11 @@ rule mark_duplicates:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = temp("{base}.sorted.tag.bcmerge.mkdup.mol.bam"),
+        bam = temp("{base}.mol.bam"),
         stats = temp("{base}.molecule_stats.tsv")
     input:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.bam"
-    log: "{base}.sorted.tag.bcmerge.mkdup.mol.bam.log"
+        bam = "{base}.bam"
+    log: "{base}.mol.bam.log"
     shell:
         "blr buildmolecules"
         " {input.bam}"
@@ -539,7 +518,7 @@ rule concat_molecule_stats:
     output:
         tsv = "final.molecule_stats.tsv"
     input:
-        tsv = expand("chunks/{chunk[0].name}.molecule_stats.tsv", chunk=chunks["all"])
+        tsv = expand("chunks/{chunk[0].name}.sorted.tag.bcmerge.mkdup.molecule_stats.tsv", chunk=chunks["primary"])
     run:
         dfs = list()
         for nr, file in enumerate(input.tsv):
@@ -588,12 +567,12 @@ ruleorder: filterclusters > index_bam
 rule filterclusters:
     """Filter clusters based on number of molecules. Remove duplicates from BAM"""
     output:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        bai = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.bai"
+        bam = "{base}.filt.bam",
+        bai = "{base}.filt.bam.bai"
     input:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.bam",
+        bam = "{base}.bam",
         barcodes = "final.barcodes_filtered_out.tsv"
-    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam.log"
+    log: "{base}.filt.bam.log"
     shell:
         "blr filterclusters"
         " {input.bam}"
@@ -627,10 +606,10 @@ rule bam_to_fastq:
 rule recal_base_qual_scores:
     """Recalibrate base calling qualities"""
     output:
-        recal_table = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt"
+        recal_table = "{base}.bsqr_table.txt"
     input:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam"
-    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt.log"
+        bam = "{base}.bam"
+    log: "{base}.bsqr_table.txt.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g BaseRecalibrator"
         " -R {config[genome_reference]}"
@@ -643,11 +622,11 @@ rule recal_base_qual_scores:
 rule apply_recal:
     """Adjusts BAM with results from gatk base score recalibration"""
     output:
-        recal_bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam"
+        recal_bam = "{base}.BQSR.bam"
     input:
-        bam = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bam",
-        recal_table = "{base}.sorted.tag.bcmerge.mkdup.mol.filt.bsqr_table.txt"
-    log: "{base}.sorted.tag.bcmerge.mkdup.mol.filt.BQSR.bam.log"
+        bam = "{base}.bam",
+        recal_table = "{base}.bsqr_table.txt"
+    log: "{base}.BQSR.bam.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g ApplyBQSR"
         " --bqsr-recal-file {input.recal_table}"
@@ -881,7 +860,7 @@ rule merge_bams:
 def vcfs_to_merge(wildcards):
     input = [f"chunks/{chunk[0].name}.calling.phased.vcf" for chunk in chunks["phased"]]
     filt = "filtered." if config["filter_variants"] else ""
-    input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["not_phased"]])
+    input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["primary_not_phased"]])
     return input
 
 
@@ -889,16 +868,16 @@ rule concat_phased_vcfs:
     output:
         vcf = temp("final.phased.vcf")
     input:
-        vcf = vcfs_to_merge
+        vcfs_to_merge
     shell:
-        "bcftools concat -o {output.vcf} {input.vcf}"
+        "bcftools concat -o {output.vcf} {input}"
 
 
 rule concat_called_vcfs:
     output:
         vcf = temp("called.{filtered,(filtered.|)}vcf")
     input:
-        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks["all"])
+        vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks["primary"])
     shell:
         "bcftools concat -o {output.vcf} {input.vcf}"
 
@@ -1015,7 +994,7 @@ rule concat_lsv_calls:
     output:
         tsv = "final.naibr_sv_calls.tsv"
     input:
-        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks["all"])
+        tsv = expand("chunks/{chunk[0].name}.naibr_sv_calls.tsv", chunk=chunks["primary"])
     run:
         dfs = list()
         for file in input.tsv:
