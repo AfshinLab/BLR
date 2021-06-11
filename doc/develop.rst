@@ -50,3 +50,48 @@ This command will generate a file called ``blr_tagbam.prof`` with all the profil
 can then be used with Python's standard library module 
 `pstat <https://docs.python.org/3/library/profile.html#pstats.Stats>`_ 
 or for example `Snakeviz <https://jiffyclub.github.io/snakeviz/>`_ which allows interaction through the browser. 
+
+
+Snakemake Pipeline
+------------------
+
+Chunk handlig
+^^^^^^^^^^^^^^
+Chunks are the separate portions of the mapped bam that go through postprocessing. Each chunk might contain one or 
+more contigs. Chunks are handled in the Snakemake workflow through a dictionary called ``chunks`` which define contigs 
+as different sets. Each set contains a list of chunks which inturn contain lists of contigs composing each chunk. Chunks are referred to by 
+the first contig name. The three primary sets are accessed by the following keys:
+
+  ``'all'`` = handles every contig in reference
+
+  ``'primary'`` = handle every contig in reference that should go through certain post-processing steps (see below). Is a subset of 'all'.
+
+  ``'phased'`` = handles every contig in reference that is diploid i.e. can be phased. Is a subset of 'primary'.
+
+Several subsets of these are also defined for convinence.
+
+  ``'not_phased' = 'all' - 'phased'``
+
+  ``'not_primary' = 'all' - 'primary'``
+
+  ``'primary_not_phased' = 'primary' - 'phased'`` 
+
+These sets are used to control which contigs go through which processing steps. Which contigs are included are defined 
+through the ``phasing_contigs`` (for ``'phased'``) and ``contigs_skipped`` (for ``'not_primary'``) parameters in the 
+config file ``blr.yml``. 
+
+Processing steps run by ``'primary'`` contigs but not ``'all'``:
+
+- find_clusterdups
+- get_barcode_merges
+- concat_molecule_stats
+- get_barcodes_to_filter
+- call_variants
+- lsv_calling
+
+Processing steps run by ``'phased'`` contigs but not ``'primary'``:
+
+- hapcut2_extracthairs
+- hapcut2_linkfragments
+- hapcut2_phasing
+- build_config
