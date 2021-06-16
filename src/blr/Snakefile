@@ -44,6 +44,15 @@ chunks = generate_chunks(reference=config["genome_reference"],
                          phasing_contigs_string=config["phasing_contigs"],
                          contigs_skipped=config["contigs_skipped"])
 
+do_filtering = ".filt" if config["max_molecules_per_bc"] > 0 else ""
+
+
+def tempif(files, condition):
+    """Mark files as temporary if condition is meet"""
+    if condition:
+        return temp(files)
+    return files
+
 
 def final_input(wildcards):
     files = [
@@ -496,7 +505,7 @@ rule mark_duplicates:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = temp("{base}.mol.bam"),
+        bam = tempif("{base}.mol.bam", do_filtering),
         stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.bam"
@@ -539,11 +548,14 @@ rule get_barcodes_to_filter:
     input:
          tsv = "final.molecule_stats.tsv"
     run:
-        molecules = pd.read_csv(input.tsv, sep="\t")
-        molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
-        barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
-        with open(output.tsv, "w") as file:
-            print("\n".join(barcodes_to_filter), file=file)
+        if config["max_molecules_per_bc"] > 0:
+            molecules = pd.read_csv(input.tsv, sep="\t")
+            molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
+            barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
+            with open(output.tsv, "w") as file:
+                print("\n".join(barcodes_to_filter), file=file)
+        else:
+            shell("touch {output.tsv}")
 
 
 rule filter_molecule_stats:
@@ -556,9 +568,11 @@ rule filter_molecule_stats:
     run:
         molecules = pd.read_csv(input.tsv, sep="\t")
         barcodes_to_filter = pd.read_csv(input.barcodes, sep="\t", names=["Barcode"])
-        molecules_filtered = molecules[~molecules["Barcode"].isin(barcodes_to_filter["Barcode"])]
-        molecules_filtered.to_csv(output.tsv, sep="\t", index=False)
-
+        if len(barcodes_to_filter) > 0:
+            molecules_filtered = molecules[~molecules["Barcode"].isin(barcodes_to_filter["Barcode"])]
+            molecules_filtered.to_csv(output.tsv, sep="\t", index=False)
+        else:
+            symlink_relpath(input.tsv, output.tsv)
 
 # filterclusters creates a .bai file directly
 ruleorder: filterclusters > index_bam
@@ -637,7 +651,7 @@ rule apply_recal:
 
 
 def get_input_calling_bam(wildcards):
-    basename = f"{wildcards.base}.sorted.tag.bcmerge.mkdup.mol.filt"
+    basename = f"{wildcards.base}.sorted.tag.bcmerge.mkdup.mol{do_filtering}"
     if config["variant_caller"] == "gatk" and config["BQSR"]:
         basename += ".BQSR"
     return f"{basename}.bam"
