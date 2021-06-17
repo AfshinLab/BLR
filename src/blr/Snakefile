@@ -220,7 +220,7 @@ rule map_sort_ema_bins:
 rule map_sort_nobc:
     """Only for read_mapper=ema. Map and Sort non barcoded reads with BWA"""
     output:
-        bam = pipe("initialmapping_nobc.bam")
+        bam = temp("initialmapping_nobc.bam")
     input:
         r1_fastq = "trimmed.non_barcoded.1.fastq.gz",
         r2_fastq = "trimmed.non_barcoded.2.fastq.gz"
