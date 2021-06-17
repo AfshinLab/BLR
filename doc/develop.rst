@@ -27,14 +27,19 @@ option flags to use when specifying them in python scripts. The `10x Genomics ba
 <https://support.10xgenomics.com/genome-exome/software/pipelines/latest/output/bam>`_ is followed
 where that information is defined.
 
-..  csv-table::
-    :header: "SAM-tag", "Option flag", "Description"
-    :widths: 20, 20, 40
+======= ================== ==============================================================
+SAM-tag Option flag        Description
+======= ================== ==============================================================
+BX      -b, --barcode-tag  String for the error-corrected barcode                        
+MI      -m, --molecule-tag Integer index for an identified molecule for each barcode [*]_ 
+RX      -s, --sequence-tag String for the uncorrected barcode sequence                   
+HP                         Integer (1 or 2) for the read haplotype assigned
+PS                         Integer for the phase set (phaseblock) that the read is part of
+PC                         Integer for the quality of the phase set (phaseblock)
+======= ================== ==============================================================
 
-    "BX", "-b, --barcode-tag", "SAM tag for storing the error corrected barcode."
-    "MI", "-m, --molecule-tag", "SAM tag for storing molecule index specifying a identified molecule
-    for each barcode. Note that the index is only unique within the particular chunk."
-    "RX", "-s, --sequence-tag", "SAM tag for storing the uncorrected barcode sequence."
+.. [*] Note that the index is only unique within the particular chunk.
+
 
 Profiling
 ---------
