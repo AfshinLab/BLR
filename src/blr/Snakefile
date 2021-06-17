@@ -216,10 +216,11 @@ rule map_sort_ema_bins:
         " -o {output.bam}"
         " - 2> {log.sort}"
 
+
 rule map_sort_nobc:
     """Only for read_mapper=ema. Map and Sort non barcoded reads with BWA"""
     output:
-        bam = "initialmapping_nobc.bam"
+        bam = pipe("initialmapping_nobc.bam")
     input:
         r1_fastq = "trimmed.non_barcoded.1.fastq.gz",
         r2_fastq = "trimmed.non_barcoded.2.fastq.gz"
@@ -248,6 +249,29 @@ rule map_sort_nobc:
         " - 2> {log.sort}"
 
 
+rule mark_duplicates_nobc:
+    """Mark duplicates for non barcoded reads."""
+    output:
+        bam = temp("initialmapping_nobc.mkdup.bam"),
+        metrics = "initialmapping_nobc.mkdup_metrics.txt"
+    input:
+        bam = "initialmapping_nobc.bam"
+    log: "initialmapping_nobc.mkdup.bam.log"
+    shell:
+        "picard -Xmx{config[heap_space]}g MarkDuplicates"
+        " INPUT={input.bam}"
+        " OUTPUT={output.bam}"
+        " METRICS_FILE={output.metrics}"
+        # Running without `USE_JDK_DEFLATER=true` & `USE_JDK_INFLATER=true` causes fatal error. See issue: 
+        # https://github.com/broadinstitute/picard/issues/1329
+        " USE_JDK_DEFLATER=true"
+        " USE_JDK_INFLATER=true"
+        " ASSUME_SORTED=true"
+        " MAX_RECORDS_IN_RAM=250000"
+        " VALIDATION_STRINGENCY=LENIENT"
+        " &> {log}"
+
+
 if config["library_type"] in {"10x", "blr", "tellseq"} \
         and config["read_mapper"] == "ema" \
         and config["fastq_bins"] > 1:
@@ -264,7 +288,7 @@ rule merge_mapped_ema_bins:
     input:
         bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
                                    nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
-        bam_nobc = "initialmapping_nobc.bam"
+        bam_nobc = "initialmapping_nobc.mkdup.bam"
     threads: 20
     shell:
         "samtools merge -cp -@ {threads} {output.bam} {input.bams} {input.bam_nobc}"
