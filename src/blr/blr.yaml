@@ -17,6 +17,8 @@ phasing_contigs: chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,
 # Regex pattern for chromosomes to skip in primary analysis, should not contigs defined in phasing_contigs.
 contigs_skipped: ".*_random|chrM|chrUn_.*|hs37d5|chrEBV" 
 
+skip_bcmerge: false # Skip merging of overlapping barcodes.
+
 ##########################
 # Preprocessing settings #
 ##########################

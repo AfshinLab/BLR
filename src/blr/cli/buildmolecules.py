@@ -135,9 +135,9 @@ class Molecule:
     A Splitting of barcode read groups into several molecules based on mapping proximity. Equivalent to several
     molecules being barcoded simultaneously in the same emulsion droplet (meaning with the same barcode).
     """
-    molecule_counter = int()
+    molecule_counter = 0
 
-    def __init__(self, read, barcode):
+    def __init__(self, read, barcode, id=None):
         """
         :param read: pysam.AlignedSegment
         :param barcode: barcode ID
@@ -150,7 +150,7 @@ class Molecule:
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
-        self.id = Molecule.molecule_counter
+        self.id = Molecule.molecule_counter if id is None else id
 
     def length(self):
         return self.stop - self.start
@@ -333,8 +333,8 @@ def update_summary_from_molecule_stats(df, summary):
     summary["Mean fragment size (bp)"] = statistics.mean(df["Length"])
     summary["Median fragment size (bp)"] = statistics.median(df["Length"])
     summary["Longest fragment (bp)"] = max(df["Length"])
-    summary["Mean fragment bp covered by reads"] = statistics.mean(df["BpCovered"] / df["Length"])
-    summary["Median fragment bp covered by reads"] = statistics.median(df["BpCovered"] / df["Length"])
+    summary["Mean fragment read coverage (%)"] = statistics.mean(100 * df["BpCovered"] / df["Length"])
+    summary["Median fragment read coverage (%)"] = statistics.median(100 * df["BpCovered"] / df["Length"])
 
 
 def add_arguments(parser):

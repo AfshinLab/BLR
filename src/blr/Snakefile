@@ -44,7 +44,15 @@ chunks = generate_chunks(reference=config["genome_reference"],
                          phasing_contigs_string=config["phasing_contigs"],
                          contigs_skipped=config["contigs_skipped"])
 
-do_filtering = ".filt" if config["max_molecules_per_bc"] > 0 else ""
+skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
+              config["read_mapper"] == "lariat" 
+ 
+bcmerge = ".bcmerge" if not config["skip_bcmerge"] else ""
+
+# Duplicates and molecules are already marked by ema but need to re-marked if barcodes are merged.
+mkdup = ".mkdup" if config["read_mapper"] != "ema" or bcmerge else ""
+mol = ".mol" if config["read_mapper"] != "ema" or bcmerge else ""
+filt = ".filt" if config["max_molecules_per_bc"] > 0 else ""
 
 
 def tempif(files, condition):
@@ -404,13 +412,9 @@ rule make_chunk_beds:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
 
 
-skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
-              config["read_mapper"] == "lariat"
-
-
 rule split_into_chunks:
     output:
-        bam = temp("chunks/{chunk}.sorted.tag.bam") if skip_tagbam else pipe("chunks/{chunk}.sorted.bam")
+        bam = tempif("chunks/{chunk}.sorted.tag.bam", filt or bcmerge) if skip_tagbam else pipe("chunks/{chunk}.sorted.bam")
     input:
         bam = "initialmapping.bam",
         bai = "initialmapping.bam.bai",
@@ -435,7 +439,7 @@ rule get_unmapped_reads:
 
 rule tagbam:
     output:
-        bam = temp("{base}.tag.bam")
+        bam = tempif("{base}.tag.bam", filt or bcmerge)
     input:
         bam = "{base}.bam"
     log:
@@ -526,10 +530,16 @@ rule mark_duplicates:
         " &> {log}"
 
 
+if mol:
+    ruleorder: buildmolecules > readmolecules
+else:
+    ruleorder: readmolecules > buildmolecules
+
+
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = tempif("{base}.mol.bam", do_filtering),
+        bam = tempif("{base}.mol.bam", filt),
         stats = temp("{base}.molecule_stats.tsv")
     input:
         bam = "{base}.bam"
@@ -547,11 +557,29 @@ rule buildmolecules:
         " 2> {log}"
 
 
+rule readmolecules:
+    """Read molecule information for BAM with set molecule_tag"""
+    output:
+        stats = temp("{base}.molecule_stats.tsv")
+    input:
+        bam = "{base}.bam"
+    log: "{base}.molecule_stats.tsv.log"
+    shell:
+        "blr readmolecules"
+        " {input.bam}"
+        " --output-tsv {output.stats}"
+        " -m {config[molecule_tag]}"
+        " -b {config[cluster_tag]}"
+        " --min-mapq {config[min_mapq]}"
+        " --library-type {config[library_type]}"
+        " 2> {log}"
+
+
 rule concat_molecule_stats:
     output:
         tsv = "final.molecule_stats.tsv"
     input:
-        tsv = expand("chunks/{chunk[0].name}.sorted.tag.bcmerge.mkdup.molecule_stats.tsv", chunk=chunks["primary"])
+        tsv = [f"chunks/{chunk[0].name}.sorted.tag{bcmerge}{mkdup}.molecule_stats.tsv" for chunk in chunks["primary"]]
     run:
         dfs = list()
         for nr, file in enumerate(input.tsv):
@@ -565,6 +593,7 @@ rule concat_molecule_stats:
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
+
 
 rule get_barcodes_to_filter:
     output:
@@ -675,7 +704,7 @@ rule apply_recal:
 
 
 def get_input_calling_bam(wildcards):
-    basename = f"{wildcards.base}.sorted.tag.bcmerge.mkdup.mol{do_filtering}"
+    basename = f"{wildcards.base}.sorted.tag{bcmerge}{mkdup}{mol}{filt}"
     if config["variant_caller"] == "gatk" and config["BQSR"]:
         basename += ".BQSR"
     return f"{basename}.bam"

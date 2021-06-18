@@ -154,6 +154,10 @@ properties:
     type: ["string", "null"]
     description: Regex pattern for chromosomes to skip in primary analysis.
     default: null
+  skip_bcmerge:
+    type: boolean
+    default: false
+    description: Skip merging of overlapping barcodes
   naibr_path:
     type: ["string", "null"]
     description: Path to NAIBR folder
