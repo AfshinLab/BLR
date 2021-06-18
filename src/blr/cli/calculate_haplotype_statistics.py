@@ -88,19 +88,15 @@ def parse_vcf_phase(vcf_file, indels=False):
 
             ps = sample.get("PS")
 
-            if not prev_chrom:
-                prev_chrom = chrom
-
             # If new chromosome, add blocks to chrom_blocks and reset
             if chrom != prev_chrom and prev_chrom is not None:
                 chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
-                blocks = defaultdict(list)
+                blocks.clear()
                 snp_ix = 0
-                prev_chrom = chrom
 
+            prev_chrom = chrom
             pos = rec.start
-            if ps:
-                blocks[ps].append((snp_ix, pos, genotype[0], genotype[1], a0, a1, a2))
+            blocks[ps].append((snp_ix, pos, genotype[0], genotype[1], a0, a1, a2))
 
     # Final
     if prev_chrom is not None:
