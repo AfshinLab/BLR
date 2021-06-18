@@ -140,11 +140,10 @@ def count_consecutive_switches(t1_dict, hap, allele):
 
 # combine two dicts
 def merge_dicts(d1, d2):
-    d3 = d2.copy()
     for k, v in d1.items():
-        assert k not in d3
-        d3[k] = v
-    return d3
+        assert k not in d2
+        d2[k] = v
+    return d2
 
 
 # the "ErrorResult" abstraction and its overloaded addition operator are handy
