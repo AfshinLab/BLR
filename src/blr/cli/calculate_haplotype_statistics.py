@@ -390,8 +390,7 @@ def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, 
         AN50_spanlst.append(((last_pos - first_pos) * (float(blk_phased) / blk_total), blk_phased))
         N50_spanlst.append((last_pos - first_pos))
 
-        if blk_phased > maxblk_snps:
-            maxblk_snps = blk_phased
+        maxblk_snps = max(blk_phased, maxblk_snps)
 
     for t_block in t_blocklist:
         # convert t_block to a dict for convenience
