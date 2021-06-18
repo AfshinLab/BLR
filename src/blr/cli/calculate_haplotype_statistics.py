@@ -46,6 +46,7 @@ def main(args):
 def parse_vcf_phase(vcf_file, indels=False):
     blocks = defaultdict(list)
     chrom_blocks = defaultdict(list)
+    nr_het_var = 0
     with VariantFile(vcf_file) as open_vcf:
         if "PS" not in open_vcf.header.formats:
             logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase "
@@ -61,10 +62,6 @@ def parse_vcf_phase(vcf_file, indels=False):
         for rec in open_vcf.fetch():
             snp_ix += 1
             sample = rec.samples[sample_name]
-
-            if not sample.phased:
-                continue
-
             chrom = rec.chrom
             a0 = rec.ref
             a1, *a2 = rec.alts
@@ -84,13 +81,18 @@ def parse_vcf_phase(vcf_file, indels=False):
             if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
                 continue
 
+            nr_het_var += 1
+
+            if not sample.phased:
+                continue
+
             ps = sample.get("PS")
 
             if not prev_chrom:
                 prev_chrom = chrom
 
             # If new chromosome, add blocks to chrom_blocks and reset
-            if chrom != prev_chrom:
+            if chrom != prev_chrom and prev_chrom is not None:
                 chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
                 blocks = defaultdict(list)
                 snp_ix = 0
@@ -101,40 +103,10 @@ def parse_vcf_phase(vcf_file, indels=False):
                 blocks[ps].append((snp_ix, pos, genotype[0], genotype[1], a0, a1, a2))
 
     # Final
-    chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
+    if prev_chrom is not None:
+        chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
 
-    return chrom_blocks
-
-
-# given a VCF file, simply count the number of heterozygous SNPs present.
-def count_snps(vcf_file, ref_name, indels=False):
-    count = 0
-    with VariantFile(vcf_file) as open_vcf:
-        sample_name = open_vcf.header.samples[0]
-        for rec in open_vcf.fetch(ref_name):
-            sample = rec.samples[sample_name]
-
-            a0 = rec.ref
-            a1, *a2 = rec.alts
-
-            if len(a2) == 0:
-                a2 = None
-            elif len(a2) == 1:
-                a2 = a2[0]
-            else:
-                continue
-
-            genotype = sample["GT"]
-
-            if len(genotype) != 2 or len(set(genotype) - {0, 1, 2}) or genotype[0] == genotype[1]:
-                continue
-
-            if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
-                continue
-
-            count += 1
-
-    return count
+    return chrom_blocks, nr_het_var
 
 
 # this function is needed for "counting ahead" at beginning of blocks.
@@ -359,13 +331,13 @@ class ErrorResult:
 # compute haplotype error rates between 2 VCF files
 def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes):
     # parse and get stuff to compute error rates
-    chrom_a_blocklist = parse_vcf_phase(assembled_vcf_file, indels)
+    chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels)
     logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
 
     chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist)
 
     if reference_vcf_file:
-        chrom_t_blocklist = parse_vcf_phase(reference_vcf_file, indels)
+        chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
         if not input_chromosomes:
             chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist))
@@ -374,14 +346,13 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
     err = defaultdict(ErrorResult)
     for c in chromosomes:
-        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels)
+        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels,
+                                 num_snps=nr_het_var)
         err["all"] += err[c]
     return err, chromosomes
 
 
-def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, phase_set=None):
-    num_snps = count_snps(vcf_file, ref_name, indels)
-
+def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, phase_set=None, num_snps=None):
     switch_count = 0
     mismatch_count = 0
     poss_sw = 0  # count of possible positions for switch errors
