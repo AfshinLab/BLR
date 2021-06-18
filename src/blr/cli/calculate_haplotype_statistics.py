@@ -156,27 +156,26 @@ class ErrorResult:
                  poss_flat=None, phased_count=None, num_snps=None, maxblk_snps=None, AN50_spanlst=None,
                  N50_spanlst=None, switch_loc=None, mismatch_loc=None):
 
-        def create_dict(val, d_type):
+        def create_dict(val, d_type, ref):
             new_dict = defaultdict(d_type)
-            if ref and val:
+            if ref is not None and val is not None:
                 new_dict[ref] = val
             return new_dict
 
-        self.ref = set()  # set of references in this result (e.g. all chromosomes)
-        if ref:
-            self.ref.add(ref)
+        # set of references in this result (e.g. all chromosomes)
+        self.ref = {ref} if ref is not None else set()
 
         # these are things that can be summed for the same reference,
         # e.g. switch counts for separate blocks are additive
-        self.switch_count = create_dict(switch_count, int)
-        self.poss_sw = create_dict(poss_sw, int)
-        self.mismatch_count = create_dict(mismatch_count, int)
-        self.poss_mm = create_dict(poss_mm, int)
-        self.flat_count = create_dict(flat_count, int)
-        self.poss_flat = create_dict(poss_flat, int)
-        self.phased_count = create_dict(phased_count, int)
-        self.AN50_spanlst = create_dict(AN50_spanlst, list)
-        self.N50_spanlst = create_dict(N50_spanlst, list)
+        self.switch_count = create_dict(switch_count, int, ref)
+        self.poss_sw = create_dict(poss_sw, int, ref)
+        self.mismatch_count = create_dict(mismatch_count, int, ref)
+        self.poss_mm = create_dict(poss_mm, int, ref)
+        self.flat_count = create_dict(flat_count, int, ref)
+        self.poss_flat = create_dict(poss_flat, int, ref)
+        self.phased_count = create_dict(phased_count, int, ref)
+        self.AN50_spanlst = create_dict(AN50_spanlst, list, ref)
+        self.N50_spanlst = create_dict(N50_spanlst, list, ref)
 
         # these are things that are non-additive properties, because they
         # refer to the whole reference and would be double-counted
@@ -184,11 +183,11 @@ class ErrorResult:
         # but we can't just add "num_snps", their chromosomes' total snp counts
         # so we use dictionaries to make sure these properties aren't duplicated
 
-        self.num_snps = create_dict(num_snps, int)
-        self.maxblk_snps = create_dict(maxblk_snps, int)
+        self.num_snps = create_dict(num_snps, int, ref)
+        self.maxblk_snps = create_dict(maxblk_snps, int, ref)
 
-        self.switch_loc = create_dict(switch_loc, list)
-        self.mismatch_loc = create_dict(mismatch_loc, list)
+        self.switch_loc = create_dict(switch_loc, list, ref)
+        self.mismatch_loc = create_dict(mismatch_loc, list, ref)
 
     # combine two error rate results
     def __add__(self, other):
