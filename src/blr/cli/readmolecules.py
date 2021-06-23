@@ -1,6 +1,7 @@
 """
 Parse molecule information from BAM with BX and MI tags
 """
+from collections import OrderedDict
 import logging
 import sys
 
@@ -84,10 +85,21 @@ def parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         yield barcode, molecule_id, read
 
 
+class LastUpdatedOrderedDict(OrderedDict):
+    'Store items in the order the keys were last added'
+    # Taken from https://docs.python.org/3/library/collections.html#ordereddict-examples-and-recipes
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.move_to_end(key)
+
+
 def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_type, min_mapq, summary):
     stats = []
-    molecules = {}
+    molecules = LastUpdatedOrderedDict()
     prev_chrom = openbam.references[0]
+    MAX_DIST = 300_000
+    BUFFER_STEP = 1000
+    buffer_pos = MAX_DIST + BUFFER_STEP
     for barcode, molecule_id, read in parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         if not prev_chrom == read.reference_name:
             stats.extend([m.to_dict() for m in molecules.values() if m.number_of_reads >= min_reads])
@@ -99,6 +111,25 @@ def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_ty
             molecules[index] = Molecule(read, barcode, id=molecule_id)
         elif molecules[index].has_acceptable_overlap(read, library_type, summary):
             molecules[index].add_read(read)
+            molecules.move_to_end(index)
+
+        if read.reference_start > buffer_pos:
+            # Leap to current position if ahead of buffer
+            buffer_pos = max(read.reference_start, buffer_pos + BUFFER_STEP)
+
+            # Loop over molecules in order of last updated. Get indexes of molecules who are outside MAX_DIST
+            # from current position and stop looping if within this distance. Report molecule to stats if good.
+            molcules_to_report = []
+            for i, molecule in molecules.items():
+                if abs(molecule.stop - read.reference_start) > MAX_DIST:
+                    molcules_to_report.append(i)
+                else:
+                    break
+
+            for i in molcules_to_report:
+                molecule = molecules.pop(i)
+                if molecule.number_of_reads >= min_reads:
+                    stats.append(molecule.to_dict())
 
     stats.extend([m.to_dict() for m in molecules.values() if m.number_of_reads >= min_reads])
     return stats
