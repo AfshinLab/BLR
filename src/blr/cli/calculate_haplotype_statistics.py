@@ -337,13 +337,12 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
     err = defaultdict(ErrorResult)
     for c in chromosomes:
-        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], assembled_vcf_file, c, indels,
-                                 num_snps=nr_het_var)
+        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var)
         err["all"] += err[c]
     return err, chromosomes
 
 
-def error_rate_calc(t_blocklist, a_blocklist, vcf_file, ref_name, indels=False, phase_set=None, num_snps=None):
+def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=None, num_snps=None):
     switch_count = 0
     mismatch_count = 0
     poss_sw = 0  # count of possible positions for switch errors
