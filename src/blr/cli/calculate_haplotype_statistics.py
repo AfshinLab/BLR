@@ -260,27 +260,26 @@ class ErrorResult:
         return 0
 
     def get_AN50(self):
-        AN50 = 0
         AN50_spanlst = sum(self.AN50_spanlst.values(), [])
         AN50_spanlst.sort(reverse=True)
+        half_num_snps = self.get_num_snps() / 2.0
         phased_sum = 0
         for span, phased in AN50_spanlst:
             phased_sum += phased
-            if phased_sum > self.get_num_snps() / 2.0:
+            if phased_sum > half_num_snps:
                 AN50 = span
                 return AN50
 
     def get_N50_phased_portion(self):
-        N50 = 0
         N50_spanlst = sum(self.N50_spanlst.values(), [])
         N50_spanlst.sort(reverse=True)
 
-        L = sum(N50_spanlst)
+        half_L = sum(N50_spanlst) / 2.0
 
         total = 0
         for span in N50_spanlst:
             total += span
-            if total > L / 2.0:
+            if total > half_L:
                 N50 = span
                 return N50
 
