@@ -283,6 +283,7 @@ class ErrorResult:
             phased_sum += phased
             if phased_sum > half_num_snps:
                 return span
+        return 0
 
     def get_N50_phased_portion(self):
         N50_spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
@@ -295,6 +296,7 @@ class ErrorResult:
             total += span
             if total > half_L:
                 return span
+        return 0
 
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
@@ -351,6 +353,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
         chrom_t_blocklist = defaultdict(list)
 
     err = defaultdict(ErrorResult)
+    print(chromosomes, chrom_a_blocklist)
     for c in chromosomes:
         err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
         err["all"] += err[c]
