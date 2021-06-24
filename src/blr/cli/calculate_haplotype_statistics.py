@@ -267,8 +267,7 @@ class ErrorResult:
         for span, phased in AN50_spanlst:
             phased_sum += phased
             if phased_sum > half_num_snps:
-                AN50 = span
-                return AN50
+                return span
 
     def get_N50_phased_portion(self):
         N50_spanlst = sum(self.N50_spanlst.values(), [])
@@ -280,8 +279,7 @@ class ErrorResult:
         for span in N50_spanlst:
             total += span
             if total > half_L:
-                N50 = span
-                return N50
+                return span
 
     def get_median_block_length(self):
         spanlst = sum(self.N50_spanlst.values(), [])
