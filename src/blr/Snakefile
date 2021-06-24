@@ -1019,7 +1019,7 @@ rule collect_insert_size_metrics:
         hist = "final.insert_size_histogram.pdf",
     input:
         bam = "final.bam"
-    log: "inal.insert_size_metrics.txt.log"
+    log: "final.insert_size_metrics.txt.log"
     shell:
         "picard -Xmx{config[heap_space]}g CollectInsertSizeMetrics"
         " I={input.bam}"
