@@ -60,7 +60,7 @@ def chromosome_rank(chromosome: str):
 def parse_vcf_phase(vcf_file, indels=False):
     blocks = defaultdict(list)
     chrom_blocks = defaultdict(list)
-    nr_het_var = 0
+    nr_het_var = defaultdict(int)
     with VariantFile(vcf_file) as open_vcf:
         if "PS" not in open_vcf.header.formats:
             logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase "
@@ -95,7 +95,7 @@ def parse_vcf_phase(vcf_file, indels=False):
             if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
                 continue
 
-            nr_het_var += 1
+            nr_het_var[chrom] += 1
 
             if not sample.phased:
                 continue
@@ -150,10 +150,11 @@ def count_consecutive_switches(t1_dict, hap, allele):
 
 # combine two dicts
 def merge_dicts(d1, d2):
+    d3 = d2.copy()
     for k, v in d1.items():
-        assert k not in d2
-        d2[k] = v
-    return d2
+        assert k not in d3
+        d3[k] = v
+    return d3
 
 
 # the "ErrorResult" abstraction and its overloaded addition operator are handy
@@ -351,7 +352,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
     err = defaultdict(ErrorResult)
     for c in chromosomes:
-        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var)
+        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
         err["all"] += err[c]
     return err, chromosomes
 
