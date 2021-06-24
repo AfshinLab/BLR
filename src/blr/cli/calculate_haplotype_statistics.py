@@ -353,7 +353,6 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
         chrom_t_blocklist = defaultdict(list)
 
     err = defaultdict(ErrorResult)
-    print(chromosomes, chrom_a_blocklist)
     for c in chromosomes:
         err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
         err["all"] += err[c]
