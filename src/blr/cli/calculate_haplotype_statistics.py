@@ -260,7 +260,7 @@ class ErrorResult:
         return 0
 
     def get_AN50(self):
-        AN50_spanlst = sum(self.AN50_spanlst.values(), [])
+        AN50_spanlst = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
         AN50_spanlst.sort(reverse=True)
         half_num_snps = self.get_num_snps() / 2.0
         phased_sum = 0
@@ -270,7 +270,7 @@ class ErrorResult:
                 return span
 
     def get_N50_phased_portion(self):
-        N50_spanlst = sum(self.N50_spanlst.values(), [])
+        N50_spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         N50_spanlst.sort(reverse=True)
 
         half_L = sum(N50_spanlst) / 2.0
@@ -282,7 +282,7 @@ class ErrorResult:
                 return span
 
     def get_median_block_length(self):
-        spanlst = sum(self.N50_spanlst.values(), [])
+        spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return statistics.median(spanlst)
 
     def to_txt(self):
