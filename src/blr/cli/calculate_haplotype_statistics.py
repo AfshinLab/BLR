@@ -342,7 +342,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
     return err, chromosomes
 
 
-def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=None, num_snps=None):
+def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=None):
     switch_count = 0
     mismatch_count = 0
     poss_sw = 0  # count of possible positions for switch errors
@@ -366,7 +366,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=
 
         for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
 
-            if not (a1 == '-' or (phase_set and snp_ix not in phase_set)):
+            if a1 != '-':
 
                 phased_count += 1
 
@@ -413,7 +413,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=
                     y = a1 if a == 0 else a2
                     x = t1_dict[pos]
 
-                    if x == '-' or y == '-' or (phase_set and pos not in phase_set):
+                    if x == '-' or y == '-':
                         continue
 
                     if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
@@ -494,7 +494,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=
                 if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
                     continue
 
-                if t1_dict[pos] != '-' and a1 != '-' and (not phase_set or pos in phase_set):
+                if t1_dict[pos] != '-' and a1 != '-':
                     phased_known += 1
 
             # a switch error is only possible in blocks len 4 or greater
@@ -519,7 +519,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, phase_set=
                 if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
                     continue
 
-                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-' or (phase_set and pos not in phase_set):
+                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
                     continue
 
                 if a1 != t1_dict[pos]:
