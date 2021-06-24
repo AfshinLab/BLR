@@ -43,6 +43,20 @@ def main(args):
     logger.info("Finished")
 
 
+def chromosome_rank(chromosome: str):
+    chromosome = chromosome.replace("chr", "")
+    if chromosome.isnumeric():
+        return (0, int(chromosome))
+    elif chromosome == "X":
+        return (0, 23)
+    elif chromosome == "Y":
+        return (0, 24)
+    elif chromosome == "M":
+        return (0, 25)
+    else:
+        return (1, chromosome)
+
+
 def parse_vcf_phase(vcf_file, indels=False):
     blocks = defaultdict(list)
     chrom_blocks = defaultdict(list)
@@ -325,13 +339,13 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
     chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels)
     logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
 
-    chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist)
+    chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist, key=chromosome_rank)
 
     if reference_vcf_file:
         chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
         if not input_chromosomes:
-            chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist))
+            chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist), key=chromosome_rank)
     else:
         chrom_t_blocklist = defaultdict(list)
 
