@@ -5,7 +5,7 @@ from collections import OrderedDict
 import logging
 
 from multiqc import config
-from multiqc.plots import table
+from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 
 # Initialise the main MultiQC logger
@@ -28,9 +28,14 @@ class MultiqcModule(BaseMultiqcModule):
             anchor="hapcut2",
             info=" is a package for haplotype assembly from sequencing data."
         )
-        n_phasing_stats_reports = self.gather_phasing_stats()
+        n_phasing_stats_reports, n_phasing_stats_reports_per_chrom = self.gather_phasing_stats()
         if n_phasing_stats_reports > 0:
             log.info("Found {} phasing stats reports".format(n_phasing_stats_reports))
+
+        if n_phasing_stats_reports_per_chrom > 0:
+            log.info("Found {} phasing stats reports with chromsome breakdown".format(
+                n_phasing_stats_reports_per_chrom
+                ))
 
     def gather_phasing_stats(self):
         # Create headers
@@ -93,6 +98,8 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Find and load any input files for this module
         phasing_data = dict()
+        phasing_data_per_chrom = [{} for h in headers]
+        param_to_index = {param: index for index, param in enumerate(headers)}
         for f in self.find_log_files('hapcut2/phasing_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phasing_stats", "")
 
@@ -102,9 +109,15 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_data_source(f)
 
             phasing_data[sample_name] = dict()
+            for d in phasing_data_per_chrom:
+                d[sample_name] = {}
 
-            for parameter, value in self.parse_phasing_stats(f["f"]):
-                phasing_data[sample_name][parameter] = value
+            for chrom, parameter, value in self.parse_phasing_stats(f["f"]):
+                if chrom == "All":
+                    phasing_data[sample_name][parameter] = value
+                else:
+                    index = param_to_index[parameter]
+                    phasing_data_per_chrom[index][sample_name][chrom] = value
 
         # Filter out samples to ignore
         phasing_data = self.ignore_samples(phasing_data)
@@ -150,15 +163,45 @@ class MultiqcModule(BaseMultiqcModule):
 
         self.general_stats_addcols(general_stats_data, general_stats_header)
 
-        return len(phasing_data)
+        # Return if not any per-chrom statistics
+        nr_stats_per_chrom = sum(data != {} for sample, data in phasing_data_per_chrom[0].items())
+        if nr_stats_per_chrom == 0:
+            return len(phasing_data), 0
+
+        # TODO Write data per chrom to file
+
+        pconfig_per_chrom = {
+            'id': 'hapcut2_phasing_stats_per_chrom_graph',
+            'title': "HapCUT2: Phasing stats per chromosome",
+            'xlab': "Chromosome",
+            'categories': True,
+            'data_labels': [
+                {'name': label["title"], 'ylab': label["title"]} for label in headers.values()
+            ]
+        }
+        plot_html = linegraph.plot(phasing_data_per_chrom, pconfig_per_chrom)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Phasing stats per chromsomes",
+            description="Breakdown of phasing stats for each chromosome.",
+            plot=plot_html
+        )
+
+        return len(phasing_data), nr_stats_per_chrom
 
     @staticmethod
     def parse_phasing_stats(file):
         """
-        This generator yields key-value pairs for the data from the line following `---` until the next line
-        staring with `===`.
+        This generator yields chromsome-key-value tuples for the data. "All" is used for the total.
         """
+        chrom = "All"
         for line in file:
+            # Search for lines of fromat `---- chrA -----` to get chromsome, else use default.
+            if line.startswith("-"):
+                chrom = line.split(" ", maxsplit=2)[1]
+                continue
+
             # Collect parameter and value
             parameter, value = line.strip().split(":", maxsplit=1)
             value = float(value.strip())
@@ -167,4 +210,4 @@ class MultiqcModule(BaseMultiqcModule):
             if parameter in ["N50", "AN50"]:
                 value /= 1_000_000
 
-            yield parameter, value
+            yield chrom, parameter, value

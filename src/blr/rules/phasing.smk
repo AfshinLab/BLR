@@ -96,6 +96,7 @@ rule hapcut2_stats:
         " -v1 {input.vcf1}"
         " {params.vcf2}"
         " {params.indels}"
+        " --per-chrom"
         " -o {output.stats} 2> {log}"
 
 
