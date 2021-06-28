@@ -407,8 +407,6 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
         chroms_in_t = [chrom for chrom, blocks in chrom_t_blocklist.items() if len(blocks) > 0]
         chroms_in_t.sort(key=chromosome_rank)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chroms_in_t)}")
-        if not input_chromosomes:
-            chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist), key=chromosome_rank)
     else:
         chrom_t_blocklist = defaultdict(list)
 
