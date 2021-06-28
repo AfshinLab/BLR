@@ -76,7 +76,6 @@ def parse_vcf_phase(vcf_file, indels=False):
         for rec in open_vcf.fetch():
             snp_ix += 1
             sample = rec.samples[sample_name]
-            chrom = rec.chrom
             a0 = rec.ref
             a1, *a2 = rec.alts
 
@@ -95,7 +94,7 @@ def parse_vcf_phase(vcf_file, indels=False):
             if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
                 continue
 
-            nr_het_var[chrom] += 1
+            nr_het_var[rec.chrom] += 1
 
             if not sample.phased:
                 continue
@@ -103,14 +102,13 @@ def parse_vcf_phase(vcf_file, indels=False):
             ps = sample.get("PS")
 
             # If new chromosome, add blocks to chrom_blocks and reset
-            if chrom != prev_chrom and prev_chrom is not None:
+            if rec.chrom != prev_chrom and prev_chrom is not None:
                 chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
                 blocks.clear()
                 snp_ix = 0
 
-            prev_chrom = chrom
-            pos = rec.start
-            blocks[ps].append((snp_ix, pos, genotype[0], genotype[1], a0, a1, a2))
+            prev_chrom = rec.chrom
+            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
 
     # Final
     if prev_chrom is not None:
