@@ -11,7 +11,10 @@ https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_st
 # Email  : pedge@eng.ucsd.edu
 
 from collections import defaultdict
+from functools import partial
 import logging
+from multiprocessing import Pool
+import os
 import statistics
 import sys
 
@@ -29,7 +32,7 @@ def main(args):
 
     chromosomes = args.chromosomes.split(",") if args.chromosomes else None
 
-    stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes)
+    stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes, args.threads)
 
     with smart_open(args.output) as file:
         if args.per_chrom:
@@ -57,10 +60,88 @@ def chromosome_rank(chromosome: str):
         return (1, chromosome)
 
 
-def parse_vcf_phase(vcf_file, indels=False):
+def parse_variants(vcf, sample_name, indels=False):
+    """Generator for heterozygous varinats from VCF records"""
+    prev_chrom = None
+    snp_ix = 0
+    for rec in vcf:
+        snp_ix += 1
+        sample = rec.samples[sample_name]
+        a0 = rec.ref
+        a1, *a2 = rec.alts
+
+        if len(a2) == 0:
+            a2 = None
+        elif len(a2) == 1:
+            a2 = a2[0]
+        else:
+            continue
+
+        genotype = sample["GT"]
+
+        if len(genotype) != 2 or len(set(genotype) - {0, 1, 2}) or genotype[0] == genotype[1]:
+            continue
+
+        if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
+            continue
+
+        if rec.chrom != prev_chrom and prev_chrom is not None:
+            snp_ix = 0
+
+        prev_chrom = rec.chrom
+
+        yield snp_ix, sample, genotype, rec, a0, a1, a2
+
+
+def get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=False):
+    """Get chromsome phaseblocks from indexed VCF"""
+    blocks = defaultdict(list)
+    nr_het_var = 0
+    with VariantFile(vcf_file) as vcf:
+        for snp_ix, sample, genotype, rec, a0, a1, a2 in parse_variants(vcf.fetch(chromosome), sample_name, indels):
+            nr_het_var += 1
+
+            if not sample.phased:
+                continue
+
+            ps = sample.get("PS")
+
+            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
+
+    blocklist = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
+    return chromosome, blocklist, nr_het_var
+
+
+def get_phaseblocks(vcf_file, sample_name, indels=False):
+    """Get phaseblocks for all chromosomes from non-indexed VCF"""
     blocks = defaultdict(list)
     chrom_blocks = defaultdict(list)
-    nr_het_var = defaultdict(int)
+    nr_het_var_per_chrom = defaultdict(int)
+    prev_chrom = None
+    with VariantFile(vcf_file) as vcf:
+        for snp_ix, sample, genotype, rec, a0, a1, a2 in parse_variants(vcf, sample_name, indels):
+            nr_het_var_per_chrom[rec.chrom] += 1
+
+            if rec.chrom != prev_chrom and prev_chrom is not None:
+                chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
+                blocks.clear()
+
+            prev_chrom = rec.chrom
+
+            if not sample.phased:
+                continue
+
+            ps = sample.get("PS")
+
+            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
+
+    if blocks:
+        chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
+
+    return chrom_blocks, nr_het_var_per_chrom
+
+
+def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
     with VariantFile(vcf_file) as open_vcf:
         if "PS" not in open_vcf.header.formats:
             logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase "
@@ -71,50 +152,27 @@ def parse_vcf_phase(vcf_file, indels=False):
 
         sample_name = open_vcf.header.samples[0]
 
-        prev_chrom = None
-        snp_ix = 0
-        for rec in open_vcf.fetch():
-            snp_ix += 1
-            sample = rec.samples[sample_name]
-            a0 = rec.ref
-            a1, *a2 = rec.alts
+        # Get blocks for all chromosomes if not specified
+        chromosomes = chromosomes if chromosomes else open_vcf.header.contigs
 
-            if len(a2) == 0:
-                a2 = None
-            elif len(a2) == 1:
-                a2 = a2[0]
-            else:
-                continue
+    # Don't run in parallel if VCF not indexed
+    is_indexed = os.path.isfile(vcf_file + ".tbi") or os.path.isfile(vcf_file + ".cbi")
+    if not is_indexed and threads > 1:
+        logger.warning(f"Cannot run multiple threads on non-indexed VCF '{vcf_file}'.")
+        threads = 1
 
-            genotype = sample["GT"]
+    if threads > 1:
+        chrom_blocks = defaultdict(list)
+        nr_het_var_per_chrom = defaultdict(int)
+        func = partial(get_phaseblocks_chrom, vcf_file=vcf_file, sample_name=sample_name, indels=indels)
+        with Pool(threads) as workers:
+            for chromosome, blocks, nr_het_var in workers.imap_unordered(func, chromosomes):
+                chrom_blocks[chromosome] = blocks
+                nr_het_var_per_chrom[chromosome] = nr_het_var
+    else:
+        chrom_blocks, nr_het_var_per_chrom = get_phaseblocks(vcf_file, sample_name=sample_name, indels=indels)
 
-            if len(genotype) != 2 or len(set(genotype) - {0, 1, 2}) or genotype[0] == genotype[1]:
-                continue
-
-            if not indels and any(len([a0, a1, a2][g]) != 1 for g in genotype):
-                continue
-
-            nr_het_var[rec.chrom] += 1
-
-            if not sample.phased:
-                continue
-
-            ps = sample.get("PS")
-
-            # If new chromosome, add blocks to chrom_blocks and reset
-            if rec.chrom != prev_chrom and prev_chrom is not None:
-                chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
-                blocks.clear()
-                snp_ix = 0
-
-            prev_chrom = rec.chrom
-            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
-
-    # Final
-    if prev_chrom is not None:
-        chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
-
-    return chrom_blocks, nr_het_var
+    return chrom_blocks, nr_het_var_per_chrom
 
 
 # this function is needed for "counting ahead" at beginning of blocks.
@@ -335,15 +393,15 @@ class ErrorResult:
 
 
 # compute haplotype error rates between 2 VCF files
-def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes):
+def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes, threads):
     # parse and get stuff to compute error rates
-    chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels)
+    chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels, input_chromosomes, threads)
     logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
 
     chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist, key=chromosome_rank)
 
     if reference_vcf_file:
-        chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels)
+        chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels, chromosomes, threads)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
         if not input_chromosomes:
             chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist), key=chromosome_rank)
@@ -591,3 +649,6 @@ def add_arguments(parser):
                         help="Name(s) of chromsome(s) to calculate stats for. Multiple chromsomes are joined through"
                              " commas. Default: use all chromosomes")
     parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")
+    parser.add_argument("-t", "--threads", type=int, default=1,
+                        help="Number of threads for reading VCFs. Multithread parsing requires indexed VCFs (.cbi or "
+                             ".tbi). Default: %(default)s.")
