@@ -396,13 +396,17 @@ class ErrorResult:
 def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes, threads):
     # parse and get stuff to compute error rates
     chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels, input_chromosomes, threads)
-    logger.debug(f"Chromsomes in 'vcf1': {','.join(chrom_a_blocklist)}")
+    chroms_in_a = [chrom for chrom, blocks in chrom_a_blocklist.items() if len(blocks) > 0]
+    chroms_in_a.sort(key=chromosome_rank)
+    logger.debug(f"Chromsomes in 'vcf1': {','.join(chroms_in_a)}")
 
-    chromosomes = input_chromosomes if input_chromosomes else sorted(chrom_a_blocklist, key=chromosome_rank)
+    chromosomes = input_chromosomes if input_chromosomes else chroms_in_a
 
     if reference_vcf_file:
         chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels, chromosomes, threads)
-        logger.debug(f"Chromsomes in 'vcf2': {','.join(chrom_t_blocklist)}")
+        chroms_in_t = [chrom for chrom, blocks in chrom_t_blocklist.items() if len(blocks) > 0]
+        chroms_in_t.sort(key=chromosome_rank)
+        logger.debug(f"Chromsomes in 'vcf2': {','.join(chroms_in_t)}")
         if not input_chromosomes:
             chromosomes = sorted(set(chromosomes) | set(chrom_t_blocklist), key=chromosome_rank)
     else:
