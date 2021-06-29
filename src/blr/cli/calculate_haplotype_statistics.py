@@ -306,7 +306,7 @@ class ErrorResult:
         poss_sw = self.get_poss_sw()
         if poss_sw > 0:
             return float(switch_count) / poss_sw
-        return 0
+        return "n/a"
 
     def get_mismatch_rate(self):
         mismatch_count = self.get_mismatch_count()
@@ -314,21 +314,21 @@ class ErrorResult:
 
         if poss_mm > 0:
             return float(mismatch_count) / poss_mm
-        return 0
+        return "n/a"
 
     def get_switch_mismatch_rate(self):
         poss_mm = self.get_poss_mm()
 
         if poss_mm > 0:
             return float(self.get_switch_count() + self.get_mismatch_count()) / poss_mm
-        return 0
+        return "n/a"
 
     def get_flat_error_rate(self):
         flat_count = self.get_flat_count()
         poss_flat = self.get_poss_flat()
         if poss_flat > 0:
             return float(flat_count) / poss_flat
-        return 0
+        return "n/a"
 
     def get_AN50(self):
         AN50_spanlst = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
@@ -339,7 +339,7 @@ class ErrorResult:
             phased_sum += phased
             if phased_sum > half_num_snps:
                 return span
-        return 0
+        return "n/a"
 
     def get_N50_phased_portion(self):
         N50_spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
@@ -352,7 +352,7 @@ class ErrorResult:
             total += span
             if total > half_L:
                 return span
-        return 0
+        return "n/a"
 
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]

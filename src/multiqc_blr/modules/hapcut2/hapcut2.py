@@ -123,8 +123,8 @@ class MultiqcModule(BaseMultiqcModule):
         phasing_data = self.ignore_samples(phasing_data)
 
         # Skip if no data
-        if not phasing_data:
-            return 0
+        if not phasing_data.values():
+            return 0, 0
 
         # Write parsed report data to a file
         self.write_data_file(phasing_data, "hapcut2_phasing_stats")
@@ -175,6 +175,8 @@ class MultiqcModule(BaseMultiqcModule):
             'title': "HapCUT2: Phasing stats per chromosome",
             'xlab': "Chromosome",
             'categories': True,
+            'tt_decimals': 4,
+            "ymin": 0,
             'data_labels': [
                 {'name': label["title"], 'ylab': label["title"]} for label in headers.values()
             ]
@@ -204,6 +206,10 @@ class MultiqcModule(BaseMultiqcModule):
 
             # Collect parameter and value
             parameter, value = line.strip().split(":", maxsplit=1)
+
+            if value.strip() == "n/a":
+                continue
+
             value = float(value.strip())
 
             # Make N50 and AN50 stats per Mbp instead of bp.
