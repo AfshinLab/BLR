@@ -395,6 +395,7 @@ class ErrorResult:
 # compute haplotype error rates between 2 VCF files
 def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chromosomes, threads):
     # parse and get stuff to compute error rates
+    logger.info(f"Parsing {assembled_vcf_file}")
     chrom_a_blocklist, nr_het_var = parse_vcf_phase(assembled_vcf_file, indels, input_chromosomes, threads)
     chroms_in_a = [chrom for chrom, blocks in chrom_a_blocklist.items() if len(blocks) > 0]
     chroms_in_a.sort(key=chromosome_rank)
@@ -403,6 +404,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
     chromosomes = input_chromosomes if input_chromosomes else chroms_in_a
 
     if reference_vcf_file:
+        logger.info(f"Parsing {reference_vcf_file}")
         chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels, chromosomes, threads)
         chroms_in_t = [chrom for chrom, blocks in chrom_t_blocklist.items() if len(blocks) > 0]
         chroms_in_t.sort(key=chromosome_rank)
@@ -410,8 +412,10 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
     else:
         chrom_t_blocklist = defaultdict(list)
 
+    logger.info("Computing statistics")
     err = defaultdict(ErrorResult)
     for c in chromosomes:
+        logger.debug(f"Current chromsome = {c}")
         err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
         err["all"] += err[c]
     return err, chromosomes
