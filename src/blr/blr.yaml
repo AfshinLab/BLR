@@ -52,7 +52,7 @@ fastq_bins: 100
 # Phasing settings #
 ####################
 reference_variants: # Path to reference variants used for phasing, if None will call variants with `variant_caller`
-phasing_ground_truth: # Path to phased variants used for calculating stats
+phasing_ground_truth: # Phased VCF (preferably indexed) used as ground truth for statistics.
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
 filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
 phase_indels: true # Phase INDELs along with SNPs
