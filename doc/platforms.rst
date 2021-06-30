@@ -70,4 +70,8 @@ Technology based `Amini et al. 2014 <https://doi.org/10.1038/ng.3119>`_ and the 
 
 Haplotagging
 ------------
-Haplotagging is based on the technology presented in `Meier et al. 2020 <https://doi.org/10.1101/2020.05.25.113688>`_. The technology uses barcoded beads covered with Tn5 tagmentase to cut and barcode individual long DNA fragments in solution. The beads are coated in a combination of two barcodes AB and CB that become inserted at the 5' and 3' of each cut fragment. Barcodes are combinatorialy generated with about 85 million possible combinations in total. This platform is not yet supported as it is not yet published and no public data currently exists.
+Haplotagging is based on the technology presented in `Meier et al. 2021 <https://doi.org/10.1073/pnas.2015005118>`_. The technology uses barcoded beads
+covered with Tn5 tagmentase to cut and barcode individual long DNA fragments in solution. The beads are coated in a combination of two barcodes AB and CB
+that become inserted at the 5' and 3' of each cut fragment. Barcodes are combinatorialy generated with about 85 million possible combinations in total. This
+platform is not yet supported as no public data currently exists. Preprocessing is available through `evolgenomics/haplotagging <https://github
+.com/evolgenomics/haplotagging>`_.
