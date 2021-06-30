@@ -1,7 +1,6 @@
 """
 Parse molecule information from BAM with BX and MI tags
 """
-from collections import OrderedDict
 import logging
 import sys
 
@@ -9,7 +8,7 @@ import pandas as pd
 import pysam
 
 from blr.cli.buildmolecules import Molecule, update_summary_from_molecule_stats
-from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES
+from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +82,6 @@ def parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         summary[f"Reads with {molecule_tag} tag"] += 1
 
         yield barcode, molecule_id, read
-
-
-class LastUpdatedOrderedDict(OrderedDict):
-    'Store items in the order the keys were last added'
-    # Taken from https://docs.python.org/3/library/collections.html#ordereddict-examples-and-recipes
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        self.move_to_end(key)
 
 
 def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_type, min_mapq, summary):

@@ -5,7 +5,7 @@ import pysam
 from dataclasses import dataclass
 import numpy as np
 import os
-from collections import namedtuple, Counter, defaultdict
+from collections import namedtuple, Counter, defaultdict, OrderedDict
 import contextlib
 
 from blr import __version__
@@ -350,3 +350,11 @@ def smart_open(filename=None):
     finally:
         if fh is not sys.stdout:
             fh.close()
+
+
+class LastUpdatedOrderedDict(OrderedDict):
+    """Store items in the order the keys were last added"""
+    # Taken from https://docs.python.org/3/library/collections.html#ordereddict-examples-and-recipes
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.move_to_end(key)

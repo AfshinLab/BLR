@@ -5,14 +5,14 @@ A molecule is defined by having 1) minimum --threshold reads and including all r
 a maximum distance of --window between any given reads.
 """
 
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 import logging
 import statistics
 
 import pandas as pd
 import pysam
 
-from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
+from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -112,18 +112,20 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type
 
     all_molecules = AllMolecules(min_reads=min_reads, window=window, library_type=library_type)
 
-    prev_chrom = pysam_openfile.references[0]
+    prev_chrom = None
+    prev_window_stop = window
     logger.info("Dividing barcodes into molecules")
-    for nr, (barcode, read) in enumerate(parse_reads(pysam_openfile, barcode_tag, min_mapq, summary)):
+    for barcode, read in parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
         # Commit molecules between chromosomes
-        if not prev_chrom == read.reference_name:
+        if prev_chrom != read.reference_name:
             all_molecules.report_and_remove_all()
             prev_chrom = read.reference_name
 
         all_molecules.assign_read(read, barcode, summary)
 
-        if nr % 5000 == 0:
+        if read.reference_start > prev_window_stop:
             all_molecules.update_cache(read.reference_start)
+            prev_window_stop = read.reference_start + window
 
     all_molecules.report_and_remove_all()
 
@@ -222,7 +224,7 @@ class AllMolecules:
         self.library_type = library_type
 
         # Molecule tracking system
-        self.molecule_cache = OrderedDict()
+        self.molecule_cache = LastUpdatedOrderedDict()
 
         # Dict for finding mols belonging to the same BC
         self.bc_to_mol = defaultdict(list)
