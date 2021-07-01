@@ -66,7 +66,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         headers['phased count'] = {
             'title': 'Phased count',
-            'description': 'count of total SNVs phased in the test haplotype',
+            'description': 'count of total variants phased',
             'format': '{:,.0f}',
             'scale': 'Blues',
             'placement': 3
@@ -89,8 +89,8 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['num snps max blk'] = {
-            'title': 'SNPs in max blk',
-            'description': 'the fraction of SNVs in the largest (most variants phased) block',
+            'title': 'Variants in max blk',
+            'description': 'the fraction of variants in the largest (most variants phased) block',
             'format': '{:,.0f}',
             'scale': 'Blues',
             'placement': 5
@@ -140,9 +140,45 @@ class MultiqcModule(BaseMultiqcModule):
         # Add a report section with table
         self.add_section(
             name="HapCUT2 phasing stats",
-            description="Statistics table",
+            description="Table of multiple metrics relevant for phased variants.",
             helptext='''
-            Description of statistics (taken from https://github.com/vibansal/HapCUT2/tree/master/utilities):
+            # Description of statistics
+            
+            **Switch rate**
+            
+            A *switch error* is defined as a position where the phase is switched from that of the previous 
+            heterozygous variant, when compared to the reference haplotype. Two switch errors in a row are instead 
+            counted as a *mismatch error*, a single position where the phase differs from the reference haplotype. 
+            The rate here refers to the fraction of switch errors and the the possible positions for switch error 
+            (the first and last variant in each phaseblock is excluded as wells as phaseblocks with less than 4 
+            variants). Sometimes referred to as *long switch error rate*.      
+            
+            **Mismatch rate**
+            
+            The fraction of mismatch errors (see Switch rate for distiction to switch errors) to all possible 
+            positions where mismatch errors can occur (any position in a phaseblock longer than one variant is 
+            considered valid). Sometimes referred to as *short switch error rate*. 
+            
+            **Flat rate**
+            
+            A *flat error* corresponds to the minimum hamming distance  between the two assembled haplotypes (for a 
+            given block) and the reference haplotype. This is an alternative metric to observing switch/mismatch 
+            errors in tandem. In general, this metric is thought to penalize switch errors too harshly. It may be 
+            of interest for a dataset with extremely low incidence of switch errors. Sometimes referred to as 
+            *Hamming error rate*. 
+            
+            **AN50**
+            
+            AN50 represents the span of a block such that half of all phased variants are in a block 
+            of that span or larger.
+            
+            **N50**
+            
+            The length of the phaseblock at which the sum of phaseblock lengths in decreasing order passes half (50%)
+            the combined length of all phaseblocks. This is used as a measure for phasing completeness which places 
+            less emphasis on shorter phaseblocks. 
+            
+            Also see [HapCUT2/utilities/README.md](https://github.com/vibansal/HapCUT2/blob/master/utilities/README.md):
             ''',
             plot=table_html
         )
