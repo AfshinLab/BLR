@@ -161,7 +161,7 @@ class Molecule:
         """
         Updates molecule's stop position, number of reads and header name set()
         """
-        self.bp_covered += read.reference_end - max(read.reference_start, self.stop)
+        self.bp_covered += max(read.reference_end - max(read.reference_start, self.stop), 0)
         self.stop = read.reference_end
         self.read_headers.add(read.query_name)
 
