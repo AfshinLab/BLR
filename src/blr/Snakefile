@@ -1,7 +1,5 @@
-from collections import defaultdict
 import os
 import pickle
-import sys
 
 import pandas as pd
 from snakemake.utils import validate
