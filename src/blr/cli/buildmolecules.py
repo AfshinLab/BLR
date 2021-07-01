@@ -16,6 +16,9 @@ from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTE
 
 logger = logging.getLogger(__name__)
 
+# For reads not associated to a specific molecule the molecule id is set to -1.
+DEFAULT_MOLECULE_ID = -1
+
 
 def main(args):
     run_buildmolecules(
@@ -62,9 +65,7 @@ def run_buildmolecules(
         for read in tqdm(openin.fetch(until_eof=True)):
             name = read.query_name
 
-            # If the read name is in header_to_mol_dict then it is associated to a specific molecule.
-            # For reads not associated to a specific molecule the molecule id is set to -1.
-            molecule_id = header_to_mol_dict.get(name, -1)
+            molecule_id = header_to_mol_dict.get(name, DEFAULT_MOLECULE_ID)
             read.set_tag(molecule_tag, molecule_id)
 
             openout.write(read)
