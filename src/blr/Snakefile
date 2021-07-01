@@ -439,11 +439,11 @@ rule get_unmapped_reads:
 
 rule tagbam:
     output:
-        bam = tempif("{base}.tag.bam", filt or bcmerge)
+        bam = tempif("chunks/{base}.tag.bam", filt or bcmerge)
     input:
-        bam = "{base}.bam"
+        bam = "chunks/{base}.bam"
     log:
-        "{base}.tag.bam.log"
+        "chunks/{base}.tag.bam.log"
     shell:
         "blr tagbam "
         " -o {output.bam}"
@@ -455,10 +455,10 @@ rule tagbam:
 rule find_clusterdups:
     """Find cluster duplicates defined as two separate barcodes sharing duplicate read pair"""
     output:
-        pickle = temporary("{base}.clusterdups.pickle")
+        pickle = temporary("chunks/{base}.clusterdups.pickle")
     input:
-        bam = "{base}.bam"
-    log: "{base}.clusterdups.pickle.log"
+        bam = "chunks/{base}.bam"
+    log: "chunks/{base}.clusterdups.pickle.log"
     shell:
         "blr find_clusterdups"
         " {input.bam}"
@@ -492,11 +492,11 @@ rule get_barcode_merges:
 rule merge_clusterdups:
     """Merge cluster duplicates defined as two separate cluster sharing """
     output:
-        bam = temp("{base}.bcmerge.bam"),
+        bam = temp("chunks/{base}.bcmerge.bam"),
     input:
-        bam = "{base}.bam",
+        bam = "chunks/{base}.bam",
         merges = "final.barcode-merges.csv"
-    log: "{base}.bcmerge.bam.log"
+    log: "chunks/{base}.bcmerge.bam.log"
     shell:
         "blr merge_clusterdups"
         " {input.bam}"
@@ -508,11 +508,11 @@ rule merge_clusterdups:
 rule mark_duplicates:
     """Mark duplicates within barcodes clusters."""
     output:
-        bam = temp("{base}.mkdup.bam"),
-        metrics = "{base}.mkdup_metrics.txt"
+        bam = temp("chunks/{base}.mkdup.bam"),
+        metrics = "chunks/{base}.mkdup_metrics.txt"
     input:
-        bam = "{base}.bam"
-    log: "{base}.mkdup.bam.log"
+        bam = "chunks/{base}.bam"
+    log: "chunks/{base}.mkdup.bam.log"
     shell:
         "picard -Xmx{config[heap_space]}g MarkDuplicates"
         " INPUT={input.bam}"
@@ -539,11 +539,11 @@ else:
 rule buildmolecules:
     """Groups reads into molecules depending on their genomic position and barcode"""
     output:
-        bam = tempif("{base}.mol.bam", filt),
-        stats = temp("{base}.molecule_stats.tsv")
+        bam = tempif("chunks/{base}.mol.bam", filt),
+        stats = temp("chunks/{base}.molecule_stats.tsv")
     input:
-        bam = "{base}.bam"
-    log: "{base}.mol.bam.log"
+        bam = "chunks/{base}.bam"
+    log: "chunks/{base}.mol.bam.log"
     shell:
         "blr buildmolecules"
         " {input.bam}"
@@ -560,10 +560,10 @@ rule buildmolecules:
 rule readmolecules:
     """Read molecule information for BAM with set molecule_tag"""
     output:
-        stats = temp("{base}.molecule_stats.tsv")
+        stats = temp("chunks/{base}.molecule_stats.tsv")
     input:
-        bam = "{base}.bam"
-    log: "{base}.molecule_stats.tsv.log"
+        bam = "chunks/{base}.bam"
+    log: "chunks/{base}.molecule_stats.tsv.log"
     shell:
         "blr readmolecules"
         " {input.bam}"
@@ -634,12 +634,12 @@ ruleorder: filterclusters > index_bam
 rule filterclusters:
     """Filter clusters based on number of molecules. Remove duplicates from BAM"""
     output:
-        bam = "{base}.filt.bam",
-        bai = "{base}.filt.bam.bai"
+        bam = "chunks/{base}.filt.bam",
+        bai = "chunks/{base}.filt.bam.bai"
     input:
-        bam = "{base}.bam",
+        bam = "chunks/{base}.bam",
         barcodes = "final.barcodes_filtered_out.tsv"
-    log: "{base}.filt.bam.log"
+    log: "chunks/{base}.filt.bam.log"
     shell:
         "blr filterclusters"
         " {input.bam}"
@@ -673,10 +673,10 @@ rule bam_to_fastq:
 rule recal_base_qual_scores:
     """Recalibrate base calling qualities"""
     output:
-        recal_table = "{base}.bsqr_table.txt"
+        recal_table = "chunks/{base}.bsqr_table.txt"
     input:
-        bam = "{base}.bam"
-    log: "{base}.bsqr_table.txt.log"
+        bam = "chunks/{base}.bam"
+    log: "chunks/{base}.bsqr_table.txt.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g BaseRecalibrator"
         " -R {config[genome_reference]}"
@@ -689,11 +689,11 @@ rule recal_base_qual_scores:
 rule apply_recal:
     """Adjusts BAM with results from gatk base score recalibration"""
     output:
-        recal_bam = "{base}.BQSR.bam"
+        recal_bam = "chunks/{base}.BQSR.bam"
     input:
-        bam = "{base}.bam",
-        recal_table = "{base}.bsqr_table.txt"
-    log: "{base}.BQSR.bam.log"
+        bam = "chunks/{base}.bam",
+        recal_table = "chunks/{base}.bsqr_table.txt"
+    log: "chunks/{base}.BQSR.bam.log"
     shell:
         "gatk --java-options -Xmx{config[heap_space]}g ApplyBQSR"
         " --bqsr-recal-file {input.recal_table}"
@@ -704,7 +704,7 @@ rule apply_recal:
 
 
 def get_input_calling_bam(wildcards):
-    basename = f"{wildcards.base}.sorted.tag{bcmerge}{mkdup}{mol}{filt}"
+    basename = f"chunks/{wildcards.base}.sorted.tag{bcmerge}{mkdup}{mol}{filt}"
     if config["variant_caller"] == "gatk" and config["BQSR"]:
         basename += ".BQSR"
     return f"{basename}.bam"
@@ -713,7 +713,7 @@ def get_input_calling_bam(wildcards):
 rule symlink_calling_bam:
     # The BAM file (with all preprocesing applied) used for calling variants
     output:
-        bam = "{base}.calling.bam"
+        bam = "chunks/{base}.calling.bam"
     input:
         bam = get_input_calling_bam
     run:
@@ -752,11 +752,11 @@ rule index_vcf:
 rule call_variants:
     """Call variants using the selected variant caller from configs."""
     output:
-        vcf = temporary("{base}.variants.called.vcf")
+        vcf = temporary("chunks/{base}.variants.called.vcf")
     input:
-        bam = "{base}.calling.bam",
-        bai = "{base}.calling.bam.bai",
-    log: "{base}.variants.called.vcf.log"
+        bam = "chunks/{base}.calling.bam",
+        bai = "chunks/{base}.calling.bam.bai",
+    log: "chunks/{base}.variants.called.vcf.log"
     threads: 2 if config["variant_caller"] in {"gatk", "bcftools"} else 1
     run:
         heap_space = config["heap_space"] * threads
@@ -809,10 +809,10 @@ rule call_variants:
 rule extract_called:
     """Extract SNPs and INDELs from called varinats"""
     output:
-        vcf = temporary("{base}.variants.called.{type,(SNP|INDEL)}.vcf")
+        vcf = temporary("chunks/{base}.variants.called.{type,(SNP|INDEL)}.vcf")
     input:
-        vcf = "{base}.variants.called.vcf"
-    log: "{base}.variants.called.{type,(SNP|INDEL)}.vcf.log"
+        vcf = "chunks/{base}.variants.called.vcf"
+    log: "chunks/{base}.variants.called.{type,(SNP|INDEL)}.vcf.log"
     shell:
         "gatk SelectVariants"
         " -V {input.vcf}"
@@ -824,10 +824,10 @@ rule extract_called:
 rule filter_called_snps:
     """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = temporary("{base}.variants.called.SNP.filtered.vcf")
+        vcf = temporary("chunks/{base}.variants.called.SNP.filtered.vcf")
     input:
-        vcf = "{base}.variants.called.SNP.vcf"
-    log: "{base}.variants.called.SNP.filtered.vcf.log"
+        vcf = "chunks/{base}.variants.called.SNP.vcf"
+    log: "chunks/{base}.variants.called.SNP.filtered.vcf.log"
     shell:
         # TODO Include genotype filtration for AD < 2
         "gatk VariantFiltration"
@@ -845,10 +845,10 @@ rule filter_called_snps:
 rule filter_called_indels:
     """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
     output:
-        vcf = temporary("{base}.variants.called.INDEL.filtered.vcf")
+        vcf = temporary("chunks/{base}.variants.called.INDEL.filtered.vcf")
     input:
-        vcf = "{base}.variants.called.INDEL.vcf"
-    log: "{base}.variants.called.INDEL.filtered.vcf.log"
+        vcf = "chunks/{base}.variants.called.INDEL.vcf"
+    log: "chunks/{base}.variants.called.INDEL.filtered.vcf.log"
     shell:
         # TODO Include genotype filtration for AD < 4
         "gatk VariantFiltration"
@@ -865,11 +865,11 @@ rule filter_called_indels:
 
 rule merge_filtered_snps_indels:
     output:
-        vcf = temporary("{base}.variants.called.filtered.vcf")
+        vcf = temporary("chunks/{base}.variants.called.filtered.vcf")
     input:
-        vcf_snps = "{base}.variants.called.SNP.filtered.vcf",
-        vcf_indels = "{base}.variants.called.INDEL.filtered.vcf"
-    log: "{base}.variants.called.filtered.vcf.log"
+        vcf_snps = "chunks/{base}.variants.called.SNP.filtered.vcf",
+        vcf_indels = "chunks/{base}.variants.called.INDEL.filtered.vcf"
+    log: "chunks/{base}.variants.called.filtered.vcf.log"
     shell:
         "picard MergeVcfs"
         " --CREATE_INDEX false"
