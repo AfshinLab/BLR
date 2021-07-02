@@ -445,13 +445,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
 
     for t_block in t_blocklist:
         # convert t_block to a dict for convenience
-        t1_dict = defaultdict(lambda: '-')
-        t2_dict = defaultdict(lambda: '-')
-        a_dict = defaultdict(lambda: ('-', '-', '-'))
-        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in t_block:
-            t1_dict[pos] = a1
-            t2_dict[pos] = a2
-            a_dict[pos] = (ref_str, alt1_str, alt2_str)
+        a_dict, t1_dict, t2_dict = mapp_positions_to_block(t_block)
 
         # Iterate over SNPs in the true and assembled haplotypes in parallel. i is the index of the current base.
         # x is the current base in the true haplotype. y is the current base in the assembled haplotype.
@@ -609,6 +603,17 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     )
 
     return total_error
+
+
+def mapp_positions_to_block(t_block):
+    t1_dict = defaultdict(lambda: '-')
+    t2_dict = defaultdict(lambda: '-')
+    a_dict = defaultdict(lambda: ('-', '-', '-'))
+    for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in t_block:
+        t1_dict[pos] = a1
+        t2_dict[pos] = a2
+        a_dict[pos] = (ref_str, alt1_str, alt2_str)
+    return a_dict, t1_dict, t2_dict
 
 
 def parse_assembled_blocks(a_blocklist):
