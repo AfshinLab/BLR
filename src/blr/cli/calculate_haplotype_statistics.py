@@ -522,17 +522,11 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
                     if blk_switches[a] < 0:
                         blk_switches[a] = 0
 
-            if blk_switches[0] < blk_switches[1]:
-                switch_count += blk_switches[0]
-                mismatch_count += blk_mismatches[0]
-                switch_loc += blk_switchlist[0]
-                mismatch_loc += blk_mmlist[0]
-
-            else:
-                switch_count += blk_switches[1]
-                mismatch_count += blk_mismatches[1]
-                switch_loc += blk_switchlist[1]
-                mismatch_loc += blk_mmlist[1]
+            i = 0 if blk_switches[0] < blk_switches[1] else 1
+            switch_count += blk_switches[i]
+            mismatch_count += blk_mismatches[i]
+            switch_loc += blk_switchlist[i]
+            mismatch_loc += blk_mmlist[i]
 
         assert len(switch_loc) == switch_count
         assert len(mismatch_loc) == mismatch_count
