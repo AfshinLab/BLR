@@ -437,41 +437,11 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     poss_sw = 0  # count of possible positions for switch errors
     poss_mm = 0  # count of possible positions for mismatches
     flat_count = 0
-    phased_count = 0
-    maxblk_snps = 0
     different_alleles = 0
     switch_loc = []
     mismatch_loc = []
-    AN50_spanlst = []
-    N50_spanlst = []
 
-    for blk in a_blocklist:
-
-        first_pos = -1
-        last_pos = -1
-        first_SNP = -1
-        last_SNP = -1
-        blk_phased = 0
-
-        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
-
-            if a1 != '-':
-
-                phased_count += 1
-
-                blk_phased += 1
-                if first_pos == -1:
-                    first_pos = pos
-                    first_SNP = snp_ix
-                last_pos = pos
-                last_SNP = snp_ix
-
-        blk_total = last_SNP - first_SNP + 1
-
-        AN50_spanlst.append(((last_pos - first_pos) * (float(blk_phased) / blk_total), blk_phased))
-        N50_spanlst.append((last_pos - first_pos))
-
-        maxblk_snps = max(blk_phased, maxblk_snps)
+    AN50_spanlst, N50_spanlst, maxblk_snps, phased_count = parse_assembled_blocks(a_blocklist)
 
     for t_block in t_blocklist:
         # convert t_block to a dict for convenience
@@ -639,6 +609,42 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     )
 
     return total_error
+
+
+def parse_assembled_blocks(a_blocklist):
+    AN50_spanlst = []
+    N50_spanlst = []
+    phased_count = 0
+    maxblk_snps = 0
+    for blk in a_blocklist:
+
+        first_pos = -1
+        last_pos = -1
+        first_SNP = -1
+        last_SNP = -1
+        blk_phased = 0
+
+        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
+
+            if a1 != '-':
+
+                phased_count += 1
+
+                blk_phased += 1
+                if first_pos == -1:
+                    first_pos = pos
+                    first_SNP = snp_ix
+                last_pos = pos
+                last_SNP = snp_ix
+
+        blk_total = last_SNP - first_SNP + 1
+
+        AN50_spanlst.append(((last_pos - first_pos) * (float(blk_phased) / blk_total), blk_phased))
+        N50_spanlst.append((last_pos - first_pos))
+
+        maxblk_snps = max(blk_phased, maxblk_snps)
+
+    return AN50_spanlst, N50_spanlst, maxblk_snps, phased_count
 
 
 def add_arguments(parser):
