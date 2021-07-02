@@ -575,16 +575,28 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
 
         # tally up how many possible positions there are for switch errors and mismatches
         # count how many phased SNPs there are so we can calculate a rate of pruned SNPs
-
-        for blk in a_blocklist:
+        # iterate over SNPs in the true and assembled haplotypes in parallel
+        # i is the index of the current base. x is the current base in the true haplotype. y is the current base in
+        # the assembled haplotype.
+        for a_block in a_blocklist:
             phased_known = 0
-            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
+            flat_count1 = 0
+            flat_count2 = 0
+            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
 
                 if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
                     continue
 
                 if t1_dict[pos] != '-' and a1 != '-':
                     phased_known += 1
+
+                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
+                    continue
+
+                if a1 != t1_dict[pos]:
+                    flat_count1 += 1
+                if a2 != t1_dict[pos]:
+                    flat_count2 += 1
 
             # a switch error is only possible in blocks len 4 or greater
             # this is because switches on the ends are counted as mismatches.
@@ -594,27 +606,6 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
             # a mismatch can happen in any block length 2 or more, in any position.
             if phased_known >= 2:
                 poss_mm += phased_known
-
-        # iterate over SNPs in the true and assembled haplotypes in parallel
-        # i is the index of the current base. x is the current base in the true haplotype. y is the current base in
-        # the assembled haplotype.
-
-        for a_block in a_blocklist:
-
-            flat_count1 = 0
-            flat_count2 = 0
-            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
-
-                if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
-                    continue
-
-                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
-                    continue
-
-                if a1 != t1_dict[pos]:
-                    flat_count1 += 1
-                if a2 != t1_dict[pos]:
-                    flat_count2 += 1
 
             if flat_count1 < flat_count2:
                 flat_count += flat_count1
