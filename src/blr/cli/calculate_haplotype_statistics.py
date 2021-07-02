@@ -543,24 +543,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
         # i is the index of the current base. x is the current base in the true haplotype. y is the current base in
         # the assembled haplotype.
         for a_block in a_blocklist:
-            phased_known = 0
-            flat_count1 = 0
-            flat_count2 = 0
-            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
-
-                if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
-                    continue
-
-                if t1_dict[pos] != '-' and a1 != '-':
-                    phased_known += 1
-
-                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
-                    continue
-
-                if a1 != t1_dict[pos]:
-                    flat_count1 += 1
-                if a2 != t1_dict[pos]:
-                    flat_count2 += 1
+            flat_count1, flat_count2, phased_known = get_phased_pos_and_flat_count(a_block, a_dict, t1_dict, t2_dict)
 
             # a switch error is only possible in blocks len 4 or greater
             # this is because switches on the ends are counted as mismatches.
@@ -603,6 +586,28 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     )
 
     return total_error
+
+
+def get_phased_pos_and_flat_count(a_block, a_dict, t1_dict, t2_dict):
+    phased_known = 0
+    flat_count1 = 0
+    flat_count2 = 0
+    for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
+
+        if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
+            continue
+
+        if t1_dict[pos] != '-' and a1 != '-':
+            phased_known += 1
+
+        if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
+            continue
+
+        if a1 != t1_dict[pos]:
+            flat_count1 += 1
+        if a2 != t1_dict[pos]:
+            flat_count2 += 1
+    return flat_count1, flat_count2, phased_known
 
 
 def mapp_positions_to_block(t_block):
