@@ -528,15 +528,8 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
             switch_loc += blk_switchlist[i]
             mismatch_loc += blk_mmlist[i]
 
-        assert len(switch_loc) == switch_count
-        assert len(mismatch_loc) == mismatch_count
-
-        # tally up how many possible positions there are for switch errors and mismatches
-        # count how many phased SNPs there are so we can calculate a rate of pruned SNPs
-        # iterate over SNPs in the true and assembled haplotypes in parallel
-        # i is the index of the current base. x is the current base in the true haplotype. y is the current base in
-        # the assembled haplotype.
-        for a_block in a_blocklist:
+            # tally up how many possible positions there are for switch errors and mismatches
+            # count how many phased SNPs there are so we can calculate a rate of pruned SNPs
             flat_count1, flat_count2, phased_known = get_phased_pos_and_flat_count(a_block, a_dict, t1_dict, t2_dict)
 
             # a switch error is only possible in blocks len 4 or greater
@@ -549,6 +542,9 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
                 poss_mm += phased_known
 
             flat_count += flat_count1 if flat_count1 < flat_count2 else flat_count2
+
+        assert len(switch_loc) == switch_count
+        assert len(mismatch_loc) == mismatch_count
 
     if different_alleles > 0:
         logger.warning(f"{different_alleles} positions had different ref,alt pairs and were skipped.")
