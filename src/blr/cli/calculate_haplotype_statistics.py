@@ -446,10 +446,18 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     for t_block in t_blocklist:
         # convert t_block to a dict for convenience
         a_dict, t1_dict, t2_dict = mapp_positions_to_block(t_block)
+        t_block_start = t_block[0][1]
+        t_block_end = t_block[-1][1]
 
         # Iterate over SNPs in the true and assembled haplotypes in parallel. i is the index of the current base.
         # x is the current base in the true haplotype. y is the current base in the assembled haplotype.
         for a_block in a_blocklist:
+            a_block_start = a_block[0][1]
+            a_block_end = a_block[-1][1]
+
+            # Skip comparison if t_block and a_block are not overlapping
+            if a_block_start > t_block_end or t_block_start > a_block_end:
+                continue
 
             blk_switches = [0, 0]
             blk_mismatches = [0, 0]
