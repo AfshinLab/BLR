@@ -40,9 +40,10 @@ blr config \
     --set max_molecules_per_bc 1 \
     --set heap_space 1 \
     --set chunk_size 10000 \
-    --set phasing_contigs null
+    --set phasing_contigs null \
+    --set contigs_skipped null
 
 cd outdir-bowtie2
 blr run
 m=$(samtools view final.bam | $md5 | cut -f1 -d" ")
-test $m == cb1d5bf89ce51c115b065bcc1528152e
+test $m == 94a546d0c54e90a64a6dbdb58f4acc1f

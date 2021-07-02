@@ -5,16 +5,19 @@ A molecule is defined by having 1) minimum --threshold reads and including all r
 a maximum distance of --window between any given reads.
 """
 
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 import logging
 import statistics
 
 import pandas as pd
 import pysam
 
-from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES
+from blr.utils import PySAMIO, get_bamtag, Summary, calculate_N50, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict
 
 logger = logging.getLogger(__name__)
+
+# For reads not associated to a specific molecule the molecule id is set to -1.
+DEFAULT_MOLECULE_ID = -1
 
 
 def main(args):
@@ -62,9 +65,7 @@ def run_buildmolecules(
         for read in tqdm(openin.fetch(until_eof=True)):
             name = read.query_name
 
-            # If the read name is in header_to_mol_dict then it is associated to a specific molecule.
-            # For reads not associated to a specific molecule the molecule id is set to -1.
-            molecule_id = header_to_mol_dict.get(name, -1)
+            molecule_id = header_to_mol_dict.get(name, DEFAULT_MOLECULE_ID)
             read.set_tag(molecule_tag, molecule_id)
 
             openout.write(read)
@@ -112,18 +113,20 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type
 
     all_molecules = AllMolecules(min_reads=min_reads, window=window, library_type=library_type)
 
-    prev_chrom = pysam_openfile.references[0]
+    prev_chrom = None
+    prev_window_stop = window
     logger.info("Dividing barcodes into molecules")
-    for nr, (barcode, read) in enumerate(parse_reads(pysam_openfile, barcode_tag, min_mapq, summary)):
+    for barcode, read in parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
         # Commit molecules between chromosomes
-        if not prev_chrom == read.reference_name:
+        if prev_chrom != read.reference_name:
             all_molecules.report_and_remove_all()
             prev_chrom = read.reference_name
 
         all_molecules.assign_read(read, barcode, summary)
 
-        if nr % 5000 == 0:
+        if read.reference_start > prev_window_stop:
             all_molecules.update_cache(read.reference_start)
+            prev_window_stop = read.reference_start + window
 
     all_molecules.report_and_remove_all()
 
@@ -135,9 +138,9 @@ class Molecule:
     A Splitting of barcode read groups into several molecules based on mapping proximity. Equivalent to several
     molecules being barcoded simultaneously in the same emulsion droplet (meaning with the same barcode).
     """
-    molecule_counter = int()
+    molecule_counter = 0
 
-    def __init__(self, read, barcode):
+    def __init__(self, read, barcode, id=None):
         """
         :param read: pysam.AlignedSegment
         :param barcode: barcode ID
@@ -150,7 +153,7 @@ class Molecule:
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
-        self.id = Molecule.molecule_counter
+        self.id = Molecule.molecule_counter if id is None else id
 
     def length(self):
         return self.stop - self.start
@@ -159,8 +162,8 @@ class Molecule:
         """
         Updates molecule's stop position, number of reads and header name set()
         """
-        self.bp_covered += read.reference_end - max(read.reference_start, self.stop)
-        self.stop = read.reference_end
+        self.bp_covered += max(read.reference_end - max(read.reference_start, self.stop), 0)
+        self.stop = max(read.reference_end, self.stop)
         self.read_headers.add(read.query_name)
 
         self.number_of_reads += 1
@@ -222,7 +225,7 @@ class AllMolecules:
         self.library_type = library_type
 
         # Molecule tracking system
-        self.molecule_cache = OrderedDict()
+        self.molecule_cache = LastUpdatedOrderedDict()
 
         # Dict for finding mols belonging to the same BC
         self.bc_to_mol = defaultdict(list)
@@ -333,8 +336,8 @@ def update_summary_from_molecule_stats(df, summary):
     summary["Mean fragment size (bp)"] = statistics.mean(df["Length"])
     summary["Median fragment size (bp)"] = statistics.median(df["Length"])
     summary["Longest fragment (bp)"] = max(df["Length"])
-    summary["Mean fragment bp covered by reads"] = statistics.mean(df["BpCovered"] / df["Length"])
-    summary["Median fragment bp covered by reads"] = statistics.median(df["BpCovered"] / df["Length"])
+    summary["Mean fragment read coverage (%)"] = statistics.mean(100 * df["BpCovered"] / df["Length"])
+    summary["Median fragment read coverage (%)"] = statistics.median(100 * df["BpCovered"] / df["Length"])
 
 
 def add_arguments(parser):

@@ -23,7 +23,7 @@ rule hapcut2_extracthairs:
         bam = "{base}.calling.bam",
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf
-    log: "{base}.hapcut2_extracthairs.log"
+    log: "{base}.calling.unlinked.txt.log"
     params:
         indels = "1" if config["phase_indels"] else "0"
     shell:
@@ -47,7 +47,7 @@ rule hapcut2_linkfragments:
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf,
         unlinked = "{base}.calling.unlinked.txt"
-    log: "{base}.hapcut2_linkfragments.log"
+    log: "{base}.calling.linked.txt.log"
     shell:
         "LinkFragments.py"
         " --bam {input.bam}"
@@ -66,7 +66,7 @@ rule hapcut2_phasing:
         linked = "{base}.calling.linked.txt",
         vcf = "{base}.phaseinput.vcf",
         vcf_link = get_linked_vcf
-    log: "{base}.hapcut2_phasing.log"
+    log: "{base}.calling.phase.log"
     shell:
         "hapcut2"
         " --nf 1"
@@ -90,27 +90,16 @@ rule hapcut2_stats:
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
         indels = " --indels" if config["phase_indels"] else ""
-    log: "final.phasing_stats.log"
+    log: "final.phasing_stats.txt.log"
+    threads: 20
     shell:
         "blr calculate_haplotype_statistics"
         " -v1 {input.vcf1}"
         " {params.vcf2}"
         " {params.indels}"
+        " --per-chrom"
+        " --threads {threads}"
         " -o {output.stats} 2> {log}"
-
-
-def get_haplotag_input(wildcards):
-    inputfiles = {"bam": f"{wildcards.base}.calling.bam"}
-    if config["haplotag_tool"] == "blr":
-        inputfiles.update({
-            "hapcut2_phase_file": f"{wildcards.base}.calling.phase"
-        })
-    elif config["haplotag_tool"] == "whatshap":
-        inputfiles.update({
-            "vcf": f"{wildcards.base}.calling.phased.vcf.gz",
-            "vcf_index": f"{wildcards.base}.calling.phased.vcf.gz.tbi",
-        })
-    return inputfiles
 
 
 rule haplotag:
@@ -121,32 +110,21 @@ rule haplotag:
     output:
         bam = "{base}.calling.phased.bam"
     input:
-        unpack(get_haplotag_input)
-    log: "{base}.haplotag.log"
-    run:
+        bam = "{base}.calling.bam",
+        vcf = "{base}.calling.phased.vcf.gz",
+        vcf_index = "{base}.calling.phased.vcf.gz.tbi"
+    log: "{base}.calling.phased.bam.log"
+    params:
         ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else ""
-
-        commands = {
-            "whatshap":
-                "whatshap haplotag"
-                " {input.vcf}"
-                " {input.bam}"
-                " --linked-read-distance-cutoff {config[window_size]}"
-                " --reference {config[genome_reference]}"
-                " -o {output.bam}"
-                " {ignore_readgroups}",
-            "blr":
-                "blr phasebam"
-                " --molecule-tag {config[molecule_tag]}"
-                " --phase-set-tag {config[phase_set_tag]}"
-                " --haplotype-tag {config[haplotype_tag]}"
-                " --min-mapq {config[min_mapq]}"
-                " -o {output.bam}"
-                " {input.bam}"
-                " {input.hapcut2_phase_file}"
-        }
-        command = commands[config["haplotag_tool"]]
-        shell(command + " 2> {log}")
+    shell:
+        "whatshap haplotag"
+        " {input.vcf}"
+        " {input.bam}"
+        " --linked-read-distance-cutoff {config[window_size]}"
+        " --reference {config[genome_reference]}"
+        " -o {output.bam}"
+        " {params.ignore_readgroups}"
+        " 2> {log}"
 
 
 
@@ -165,7 +143,7 @@ rule build_config:
     output:
         config = "chunks/{chunk}.naibr.config"
     input: unpack(bams_for_lsv_calling)
-    log: "chunks/{chunk}.build_config.log"
+    log: "chunks/{chunk}.naibr.config.log"
     params:
         cwd = os.getcwd(),
         blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
@@ -204,7 +182,7 @@ rule lsv_calling:
     input:
         config = "{base}.naibr.config",
         naibr_path = "NAIBR"
-    log: "{base}.lsv_calling.log"
+    log: "{base}.naibr_sv_calls.tsv.log"
     threads: 2
     conda: "../naibr-environment.yml"
     params:

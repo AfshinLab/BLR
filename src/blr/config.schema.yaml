@@ -13,17 +13,9 @@ properties:
     type: string
     description: SAM tag to use for store original barcode sequence in bam file. 'RX' is 10x genomic default
     default: RX
-  phase_set_tag:
-    type: string
-    description: SAM tag to use for store phase set information, same as 10x default.
-    default: PS
-  haplotype_tag:
-    type: string
-    description: SAM tag to use for store haplotype information, same as 10x default.
-    default: HP
   read_mapper:
     type: string
-    pattern: "bwa|bowtie2|minimap2|ema|lariat"
+    pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
     description: Which read mapper to use
     default: bowtie2
   genome_reference:
@@ -42,18 +34,26 @@ properties:
     type: string
     description: h1 adaptor sequnce, appears before barcode in read1
     default: CAGTTGATCATCAGCAGGTAATCTGG
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   h2:
     type: string
     description: h2 adaptor sequence, appears after barcode in read1
     default: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   h3:
     type: string
     description: h3 adaptor sequence, appears after genomics insert in read1 and read2.
     default: CTGTCTCTTATACACATCT
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   barcode:
     type: string
     description: Barcode sequence
     default: BDHVBDHVBDHVBDHVBDHV
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
+  min_count:
+    type: integer
+    default: 1
+    description: Minimum number of reads per barcode to tag reads with barcode
   reference_variants:
     type: [ "string", "null" ]
     description: Path to reference variants, if not provided then variant will be called by freebayes
@@ -77,20 +77,15 @@ properties:
   variant_caller:
     type: string
     description: Which variant caller to use.
-    pattern: "gatk|bcftools|freebayes|deepvariant"
+    pattern: "(gatk)|(bcftools)|(freebayes)|(deepvariant)"
     default: freebayes
-  haplotag_tool:
-    type: string
-    description: Which haplotype tagging tool to use.
-    pattern: "blr|whatshap"
-    default: whatshap
   heap_space:
     type: integer
     description: Memory per core for heap space max limit
     default: 6
   library_type:
     type: string
-    pattern: "dbs|blr|10x|stlfr|tellseq" # TODO Remove blr
+    pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
     description: Library type
   barcode_whitelist:
     type: [ "string", "null" ]
@@ -112,6 +107,7 @@ properties:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
     default: CTGTCTCTTATACACATCT
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   chunk_size:
     type: integer
     default: 20000000
@@ -120,10 +116,6 @@ properties:
     type: integer
     default: 30000
     description: Window size used for linking reads by barcodes.
-  coverage_window_size:
-    type: integer
-    default: 1000
-    description: mosdepth window size in bp to calculate coverage statistics.
   tellseq_index:
     type: [ "string", "null" ]
     description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
@@ -131,12 +123,13 @@ properties:
   tellseq_correction:
     type: string
     description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
-    pattern: "cluster|correct_singles"
+    pattern: "(cluster)|(correct_singles)"
     default: correct_singles
   tellseq_barcode:
     type: string
     description: Barcode sequence
     default: NNHNNYRNNNNYRNNHNN
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
   sample_nr:
     type: integer
     default: 1
@@ -157,6 +150,14 @@ properties:
     type: ["string", "null"]
     description: Chromosomes/contigs to perform phasing on. Must be a continous string with comma separated contigs.
     default: null
+  contigs_skipped:
+    type: ["string", "null"]
+    description: Regex pattern for chromosomes to skip in primary analysis.
+    default: null
+  skip_bcmerge:
+    type: boolean
+    default: false
+    description: Skip merging of overlapping barcodes
   naibr_path:
     type: ["string", "null"]
     description: Path to NAIBR folder
@@ -169,3 +170,12 @@ properties:
     type: ["string", "null"]
     description: Bed file containing region to skip
     default: null
+  ideogram_assembly:
+    type: "string"
+    description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
+    default: GRCh38
+    pattern: "(GRCh38)|(GRCh37)"
+
+required:
+  - genome_reference
+  - library_type

@@ -44,7 +44,7 @@ def test_parse_barcodes():
 
         with open(file) as f:
             corrected_barcodes, _ = parse_corrected_barcodes(open_file=f, summary=Counter(), mapper="bowtie2",
-                                                             template=None, skip_singles=True)
+                                                             template=None, min_count=2)
             assert len(corrected_barcodes) == 3
             assert len(set(corrected_barcodes.values())) == 2
 

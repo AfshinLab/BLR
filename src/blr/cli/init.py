@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
-KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr"}
+KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"}  # For blr and tellseq libs
+KEY_FILES2 = {"final.bam", "final.molecule_stats.filtered.tsv"}  # For 10x and stLFR libs
 
 
 def add_arguments(parser):
@@ -134,7 +135,8 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
         logger.error(f"The workdir paths must lead to directories and contain the file '{CONFIGURATION_FILE_NAME}'")
         sys.exit(1)
 
-    for file in KEY_FILES:
+    required_files = KEY_FILES if library_type in {"blr", "tellseq"} else KEY_FILES2
+    for file in required_files:
         if not all((w / file).exists() for w in workdirs):
             logger.error(f"The workdirs must contain the file '{file}'")
             sys.exit(1)
@@ -163,7 +165,7 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
     input_dir.mkdir()
 
     for nr, workdir in enumerate(workdirs, start=1):
-        for file in KEY_FILES:
+        for file in required_files:
             target_name = f"dir{nr}.{file}"
             create_symlink(workdir / file, input_dir, target_name)
 

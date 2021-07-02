@@ -1,12 +1,13 @@
 """
 Update configuration file. If no --set option is given the current settings are printed.
 """
+from collections import MutableMapping
 from importlib_resources import path as resource_path
 import logging
 from pathlib import Path
 from shutil import get_terminal_size
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from ruamel.yaml import YAML
 from snakemake.utils import validate
@@ -20,10 +21,15 @@ SCHEMA_FILE = "config.schema.yaml"
 # Link https://github.com/NBISweden/IgDiscover/blob/master/src/igdiscover/cli/config.py
 
 def main(args):
-    run(yaml_file=args.file, changes_set=args.set)
+    run(yaml_file=args.file, changes_set=args.set, update_from=args.update_from)
 
 
-def run(yaml_file=DEFAULT_PATH, changes_set=None):
+def run(yaml_file=DEFAULT_PATH, changes_set=None, update_from: Path = None):
+    changes_set = [] if changes_set is None else changes_set
+    if update_from is not None:
+        configs, _ = load_yaml(update_from)
+        changes_set = update_changes_set(changes_set, configs)
+
     if changes_set:
         change_config(yaml_file, changes_set)
     else:
@@ -59,14 +65,17 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
         # Convert relative paths to absolute
         value = make_paths_absolute(value, workdir=filename.parent)
         value = YAML(typ='safe').load(value)
-        logger.info(f"Changing value of '{key}': {configs[key]} --> {value}.")
         item = configs
 
         # allow nested keys
         keys = key.split('.')
         for i in keys[:-1]:
             item = item[i]
-        item[keys[-1]] = value
+
+        prev_value = item[keys[-1]] if keys[-1] in item else "NOT SET"
+        if prev_value != value:
+            item[keys[-1]] = value
+            logger.info(f"Changing value of '{key}': {repr(prev_value)} --> {repr(value)}")
 
     # Confirm that configs is valid.
     with resource_path('blr', SCHEMA_FILE) as schema_path:
@@ -105,9 +114,35 @@ def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
     return value
 
 
+def update_changes_set(changes_set: List[Tuple[str, str]], configs: Dict) -> List[Tuple[str, str]]:
+    """Update changes_set list of tuples with configs in dict configs"""
+    configs = flatten(configs)
+    configs = {k: str(v) if v is not None else "null" for k, v in configs.items()}
+
+    # Merge configs from yaml with those in changes_set
+    configs_primary = dict(changes_set)
+    configs_primary = {**configs, **configs_primary}
+    return list(configs_primary.items())
+
+
+def flatten(d: Dict, parent_key: str = '', sep: str = '.') -> Dict:
+    """Flatten nested dict into dict where keys are nested as KEY.SUBKEY[.SUBSUBKEY...]."""
+    # Adapted from https://stackoverflow.com/a/6027615
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
 def add_arguments(parser):
     parser.add_argument("-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
                         help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values "
                              "write 'null'. Can be given multiple times.")
-    parser.add_argument("-f", "--file", default=DEFAULT_PATH, type=Path,
+    parser.add_argument("-f", "--file", default=DEFAULT_PATH, type=Path, metavar="YAML",
                         help="Configuration file to modify. Default: %(default)s in current directory.")
+    parser.add_argument("-u", "--update-from", type=Path, metavar="YAML",
+                        help="Update configuration using other configuration file.")

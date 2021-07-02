@@ -4,32 +4,36 @@
 cluster_tag: BX    # Used to store barcode cluster id in bam file. 'BX' is 10x genomic default
 molecule_tag: MI  # Used to store molecule ID, same as 10x default.
 sequence_tag: RX    # Used to store original barcode sequence in bam file. 'RX' is 10x genomic default
-phase_set_tag: PS # Used to store phase set, same as 10x default. Combined with haplotype it gives phase block.
-haplotype_tag: HP # Used to store haplotype, same as 10x default. Combined with phase set it gives phase block.
 genome_reference:  # Path to indexed reference
 dbSNP: # Path to dbSNP file (common SNP sites)
 BQSR: false # Adjust base calling accuracys using gatk's BQSR (true or false). Recommended if variant_caller is gatk
 read_mapper: bowtie2  # Choose bwa, bowtie2, minimap2, ema or lariat
 library_type: # Library type. Chose dbs, 10x, stlfr or tellseq
 sample_nr: 1 # Integer used as RG idetifier and to distiguish barcodes when merging BAM files.
-chunkssize: 20000000 # Chunk size for parallelization
+chunk_size: 20000000 # Chunk size for parallelization
 
-# Comma separated entries of contigs to phase
+# Comma separated entries of contigs to phase, should include every diploid chromosome for individual.
 phasing_contigs: chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22
+# Regex pattern for chromosomes to skip in primary analysis, should not contigs defined in phasing_contigs.
+contigs_skipped: ".*_random|chrM|chrUn_.*|hs37d5|chrEBV" 
 
-#################
-# Trim settings #
-#################
+skip_bcmerge: false # Skip merging of overlapping barcodes.
+
+##########################
+# Preprocessing settings #
+##########################
 # BLR libraries
 h1: CAGTTGATCATCAGCAGGTAATCTGG # h1 adaptor sequnce, appears before barcode in read1
 h2: CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG # h2 adaptor sequence, appears after barcode in read1
 h3: CTGTCTCTTATACACATCT # h3 adaptor sequence, appears after genomics insert in read1 and read2.
 barcode: BDHVBDHVBDHVBDHVBDHV # Barcode sequence
+min_count: 1 # Minimum number of reads per barcode to tag reads with barcode
+barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
+barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
 
 # 10x libraries
 barcode_whitelist: # Path to barcode whitelist.
 apply_hamming_correction: false # Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
-fastq_bins: 500 # Number of bins to split FASTQ over for ema mapping.
 
 # stLFR libraries
 stlfr_barcodes: # Path to stLFR barcodes, recommended to skip if mapping using ema
@@ -40,28 +44,27 @@ tellseq_index: # Path to index 1 file containing the associated 18 bp barcode se
 tellseq_correction: correct_singles # Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
 tellseq_barcode: NNHNNYRNNNNYRNNHNN # Barcode sequence for pattern matching
 
+# Number of bins to split FASTQ over for ema mapping. Currently only available for 10x and BLR 
+# input. To not split --> set to 1 or less.
+fastq_bins: 100 
+
 ####################
 # Phasing settings #
 ####################
 reference_variants: # Path to reference variants used for phasing, if None will call variants with `variant_caller`
-phasing_ground_truth: # Path to phased variants used for calculating stats
+phasing_ground_truth: # Phased VCF (preferably indexed) used as ground truth for statistics.
 variant_caller: freebayes # Choose freebayes, gatk or bcftools
 filter_variants: false # Filter called variants (SNPs and INDELs) before phasing
 phase_indels: true # Phase INDELs along with SNPs
-
-# Tool for tagging haplotype information from phasing onto BAM.
-haplotag_tool: whatshap # Choose 'whatshap' or 'blr'
 
 ##############################
 # Software-specific settings #
 ##############################
 heap_space: 6 # Memory per core for heap space max limit
-barcode_max_dist: 2 # blr: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
-barcode_ratio: 5 # starcode: Minimum difference in ratio for read count to cluster nodes
-max_molecules_per_bc: 260 # blr: Max number of molecules allowed for a single barcode (removes if bc has > 260 molecules).
+max_molecules_per_bc: 260 # blr: Max number of molecules per barcode. Set to 0 if not filtering
 window_size: 30000 # blr: Window size used for linking reads by barcodes.
-coverage_window_size: 1000 # mosdepth: Window size in bp to calculate coverage statistics.
 min_mapq: 0 # Minimum MAPQ to include reads in certain analysis steps.
 naibr_path: # Path to existing NAIBR repository. If not provided the latest version of the repo will be used
 naibr_min_mapq: 40 # Minimum mapping quality for NAIBR SV calling
 naibr_blacklist: # Bed file containing region to skip
+ideogram_assembly: GRCh38 # Human genome assembly used, options are 'GRCh38' and 'GRCh37'.

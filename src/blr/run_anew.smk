@@ -6,33 +6,26 @@ import glob
 import pandas as pd
 from snakemake.utils import validate
 
-from blr.utils import  chromosome_chunks, parse_fai, symlink_relpath
+from blr.utils import  generate_chunks, symlink_relpath
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
 
 # Generate chunks
-if config["genome_reference"] is not None:
-    try:
-        with open(config["genome_reference"] + ".fai") as f:
-            chunks = list(chromosome_chunks(parse_fai(f), size=config["chunk_size"]))
-    except FileNotFoundError as e:
-        sys.exit(
-            f"The genome index file {config['genome_reference']} is missing. "
-            "Please create it with 'samtools faidx'"
-        )
-else:
-    chunks = []
+chunks = generate_chunks(reference=config["genome_reference"], 
+                         size=config["chunk_size"], 
+                         phasing_contigs_string=config["phasing_contigs"],
+                         contigs_skipped=config["contigs_skipped"])
 
 
 rule final:
     input:
         "trimmed.barcoded.1_fastqc.html",
         "trimmed.barcoded.2_fastqc.html",
-        "barcodes.clstr",
+        "barcodes.clstr.gz",
         "final.molecule_stats.filtered.tsv",
         "unmapped.bam",
-        expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks),
+        expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["all"]),
         "final.bam"
 
 
@@ -49,9 +42,9 @@ rule index_bam:
 
 rule make_chunk_beds:
     output:
-        expand("chunks/{chunk[0].name}.bed", chunk=chunks)
+        expand("chunks/{chunk[0].name}.bed", chunk=chunks["all"])
     run:
-        for chunk in chunks:
+        for chunk in chunks["all"]:
             with open(f"chunks/{chunk[0].name}.bed", "w") as f:
                 for chromosome in chunk:
                     print(chromosome.name, 0, chromosome.length, sep="\t", file=f)
@@ -123,7 +116,7 @@ rule concat_or_link_input_molecule_stats:
 
 rule concat_barcode_clstrs:
     output:
-        clstr = "barcodes.clstr"
+        clstr = "barcodes.clstr.gz"
     input:
         dir = "inputs"
     run:

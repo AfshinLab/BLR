@@ -5,7 +5,7 @@ from collections import OrderedDict
 import logging
 
 from multiqc import config
-from multiqc.plots import table
+from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 
 # Initialise the main MultiQC logger
@@ -28,9 +28,14 @@ class MultiqcModule(BaseMultiqcModule):
             anchor="hapcut2",
             info=" is a package for haplotype assembly from sequencing data."
         )
-        n_phasing_stats_reports = self.gather_phasing_stats()
+        n_phasing_stats_reports, n_phasing_stats_reports_per_chrom = self.gather_phasing_stats()
         if n_phasing_stats_reports > 0:
             log.info("Found {} phasing stats reports".format(n_phasing_stats_reports))
+
+        if n_phasing_stats_reports_per_chrom > 0:
+            log.info("Found {} phasing stats reports with chromsome breakdown".format(
+                n_phasing_stats_reports_per_chrom
+                ))
 
     def gather_phasing_stats(self):
         # Create headers
@@ -61,7 +66,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         headers['phased count'] = {
             'title': 'Phased count',
-            'description': 'count of total SNVs phased in the test haplotype',
+            'description': 'count of total variants phased',
             'format': '{:,.0f}',
             'scale': 'Blues',
             'placement': 3
@@ -84,8 +89,8 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['num snps max blk'] = {
-            'title': 'SNPs in max blk',
-            'description': 'the fraction of SNVs in the largest (most variants phased) block',
+            'title': 'Variants in max blk',
+            'description': 'the fraction of variants in the largest (most variants phased) block',
             'format': '{:,.0f}',
             'scale': 'Blues',
             'placement': 5
@@ -93,6 +98,8 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Find and load any input files for this module
         phasing_data = dict()
+        phasing_data_per_chrom = [{} for h in headers]
+        param_to_index = {param: index for index, param in enumerate(headers)}
         for f in self.find_log_files('hapcut2/phasing_stats', filehandles=True):
             sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phasing_stats", "")
 
@@ -102,16 +109,22 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_data_source(f)
 
             phasing_data[sample_name] = dict()
+            for d in phasing_data_per_chrom:
+                d[sample_name] = {}
 
-            for parameter, value in self.parse_phasing_stats(f["f"]):
-                phasing_data[sample_name][parameter] = value
+            for chrom, parameter, value in self.parse_phasing_stats(f["f"]):
+                if chrom == "All":
+                    phasing_data[sample_name][parameter] = value
+                else:
+                    index = param_to_index[parameter]
+                    phasing_data_per_chrom[index][sample_name][chrom] = value
 
         # Filter out samples to ignore
         phasing_data = self.ignore_samples(phasing_data)
 
         # Skip if no data
-        if not phasing_data:
-            return 0
+        if not phasing_data.values():
+            return 0, 0
 
         # Write parsed report data to a file
         self.write_data_file(phasing_data, "hapcut2_phasing_stats")
@@ -127,9 +140,45 @@ class MultiqcModule(BaseMultiqcModule):
         # Add a report section with table
         self.add_section(
             name="HapCUT2 phasing stats",
-            description="Statistics table",
+            description="Table of multiple metrics relevant for phased variants.",
             helptext='''
-            Description of statistics (taken from https://github.com/vibansal/HapCUT2/tree/master/utilities):
+            # Description of statistics
+
+            **Switch rate**
+
+            A *switch error* is defined as a position where the phase is switched from that of the previous
+            heterozygous variant, when compared to the reference haplotype. Two switch errors in a row are instead
+            counted as a *mismatch error*, a single position where the phase differs from the reference haplotype.
+            The rate here refers to the fraction of switch errors and the the possible positions for switch error
+            (the first and last variant in each phaseblock is excluded as wells as phaseblocks with less than 4
+            variants). Sometimes referred to as *long switch error rate*.
+
+            **Mismatch rate**
+
+            The fraction of mismatch errors (see Switch rate for distiction to switch errors) to all possible
+            positions where mismatch errors can occur (any position in a phaseblock longer than one variant is
+            considered valid). Sometimes referred to as *short switch error rate*.
+
+            **Flat rate**
+
+            A *flat error* corresponds to the minimum hamming distance  between the two assembled haplotypes (for a
+            given block) and the reference haplotype. This is an alternative metric to observing switch/mismatch
+            errors in tandem. In general, this metric is thought to penalize switch errors too harshly. It may be
+            of interest for a dataset with extremely low incidence of switch errors. Sometimes referred to as
+            *Hamming error rate*.
+
+            **AN50**
+
+            AN50 represents the span of a block such that half of all phased variants are in a block
+            of that span or larger.
+
+            **N50**
+
+            The length of the phaseblock at which the sum of phaseblock lengths in decreasing order passes half (50%)
+            the combined length of all phaseblocks. This is used as a measure for phasing completeness which places
+            less emphasis on shorter phaseblocks.
+
+            Also see [HapCUT2/utilities/README.md](https://github.com/vibansal/HapCUT2/blob/master/utilities/README.md)
             ''',
             plot=table_html
         )
@@ -150,21 +199,57 @@ class MultiqcModule(BaseMultiqcModule):
 
         self.general_stats_addcols(general_stats_data, general_stats_header)
 
-        return len(phasing_data)
+        # Return if not any per-chrom statistics
+        nr_stats_per_chrom = sum(data != {} for sample, data in phasing_data_per_chrom[0].items())
+        if nr_stats_per_chrom == 0:
+            return len(phasing_data), 0
+
+        # TODO Write data per chrom to file
+
+        pconfig_per_chrom = {
+            'id': 'hapcut2_phasing_stats_per_chrom_graph',
+            'title': "HapCUT2: Phasing stats per chromosome",
+            'xlab': "Chromosome",
+            'categories': True,
+            'tt_decimals': 4,
+            "ymin": 0,
+            'data_labels': [
+                {'name': label["title"], 'ylab': label["title"]} for label in headers.values()
+            ]
+        }
+        plot_html = linegraph.plot(phasing_data_per_chrom, pconfig_per_chrom)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Phasing stats per chromsomes",
+            description="Breakdown of phasing stats for each chromosome.",
+            plot=plot_html
+        )
+
+        return len(phasing_data), nr_stats_per_chrom
 
     @staticmethod
     def parse_phasing_stats(file):
         """
-        This generator yields key-value pairs for the data from the line following `---` until the next line
-        staring with `===`.
+        This generator yields chromsome-key-value tuples for the data. "All" is used for the total.
         """
+        chrom = "All"
         for line in file:
+            # Search for lines of fromat `---- chrA -----` to get chromsome, else use default.
+            if line.startswith("-"):
+                chrom = line.split(" ", maxsplit=2)[1]
+                continue
+
             # Collect parameter and value
             parameter, value = line.strip().split(":", maxsplit=1)
+
+            if value.strip() == "n/a":
+                continue
+
             value = float(value.strip())
 
             # Make N50 and AN50 stats per Mbp instead of bp.
             if parameter in ["N50", "AN50"]:
                 value /= 1_000_000
 
-            yield parameter, value
+            yield chrom, parameter, value

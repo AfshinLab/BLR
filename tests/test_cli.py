@@ -89,7 +89,8 @@ def _workdir(tmp_path_factory):
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
-            ("phasing_contigs", "null")
+            ("phasing_contigs", "null"),
+            ("heap_space", "1")
         ]
     )
     # chromosomes B, C and D end up in the same chunk
@@ -126,7 +127,8 @@ def test_default_read_mapper(workdir):
 def test_trim_blr(workdir, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("read_mapper", read_mapper)]
+        [("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed, force_run=["trim"])
@@ -197,7 +199,8 @@ def test_trim_tellseq(tmp_path, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", read_mapper)]
+         ("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
@@ -228,9 +231,13 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
     init(workdir, TESTDATA_BLR_READ1, "dbs")
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("genome_reference", REFERENCE_GENOME), ("read_mapper", read_mapper), ("phasing_contigs", "null")]
+        [("genome_reference", REFERENCE_GENOME),
+         ("read_mapper", read_mapper),
+         ("phasing_contigs", "null"),
+         ("heap_space", "1"),
+         ("fastq_bins", "5")]
     )
-    run(workdir=workdir, targets=["initialmapping.bam"])
+    run(workdir=workdir, targets=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
     if read_mapper == "lariat":
         n_input_fastq_reads = 2 * count_lariat_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
     else:
@@ -292,8 +299,7 @@ def test_plot_figures(workdir):
     assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 4
 
 
-@pytest.mark.parametrize("haplotype_tool", ["blr", "whatshap"])
-def test_haplotag(workdir, haplotype_tool):
+def test_haplotag(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("reference_variants", "null")]
@@ -323,7 +329,9 @@ def test_init_from_workdir(tmp_path, workdir):
     change_config(
         new_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
-         ("chunk_size", "50000")]
+         ("chunk_size", "50000"),
+         ("phasing_contigs", "null"),
+         ("skip_contigs", "null")]
         )
     run(workdir=new_workdir, snakefile="run_anew.smk")
 
@@ -347,7 +355,9 @@ def test_merge_workdirs(tmp_path, workdir):
     change_config(
         merge_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
-         ("chunk_size", "50000")]
+         ("chunk_size", "50000"),
+         ("phasing_contigs", "null"),
+         ("skip_contigs", "null")]
         )
     run(workdir=merge_workdir, snakefile="run_anew.smk")
 

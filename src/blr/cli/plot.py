@@ -39,7 +39,7 @@ def main(args):
     # Loop over file add assign to process.
     for filepath in args.input:
         filename = filepath.name
-        if filename == "barcodes.clstr":
+        if filename.startswith("barcodes.clstr"):
             matched["barcode_clstrs"].append(filepath)
             continue
 

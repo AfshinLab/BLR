@@ -27,7 +27,7 @@ rule trim_stlfr:
     input:
         r1_fastq = "reads.1.fastq.gz",
         r2_fastq = "reads.2.fastq.gz",
-    log: "cutadapt_trim.log",
+    log: "trimmed.fastq.log",
     threads: workflow.cores - 1
     shell:
         "cutadapt "

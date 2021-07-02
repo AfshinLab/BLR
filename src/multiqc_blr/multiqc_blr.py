@@ -70,7 +70,7 @@ def execution_start():
         config.update_dict(config.sp,
                            {'hapcut2/phasing_stats': {'fn': '*.txt',
                                                       'contents_re': '^switch rate:*',
-                                                      'num_lines': 1}})
+                                                      'num_lines': 2}})
 
     if "whatshap/stats" not in config.sp:
         config.update_dict(config.sp,
