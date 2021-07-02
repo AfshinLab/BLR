@@ -170,7 +170,17 @@ def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
                 chrom_blocks[chromosome] = blocks
                 nr_het_var_per_chrom[chromosome] = nr_het_var
     else:
-        chrom_blocks, nr_het_var_per_chrom = get_phaseblocks(vcf_file, sample_name=sample_name, indels=indels)
+        # If chromosomes are specified and the file is indexed we can fetch the blocks
+        # directly for each chromosome for a significant speedup.
+        if chromosomes and is_indexed:
+            chrom_blocks = defaultdict(list)
+            nr_het_var_per_chrom = defaultdict(int)
+            for chromosome in chromosomes:
+                _,  blocks, nr_het_var = get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=indels)
+                chrom_blocks[chromosome] = blocks
+                nr_het_var_per_chrom[chromosome] = nr_het_var
+        else:
+            chrom_blocks, nr_het_var_per_chrom = get_phaseblocks(vcf_file, sample_name=sample_name, indels=indels)
 
     return chrom_blocks, nr_het_var_per_chrom
 
