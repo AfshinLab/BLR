@@ -554,10 +554,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
             if phased_known >= 2:
                 poss_mm += phased_known
 
-            if flat_count1 < flat_count2:
-                flat_count += flat_count1
-            else:
-                flat_count += flat_count2
+            flat_count += flat_count1 if flat_count1 < flat_count2 else flat_count2
 
     if different_alleles > 0:
         logger.warning(f"{different_alleles} positions had different ref,alt pairs and were skipped.")
