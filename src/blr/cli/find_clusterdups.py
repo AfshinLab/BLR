@@ -375,8 +375,7 @@ class UnionFind:
         for item, root in self.items():
             components[root].append(item)
 
-        for component in components.values():
-            yield component
+        yield from components.values()
 
     def same_component(self, *objects) -> bool:
         """Returns true if all objects are present in the same set"""
