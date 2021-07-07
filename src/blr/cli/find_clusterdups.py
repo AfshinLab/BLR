@@ -112,7 +112,8 @@ def find_barcode_sets(input, barcode_tag, min_mapq, non_acceptable_overlap, quan
                     summary["Barcode duplicate positions"] += len(dup_positions)
 
                     logger.info(f"Removing duplicate positions with >= {threshold} barcodes for {chrom_prev}")
-                    query_barcode_duplicates(dup_positions, barcode_sets, threshold, window, non_acceptable_overlap, summary)
+                    query_barcode_duplicates(dup_positions, barcode_sets, threshold, window, non_acceptable_overlap,
+                                             summary)
                     positions.clear()
                     dup_positions.clear()
 
