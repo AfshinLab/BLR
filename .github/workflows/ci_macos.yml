@@ -7,7 +7,7 @@ on:
 jobs:
   run:
     name: Run pipeline
-    timeout-minutes: 10
+    timeout-minutes: 15
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
