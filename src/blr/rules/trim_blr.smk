@@ -148,6 +148,4 @@ rule merge_bins:
             " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
             " |"
             " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
-            " &&"
-            " rm {input.bins}"
         )
