@@ -1,6 +1,6 @@
 # Barcode-Linked Reads Analysis
 
-[![CI](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions?query=branch%3Amaster)
+[![CI Linux](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions/workflows/ci.yml?query=branch%3Amaster) [![CI MacOS](https://github.com/NBISweden/BLR/actions/workflows/ci_macos.yml/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions/workflows/ci_macos.yml?query=branch%3Amaster)
 
 :exclamation:**NB! This is currently under heavy development.**:exclamation:
 

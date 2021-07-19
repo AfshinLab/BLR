@@ -36,17 +36,17 @@ def run_readmolecules(
 ):
 
     summary = Summary()
-
+    stats = []
     # Read molecules from BAM
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with pysam.AlignmentFile(input, "rb") as infile:
-        stats = get_molecule_stats(openbam=infile,
-                                   barcode_tag=barcode_tag,
-                                   molecule_tag=molecule_tag,
-                                   min_reads=threshold,
-                                   library_type=library_type,
-                                   min_mapq=min_mapq,
-                                   summary=summary)
+        for molecule in parse_molecules(openbam=infile, barcode_tag=barcode_tag, molecule_tag=molecule_tag,
+                                        library_type=library_type, min_mapq=min_mapq, summary=summary):
+            summary["Molecules candidate"] += 1
+            if molecule.number_of_reads >= threshold:
+                summary["Molecules called"] += 1
+                stats.append(molecule.to_dict())
+
     pysam.set_verbosity(save)
 
     if output_tsv is None:
@@ -84,8 +84,7 @@ def parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         yield barcode, molecule_id, read
 
 
-def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_type, min_mapq, summary):
-    stats = []
+def parse_molecules(openbam, barcode_tag, molecule_tag, library_type, min_mapq, summary):
     molecules = LastUpdatedOrderedDict()
     prev_chrom = openbam.references[0]
     MAX_DIST = 300_000
@@ -93,7 +92,7 @@ def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_ty
     buffer_pos = MAX_DIST + BUFFER_STEP
     for barcode, molecule_id, read in parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         if not prev_chrom == read.reference_name:
-            stats.extend([m.to_dict() for m in molecules.values() if m.number_of_reads >= min_reads])
+            yield from molecules.values()
             molecules.clear()
             prev_chrom = read.reference_name
 
@@ -109,7 +108,7 @@ def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_ty
             buffer_pos = max(read.reference_start, buffer_pos + BUFFER_STEP)
 
             # Loop over molecules in order of last updated. Get indexes of molecules who are outside MAX_DIST
-            # from current position and stop looping if within this distance. Report molecule to stats if good.
+            # from current position and stop looping if within this distance.
             molcules_to_report = []
             for i, molecule in molecules.items():
                 if abs(molecule.stop - read.reference_start) > MAX_DIST:
@@ -117,13 +116,9 @@ def get_molecule_stats(openbam, barcode_tag, molecule_tag, min_reads, library_ty
                 else:
                     break
 
-            for i in molcules_to_report:
-                molecule = molecules.pop(i)
-                if molecule.number_of_reads >= min_reads:
-                    stats.append(molecule.to_dict())
+            yield from (molecules.pop(i) for i in molcules_to_report)
 
-    stats.extend([m.to_dict() for m in molecules.values() if m.number_of_reads >= min_reads])
-    return stats
+    yield from molecules.values()
 
 
 def add_arguments(parser):

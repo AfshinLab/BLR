@@ -34,7 +34,6 @@ def main(args):
         output_pickle=args.output_pickle,
         output_merges=args.output_merges,
         barcode_tag=args.barcode_tag,
-        buffer_size=args.buffer_size,
         window=args.window,
         min_mapq=args.min_mapq,
         quantile_threshold=args.quantile_threshold,
@@ -47,7 +46,6 @@ def run_find_clusterdups(
     output_pickle: str,
     output_merges: str,
     barcode_tag: str,
-    buffer_size: int,
     window: int,
     min_mapq: int,
     quantile_threshold: float,
@@ -56,11 +54,36 @@ def run_find_clusterdups(
     non_acceptable_overlap = get_non_acceptable_overlap_func(library_type)
     logger.info("Starting Analysis")
     summary = Summary()
+    barcode_sets = find_barcode_sets(input, barcode_tag, min_mapq, non_acceptable_overlap, quantile_threshold,
+                                     summary, window)
+
+    summary["Duplicate compartments"] = len({v for _, v in barcode_sets.items()})
+    summary["Barcodes removed"] = sum(1 for _ in barcode_sets.items()) - summary["Duplicate compartments"]
+
+    # Write outputs
+    if output_pickle:
+        logger.info(f"Writing pickle object to {output_pickle}")
+        with open(output_pickle, 'wb') as file:
+            pickle.dump(barcode_sets.parents, file, pickle.HIGHEST_PROTOCOL)
+
+    if output_merges:
+        logger.info(f"Writing merges to {output_merges}")
+        with open(output_merges, 'w') as file:
+            for old_barcode, new_barcode in barcode_sets.items():
+                if old_barcode != new_barcode:
+                    print(old_barcode, new_barcode, sep=",", file=file)
+
+    logger.info("Finished")
+    summary.print_stats(name=__name__)
+
+
+def find_barcode_sets(input, barcode_tag, min_mapq, non_acceptable_overlap, quantile_threshold, summary, window):
     positions = OrderedDict()
     dup_positions = OrderedDict()
     chrom_prev = None
     pos_prev = 0
-    uf = UnionFind()
+    BUFFER_SIZE = 200
+    barcode_sets = UnionFind()
     for read, mate in tqdm(paired_reads(input, min_mapq, summary), desc="Reading pairs"):
         barcode = get_bamtag(read, barcode_tag)
         if not barcode:
@@ -79,7 +102,7 @@ def run_find_clusterdups(
         # https://sourceforge.net/p/samtools/mailman/message/25062576/
         current_position = (mate.reference_start, read.reference_end, orientation)
 
-        if abs(pos_new - pos_prev) > buffer_size or chrom_new != chrom_prev:
+        if abs(pos_new - pos_prev) > BUFFER_SIZE or chrom_new != chrom_prev:
             find_duplicate_positions(positions, dup_positions)
 
             if chrom_new != chrom_prev:
@@ -88,12 +111,12 @@ def run_find_clusterdups(
 
                     summary["Barcode duplicate positions"] += len(dup_positions)
 
-                    logger.info(f"Removing duplicate positions with greater than or equal to {threshold} barcodes "
-                                f"for {chrom_prev}")
-                    query_barcode_duplicates(dup_positions, uf, threshold, window,
-                                             non_acceptable_overlap, summary)
+                    logger.info(f"Removing duplicate positions with >= {threshold} barcodes for {chrom_prev}")
+                    query_barcode_duplicates(dup_positions, barcode_sets, threshold, window, non_acceptable_overlap,
+                                             summary)
                     positions.clear()
                     dup_positions.clear()
+
                 chrom_prev = chrom_new
 
             pos_prev = pos_new
@@ -106,28 +129,10 @@ def run_find_clusterdups(
 
     summary["Barcode duplicate positions"] += len(dup_positions)
 
-    logger.info(f"Using threshold {threshold} to filter duplicate position on contig {chrom_prev}")
-    query_barcode_duplicates(dup_positions, uf, threshold, window,
-                             non_acceptable_overlap, summary)
+    logger.info(f"Removing duplicate positions with >= {threshold} barcodes for {chrom_prev}")
+    query_barcode_duplicates(dup_positions, barcode_sets, threshold, window, non_acceptable_overlap, summary)
 
-    summary["Duplicate compartments"] = len({v for _, v in uf.items()})
-    summary["Barcodes removed"] = sum(1 for _ in uf.items()) - summary["Duplicate compartments"]
-
-    # Write outputs
-    if output_pickle:
-        logger.info(f"Writing pickle object to {output_pickle}")
-        with open(output_pickle, 'wb') as file:
-            pickle.dump(uf.parents, file, pickle.HIGHEST_PROTOCOL)
-
-    if output_merges:
-        logger.info(f"Writing merges to {output_merges}")
-        with open(output_merges, 'w') as file:
-            for old_barcode, new_barcode in uf.items():
-                if old_barcode != new_barcode:
-                    print(old_barcode, new_barcode, sep=",", file=file)
-
-    logger.info("Finished")
-    summary.print_stats(name=__name__)
+    return barcode_sets
 
 
 def paired_reads(path: str, min_mapq: int, summary):
@@ -222,7 +227,7 @@ def get_barcode_threshold(dup_positions, quantile: float = 0.99, min_threshold=6
     return min_threshold
 
 
-def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, non_acceptable_overlap,
+def query_barcode_duplicates(dup_positions, barcode_sets, threshold: float, window: int, non_acceptable_overlap,
                              summary):
     """
     Query barcode duplicates from list of duplicate positions. Position are filtered using the set threshold.
@@ -232,7 +237,7 @@ def query_barcode_duplicates(dup_positions, uf, threshold: float, window: int, n
         if len(tracked_position.barcodes) < threshold:
             summary["Filtered barcode duplicate positions"] += 1
             seed_duplicates(
-                uf=uf,
+                barcode_sets=barcode_sets,
                 buffer_dup_pos=buffer_dup_pos,
                 position=tracked_position.position,
                 position_barcodes=tracked_position.barcodes,
@@ -268,12 +273,12 @@ class PositionTracker:
         return len(self.barcodes) > 1
 
 
-def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap):
+def seed_duplicates(barcode_sets, buffer_dup_pos, position, position_barcodes, window: int, non_acceptable_overlap):
     """
     Identifies connected barcodes i.e. barcodes sharing two duplicate positions within the current window which is used
     to construct a graph. For Tn5 type libraries, overlapping positions are not compared unless they are allowed by Tn5
     tagmentation (i.e overlap 9±1 bp).
-    :param uf: dict: Tracks which barcodes should be merged.
+    :param barcode_sets: dict: Tracks which barcodes should be merged.
     :param buffer_dup_pos: list: Tracks previous duplicate positions and their barcode sets.
     :param position: tuple: Positions (start, stop) to be analyzed and subsequently saved to buffer.
     :param position_barcodes: seq: Barcodes at analyzed position
@@ -281,7 +286,7 @@ def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int
     """
     # Loop over list to get the positions closest to the analyzed position first. When positions
     # are out of the window size of the remaining buffer is removed.
-    if not uf.same_component(*position_barcodes):
+    if not barcode_sets.same_component(*position_barcodes):
         for index, (compared_position, compared_barcodes) in enumerate(buffer_dup_pos):
             distance = position[0] - compared_position[1]
 
@@ -293,7 +298,7 @@ def seed_duplicates(uf, buffer_dup_pos, position, position_barcodes, window: int
 
                 # If two or more unique barcodes are found, update merge dict
                 if len(barcode_intersect) >= 2:
-                    uf.union(*barcode_intersect)
+                    barcode_sets.union(*barcode_intersect)
             else:
                 # Remove positions outside of window (at end of list) since positions are sorted.
                 for _ in range(len(buffer_dup_pos) - index):
@@ -375,8 +380,7 @@ class UnionFind:
         for item, root in self.items():
             components[root].append(item)
 
-        for component in components.values():
-            yield component
+        yield from components.values()
 
     def same_component(self, *objects) -> bool:
         """Returns true if all objects are present in the same set"""
@@ -411,10 +415,6 @@ def add_arguments(parser):
         "-w", "--window", type=int, default=30000,
         help="Window size. Duplicate positions within this distance will be used to find cluster "
         "duplicates. Default: %(default)s")
-    parser.add_argument(
-        "--buffer-size", type=int, default=200,
-        help="Buffer size for collecting duplicates. Should be around read length. "
-        "Default: %(default)s")
     parser.add_argument(
         "--min-mapq", type=int, default=0,
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s")

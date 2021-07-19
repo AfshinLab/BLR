@@ -172,7 +172,17 @@ def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
                 chrom_blocks[chromosome] = blocks
                 nr_het_var_per_chrom[chromosome] = nr_het_var
     else:
-        chrom_blocks, nr_het_var_per_chrom = get_phaseblocks(vcf_file, sample_name=sample_name, indels=indels)
+        # If chromosomes are specified and the file is indexed we can fetch the blocks
+        # directly for each chromosome for a significant speedup.
+        if chromosomes and is_indexed:
+            chrom_blocks = defaultdict(list)
+            nr_het_var_per_chrom = defaultdict(int)
+            for chromosome in chromosomes:
+                _,  blocks, nr_het_var = get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=indels)
+                chrom_blocks[chromosome] = blocks
+                nr_het_var_per_chrom[chromosome] = nr_het_var
+        else:
+            chrom_blocks, nr_het_var_per_chrom = get_phaseblocks(vcf_file, sample_name=sample_name, indels=indels)
 
     return chrom_blocks, nr_het_var_per_chrom
 
@@ -429,55 +439,27 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     poss_sw = 0  # count of possible positions for switch errors
     poss_mm = 0  # count of possible positions for mismatches
     flat_count = 0
-    phased_count = 0
-    maxblk_snps = 0
     different_alleles = 0
     switch_loc = []
     mismatch_loc = []
-    AN50_spanlst = []
-    N50_spanlst = []
 
-    for blk in a_blocklist:
-
-        first_pos = -1
-        last_pos = -1
-        first_SNP = -1
-        last_SNP = -1
-        blk_phased = 0
-
-        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
-
-            if a1 != '-':
-
-                phased_count += 1
-
-                blk_phased += 1
-                if first_pos == -1:
-                    first_pos = pos
-                    first_SNP = snp_ix
-                last_pos = pos
-                last_SNP = snp_ix
-
-        blk_total = last_SNP - first_SNP + 1
-
-        AN50_spanlst.append(((last_pos - first_pos) * (float(blk_phased) / blk_total), blk_phased))
-        N50_spanlst.append((last_pos - first_pos))
-
-        maxblk_snps = max(blk_phased, maxblk_snps)
+    AN50_spanlst, N50_spanlst, maxblk_snps, phased_count = parse_assembled_blocks(a_blocklist)
 
     for t_block in t_blocklist:
         # convert t_block to a dict for convenience
-        t1_dict = defaultdict(lambda: '-')
-        t2_dict = defaultdict(lambda: '-')
-        a_dict = defaultdict(lambda: ('-', '-', '-'))
-        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in t_block:
-            t1_dict[pos] = a1
-            t2_dict[pos] = a2
-            a_dict[pos] = (ref_str, alt1_str, alt2_str)
+        a_dict, t1_dict, t2_dict = mapp_positions_to_block(t_block)
+        t_block_start = t_block[0][1]
+        t_block_end = t_block[-1][1]
 
         # Iterate over SNPs in the true and assembled haplotypes in parallel. i is the index of the current base.
         # x is the current base in the true haplotype. y is the current base in the assembled haplotype.
         for a_block in a_blocklist:
+            a_block_start = a_block[0][1]
+            a_block_end = a_block[-1][1]
+
+            # Skip comparison if t_block and a_block are not overlapping
+            if a_block_start > t_block_end or t_block_start > a_block_end:
+                continue
 
             blk_switches = [0, 0]
             blk_mismatches = [0, 0]
@@ -550,33 +532,15 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
                     if blk_switches[a] < 0:
                         blk_switches[a] = 0
 
-            if blk_switches[0] < blk_switches[1]:
-                switch_count += blk_switches[0]
-                mismatch_count += blk_mismatches[0]
-                switch_loc += blk_switchlist[0]
-                mismatch_loc += blk_mmlist[0]
+            i = 0 if blk_switches[0] < blk_switches[1] else 1
+            switch_count += blk_switches[i]
+            mismatch_count += blk_mismatches[i]
+            switch_loc += blk_switchlist[i]
+            mismatch_loc += blk_mmlist[i]
 
-            else:
-                switch_count += blk_switches[1]
-                mismatch_count += blk_mismatches[1]
-                switch_loc += blk_switchlist[1]
-                mismatch_loc += blk_mmlist[1]
-
-        assert len(switch_loc) == switch_count
-        assert len(mismatch_loc) == mismatch_count
-
-        # tally up how many possible positions there are for switch errors and mismatches
-        # count how many phased SNPs there are so we can calculate a rate of pruned SNPs
-
-        for blk in a_blocklist:
-            phased_known = 0
-            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
-
-                if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
-                    continue
-
-                if t1_dict[pos] != '-' and a1 != '-':
-                    phased_known += 1
+            # tally up how many possible positions there are for switch errors and mismatches
+            # count how many phased SNPs there are so we can calculate a rate of pruned SNPs
+            flat_count1, flat_count2, phased_known = get_phased_pos_and_flat_count(a_block, a_dict, t1_dict, t2_dict)
 
             # a switch error is only possible in blocks len 4 or greater
             # this is because switches on the ends are counted as mismatches.
@@ -587,31 +551,10 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
             if phased_known >= 2:
                 poss_mm += phased_known
 
-        # iterate over SNPs in the true and assembled haplotypes in parallel
-        # i is the index of the current base. x is the current base in the true haplotype. y is the current base in
-        # the assembled haplotype.
+            flat_count += flat_count1 if flat_count1 < flat_count2 else flat_count2
 
-        for a_block in a_blocklist:
-
-            flat_count1 = 0
-            flat_count2 = 0
-            for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
-
-                if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
-                    continue
-
-                if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
-                    continue
-
-                if a1 != t1_dict[pos]:
-                    flat_count1 += 1
-                if a2 != t1_dict[pos]:
-                    flat_count2 += 1
-
-            if flat_count1 < flat_count2:
-                flat_count += flat_count1
-            else:
-                flat_count += flat_count2
+        assert len(switch_loc) == switch_count
+        assert len(mismatch_loc) == mismatch_count
 
     if different_alleles > 0:
         logger.warning(f"{different_alleles} positions had different ref,alt pairs and were skipped.")
@@ -640,6 +583,75 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
     )
 
     return total_error
+
+
+def get_phased_pos_and_flat_count(a_block, a_dict, t1_dict, t2_dict):
+    phased_known = 0
+    flat_count1 = 0
+    flat_count2 = 0
+    for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in a_block:
+
+        if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
+            continue
+
+        if t1_dict[pos] != '-' and a1 != '-':
+            phased_known += 1
+
+        if a1 == '-' or a2 == '-' or t1_dict[pos] == '-':
+            continue
+
+        if a1 != t1_dict[pos]:
+            flat_count1 += 1
+        if a2 != t1_dict[pos]:
+            flat_count2 += 1
+    return flat_count1, flat_count2, phased_known
+
+
+def mapp_positions_to_block(t_block):
+    t1_dict = defaultdict(lambda: '-')
+    t2_dict = defaultdict(lambda: '-')
+    a_dict = defaultdict(lambda: ('-', '-', '-'))
+    for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in t_block:
+        t1_dict[pos] = a1
+        t2_dict[pos] = a2
+        a_dict[pos] = (ref_str, alt1_str, alt2_str)
+    return a_dict, t1_dict, t2_dict
+
+
+def parse_assembled_blocks(a_blocklist):
+    AN50_spanlst = []
+    N50_spanlst = []
+    phased_count = 0
+    maxblk_snps = 0
+    for blk in a_blocklist:
+
+        first_pos = -1
+        last_pos = -1
+        first_SNP = -1
+        last_SNP = -1
+        blk_phased = 0
+
+        for snp_ix, pos, a1, a2, ref_str, alt1_str, alt2_str in blk:
+
+            if a1 != '-':
+
+                phased_count += 1
+
+                blk_phased += 1
+                if first_pos == -1:
+                    first_pos = pos
+                    first_SNP = snp_ix
+                last_pos = pos
+                last_SNP = snp_ix
+
+        blk_total = last_SNP - first_SNP + 1
+
+        AN50_spanlst.append(((last_pos - first_pos) * (float(blk_phased) / blk_total), blk_phased))
+        N50_spanlst.append((last_pos - first_pos))
+
+        maxblk_snps = max(blk_phased, maxblk_snps)
+
+    return AN50_spanlst, N50_spanlst, maxblk_snps, phased_count
 
 
 def add_arguments(parser):

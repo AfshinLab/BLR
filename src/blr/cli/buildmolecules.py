@@ -5,7 +5,7 @@ A molecule is defined by having 1) minimum --threshold reads and including all r
 a maximum distance of --window between any given reads.
 """
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import logging
 import statistics
 
@@ -193,13 +193,13 @@ class Molecule:
         return False
 
     def to_dict(self):
-        return {
+        return OrderedDict({
             "MoleculeID": self.id,
             "Barcode": self.barcode,
             "Reads": self.number_of_reads,
             "Length": self.length(),
             "BpCovered": self.bp_covered,
-        }
+        })
 
 
 class AllMolecules:
