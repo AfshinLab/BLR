@@ -216,27 +216,25 @@ def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_
         summary["Read pairs read"] += 1
         # TODO Handle reads with single header
         name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
-        _, nr_and_index2 = read2.name.split(maxsplit=1)
 
         uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
         corrected_barcode_seq = corrected_barcodes.get(uncorrected_barcode_seq, None)
 
         # Check if barcode was found and update header with barcode info.
         if corrected_barcode_seq is not None:
-            raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
             corr_barcode_id = f"{barcode_tag}:Z:{corrected_barcode_seq}"
 
             # Create new name with barcode information.
             if mapper == "ema":
                 # The EMA aligner requires reads in 10x format e.g.
                 # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                new_name = ":".join([name_and_pos, corrected_barcode_seq])
-                new_name = " ".join((new_name, corr_barcode_id))
-                read1.name, read2.name = new_name, new_name
+                read1.name = f"{name_and_pos}:{corrected_barcode_seq} {corr_barcode_id}"
+                read2.name = read1.name
             elif mapper != "lariat":
-                new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
-                read1.name = " ".join([new_name, nr_and_index1])
-                read2.name = " ".join([new_name, nr_and_index2])
+                _, nr_and_index2 = read2.name.split(maxsplit=1)
+                raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
+                read1.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index1}"
+                read1.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index2}"
 
         yield read1, read2, corrected_barcode_seq
 
