@@ -133,43 +133,16 @@ def run_tagfastq(
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
-        for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
-            # Header parsing
-            summary["Read pairs read"] += 1
-            # TODO Handle reads with single header
-            name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
-            _, nr_and_index2 = read2.name.split(maxsplit=1)
-
-            # TODO Check that sample_index is ATCG.
-            sample_index = nr_and_index1.split(':')[-1]
-            uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
-            corrected_barcode_seq = None
-
-            # Check if barcode was found and update header with barcode info.
-            if uncorrected_barcode_seq and uncorrected_barcode_seq in corrected_barcodes:
-                corrected_barcode_seq = corrected_barcodes[uncorrected_barcode_seq]
-
-                raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
-                corr_barcode_id = f"{barcode_tag}:Z:{corrected_barcode_seq}"
-
-                # Create new name with barcode information.
-                if mapper == "ema":
-                    # The EMA aligner requires reads in 10x format e.g.
-                    # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                    new_name = ":".join([name_and_pos, corrected_barcode_seq])
-                    new_name = " ".join((new_name, corr_barcode_id))
-                    read1.name, read2.name = new_name, new_name
-                elif mapper != "lariat":
-                    new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
-                    read1.name = " ".join([new_name, nr_and_index1])
-                    read2.name = " ".join([new_name, nr_and_index2])
-            else:
+        for read1, read2, corrected_barcode_seq in parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader,
+                                                               barcode_tag, sequence_tag, mapper, summary):
+            if corrected_barcode_seq is None:
                 summary["Reads missing barcode"] += 1
 
                 # Write non barcoded reads to separate file if exists for ema.
                 if mapper == "ema" and output_nobc1 is not None:
                     summary["Read pairs written"] += 1
                     writer.write_nobc(read1, read2)
+                    continue
 
                 # EMA and lairat aligner cannot handle reads without barcodes so these are skipped.
                 if mapper in ["ema", "lariat"]:
@@ -187,18 +160,17 @@ def run_tagfastq(
                 )
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
-                sample_index_qual = "K" * len(sample_index)
                 chunks.build_chunk(
                     str(heap[corrected_barcode_seq]),
-                    f"@{name_and_pos}",
+                    f"@{read1.name}",
                     read1.sequence,
                     read1.qualities,
                     read2.sequence,
                     read2.qualities,
                     f"{corrected_barcode_seq}-{sample_number}",
                     corrected_barcode_qual,
-                    sample_index,
-                    sample_index_qual,
+                    "AAAAAA",
+                    "KKKKKK",
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -236,6 +208,37 @@ def write_lariat_output(chunks, writer, summary):
         lines = "\n".join(entry[1:]) + "\n"
         writer.write(lines, heap=entry[0])
         summary["Read pairs written"] += 1
+
+
+def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_tag, sequence_tag, mapper, summary):
+    for read1, read2 in tqdm(reader, desc="Read pairs processed"):
+        # Header parsing
+        summary["Read pairs read"] += 1
+        # TODO Handle reads with single header
+        name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
+        _, nr_and_index2 = read2.name.split(maxsplit=1)
+
+        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
+        corrected_barcode_seq = corrected_barcodes.get(uncorrected_barcode_seq, None)
+
+        # Check if barcode was found and update header with barcode info.
+        if corrected_barcode_seq is not None:
+            raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
+            corr_barcode_id = f"{barcode_tag}:Z:{corrected_barcode_seq}"
+
+            # Create new name with barcode information.
+            if mapper == "ema":
+                # The EMA aligner requires reads in 10x format e.g.
+                # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
+                new_name = ":".join([name_and_pos, corrected_barcode_seq])
+                new_name = " ".join((new_name, corr_barcode_id))
+                read1.name, read2.name = new_name, new_name
+            elif mapper != "lariat":
+                new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
+                read1.name = " ".join([new_name, nr_and_index1])
+                read2.name = " ".join([new_name, nr_and_index2])
+
+        yield read1, read2, corrected_barcode_seq
 
 
 def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
