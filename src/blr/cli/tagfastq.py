@@ -250,23 +250,22 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     corrected_barcodes = dict()
     canonical_seqs = list()
     heap_index = {}
-    for cluster in tqdm(open_file, desc="Clusters processed"):
-        canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
+    for canonical_seq, size, cluster_seqs in tqdm(parse_clstr(open_file), desc="Clusters processed"):
         summary["Corrected barcodes"] += 1
-        summary["Reads with corrected barcodes"] += int(size)
-        summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
+        summary["Reads with corrected barcodes"] += size
+        summary["Uncorrected barcodes"] += len(cluster_seqs)
 
-        if int(size) < min_count:
+        if size < min_count:
             summary["Barcodes with too few reads"] += 1
-            summary["Reads with barcodes with too few reads"] += int(size)
+            summary["Reads with barcodes with too few reads"] += size
             continue
 
         if template and not match_template(canonical_seq, template):
             summary["Barcodes not matching pattern"] += 1
-            summary["Reads with barcodes not matching pattern"] += int(size)
+            summary["Reads with barcodes not matching pattern"] += size
             continue
 
-        corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
+        corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs})
         canonical_seqs.append(canonical_seq)
 
     if mapper in ["ema", "lariat"]:
@@ -279,6 +278,13 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
 
     return corrected_barcodes, heap_index
+
+
+def parse_clstr(clstr_file):
+    """"Generator to parse open .clstr files from starcode."""
+    for cluster in clstr_file:
+        canonical_seq, size, cluster_seqs_list = cluster.strip().split("\t", maxsplit=3)
+        yield canonical_seq, int(size), cluster_seqs_list.split(",")
 
 
 def scramble(seqs, maxiter=10):
