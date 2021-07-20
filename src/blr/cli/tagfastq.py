@@ -325,7 +325,7 @@ def match_template(sequence: str, template) -> bool:
 
 class BarcodeReader:
     def __init__(self, filename):
-        self._cache = dict()
+        self._cache = {}
         self._file = dnaio.open(filename, mode="r")
         self.barcodes = self.parse()
 
@@ -389,6 +389,13 @@ class Output:
         if file_nobc1 is not None:
             self._open_file_nobc = self._setup_single_output(file_nobc1, file_nobc2,
                                                              interleaved=file_nobc2 is None)
+        # Setup writers based on mapper.
+        if self._mapper == "lariat":
+            self._write = self._write_lariat
+            self._write_nobc = self._write_nobc_lariat
+        else:
+            self._write = self._write_default
+            self._write_nobc = self._write_nobc_default
 
     def set_bin_size(self, value):
         self._bin_size = value
@@ -423,37 +430,45 @@ class Output:
             self._bin_filled = True
             self._reads_written = 0
 
+    def _write_default(self, read1, read2):
+        self._open_file.write(read1, read2)
+
+    def _write_lariat(self, read1, _):
+        self._open_file.write(read1)
+
     def write(self, read1, read2=None, heap=None):
         self._pre_write(heap)
 
         # Write reads to output file
-        if self._mapper == "lariat":
-            self._open_file.write(read1)
-        else:
-            self._open_file.write(read1, read2)
+        self._write(read1, read2)
         self._reads_written += 1
 
         self._post_write()
 
+    def _write_nobc_default(self, read1, read2):
+        self._open_file_nobc.write(read1, read2)
+
+    def _write_nobc_lariat(self, read1, _):
+        self._open_file_nobc.write(read1)
+
     def write_nobc(self, read1, read2=None):
         if self._open_file_nobc is not None:
-            if self._mapper == "lariat":
-                self._open_file_nobc.write(read1)
-            else:
-                self._open_file_nobc.write(read1, read2)
+            self._write_nobc(read1, read2)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._open_file.close()
+        if self._open_file_nobc is not None:
+            self._open_file_nobc.close()
 
 
 class ChunkHandler:
     def __init__(self, chunk_size: int = 100_000):
         # Required for ema sorted output
         # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
-        self._output_chunk = list()
+        self._output_chunk = []
         self._chunk_size = chunk_size
         self._chunk_id = 0
         self._tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
