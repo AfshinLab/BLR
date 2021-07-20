@@ -503,7 +503,7 @@ class ChunkHandler:
     def write_chunk(self):
         self._output_chunk.sort(key=self._get_heap)
         self._tmp_writer.writelines(self._output_chunk)
-        self._output_chunk.clear()
+        self._output_chunk *= 0  # Clear list faster than list.clear(). See https://stackoverflow.com/a/44349418
 
     def parse_chunks(self):
         if not self._tmp_writer.closed:
