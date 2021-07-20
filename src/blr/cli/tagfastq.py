@@ -330,11 +330,11 @@ class BarcodeReader:
         self.barcodes = self.parse()
 
     def parse(self):
-        for barcode in tqdm(self._file, desc="Uncorrected barcodes processed", disable=True):
-            read_name, *_ = barcode.name.split(maxsplit=1)
-            yield read_name, barcode.sequence
+        for barcode_entry in self._file:
+            name, *_ = barcode_entry.name.split(maxsplit=1)
+            yield name, barcode_entry.sequence
 
-    def get_barcode(self, read_name, maxiter=10):
+    def get_barcode(self, read_name, maxiter=128):
         if read_name in self._cache:
             return self._cache.pop(read_name)
 
@@ -345,7 +345,6 @@ class BarcodeReader:
                 return barcode_sequence
 
             self._cache[barcode_read_name] = barcode_sequence
-        return None
 
     def __enter__(self):
         return self
