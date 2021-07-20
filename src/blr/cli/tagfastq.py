@@ -151,26 +151,26 @@ def run_tagfastq(
             # Write to out
             if mapper == "ema":
                 chunks.build_chunk(
-                    str(heap[corrected_barcode_seq]),
-                    read1.name,
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
+                    f"{str(heap[corrected_barcode_seq])}\t"
+                    f"{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\n"
                 )
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
                 chunks.build_chunk(
-                    str(heap[corrected_barcode_seq]),
-                    f"@{read1.name}",
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
-                    f"{corrected_barcode_seq}-{sample_number}",
-                    corrected_barcode_qual,
-                    "AAAAAA",
-                    "KKKKKK",
+                    f"{str(heap[corrected_barcode_seq])}\t"
+                    f"@{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\t"
+                    f"{corrected_barcode_seq}-{sample_number}\t"
+                    f"{corrected_barcode_qual}\t"
+                    "AAAAAA\t"
+                    "KKKKKK\n"
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -492,9 +492,9 @@ class ChunkHandler:
         self._chunk_id += 1
         return open(tmpfile, "w")
 
-    def build_chunk(self, *args: str):
+    def build_chunk(self, line: str):
         """Add entry to write to temporary file, first argument should be the heap index"""
-        self._output_chunk.append(self._chunk_sep.join(list(args)) + "\n")
+        self._output_chunk.append(line)
 
         if len(self._output_chunk) > self._chunk_size:
             self.write_chunk()
