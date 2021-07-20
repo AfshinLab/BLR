@@ -247,8 +247,8 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     :param min_count: int. Skip clusters with fewer than min_count reads.
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
-    corrected_barcodes = dict()
-    canonical_seqs = list()
+    corrected_barcodes = {}
+    canonical_seqs = []
     heap_index = {}
     for canonical_seq, size, cluster_seqs in tqdm(parse_clstr(open_file), desc="Clusters processed"):
         summary["Corrected barcodes"] += 1
