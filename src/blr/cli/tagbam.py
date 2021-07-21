@@ -17,6 +17,7 @@ def main(args):
         output=args.output,
         mapper=args.mapper,
         sample_number=args.sample_nr,
+        barcode_tag=args.barcode_tag,
     )
 
 
@@ -25,6 +26,7 @@ def run_tagbam(
         output: str,
         mapper: str,
         sample_number: int,
+        barcode_tag: str,
 ):
     logger.info("Starting analysis")
 
@@ -42,14 +44,14 @@ def run_tagbam(
         for read in tqdm(infile.fetch(until_eof=True), desc="Processing reads", unit=" reads"):
             # Strips header from tag and depending on script mode, possibly sets SAM tag
             summary["Total reads"] += 1
-            processing_function(read, sample_number, summary)
+            processing_function(read, sample_number, barcode_tag, summary)
             outfile.write(read)
 
     summary.print_stats(name=__name__)
     logger.info("Finished")
 
 
-def mode_samtags_underline_separation(read, sample_nr, summary):
+def mode_samtags_underline_separation(read, sample_nr, barcode_tag, summary):
     """
     Trims header from tags and sets SAM tags according to values found in header.
     Assumes format: @header_<tag>:<type>:<seq> (can be numerous tags). Constrictions are: Header includes SAM tags
@@ -69,14 +71,14 @@ def mode_samtags_underline_separation(read, sample_nr, summary):
         tag, tag_type, val = tag.split(":")
         assert is_sequence(val)
 
-        if tag == "BX":
+        if tag == barcode_tag:
             val = f"{val}-{sample_nr}"
 
         read.set_tag(tag, val, value_type=tag_type)
         summary[f"Reads with tag {tag}"] += 1
 
 
-def mode_ema(read, sample_nr, _):  # summary is passed to this function but is not used
+def mode_ema(read, sample_nr, barcode_tag, _):  # summary is passed to this function but is not used
     """
     Trims header from barcode sequences.
     Assumes format @header:and:more...:header:<seq>. Constrictions: There must be exactly 9 elements separated by ":"
@@ -85,7 +87,7 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
     :return:
     """
     # Check if read is barcoded before doing correction
-    tag_barcode = get_bamtag(read, "BX")
+    tag_barcode = get_bamtag(read, barcode_tag)
     if tag_barcode is not None:
         # Split header into original read name and barcode and check that the header barcode is valid
         read.query_name, header_barcode = read.query_name.rsplit(":", 1)
@@ -97,15 +99,15 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
         # Ema also trims the barcode to 16bp (10x Barcode length) so it need to be exchanged for the one in the header.
         # Make sure that the SAM tag barcode is a substring of the header barcode
         assert header_barcode.startswith(tag_barcode)
-        read.set_tag("BX", f"{header_barcode}-{sample_nr}", value_type="Z")
+        read.set_tag(barcode_tag, f"{header_barcode}-{sample_nr}", value_type="Z")
 
 
-def mode_lariat(read, sample_nr, _):
+def mode_lariat(read, sample_nr, barcode_tag, _):
     # Modify tag barcode to replace '-1' added at end by lariat with the correct sample_nr
-    current_barcode = get_bamtag(read, "BX")
+    current_barcode = get_bamtag(read, barcode_tag)
     if current_barcode:
         modified_barcode = current_barcode[:-2]
-        read.set_tag("BX", f"{modified_barcode}-{sample_nr}", value_type="Z")
+        read.set_tag(barcode_tag, f"{modified_barcode}-{sample_nr}", value_type="Z")
 
 
 def is_sequence(string: str) -> bool:
@@ -123,3 +125,5 @@ def add_arguments(parser):
                         help="Mapper used for aligning reads. Default: %(default)s")
     parser.add_argument("-s", "--sample-nr", default=1, type=int,
                         help="Add sample number to each barcode. Default: %(default)s")
+    parser.add_argument("-b", "--barcode-tag", default="BX",
+                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
