@@ -284,7 +284,7 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
 def parse_clstr(clstr_file):
     """"Generator to parse open .clstr files from starcode."""
     for cluster in clstr_file:
-        canonical_seq, size, cluster_seqs_list = cluster.strip().split("\t", maxsplit=3)
+        canonical_seq, size, cluster_seqs_list = cluster.strip().split("\t")
         yield canonical_seq, int(size), cluster_seqs_list.split(",")
 
 
@@ -332,7 +332,7 @@ class BarcodeReader:
 
     def parse(self):
         for barcode_entry in self._file:
-            name, *_ = barcode_entry.name.split(maxsplit=1)
+            name, *_ = barcode_entry.name.split(" ")
             yield name, barcode_entry.sequence
 
     def get_barcode(self, read_name, maxiter=128):
