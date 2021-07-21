@@ -105,4 +105,4 @@ def add_arguments(parser):
     parser.add_argument(
         "-o", "--output", default="-",
         help="Output tab separated file for error corrected barcodes. Columns are: corrected barcode sequence, count, "
-             "comma-separate barcodes that were corrected to the sequence Default: write to stdout.")
+             "comma-separate barcodes that were corrected to the sequence. Default: write to stdout.")
