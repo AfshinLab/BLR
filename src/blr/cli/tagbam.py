@@ -93,8 +93,8 @@ def mode_ema(read, sample_nr, barcode_tag, _):  # summary is passed to this func
         read.query_name, header_barcode = read.query_name.rsplit(":", 1)
         assert is_sequence(header_barcode)
 
-        # Modify tag barcode to remove '-1' added at end by ema e.g 'TTTGTTCATGAGTACG-1' --> 'TTTGTTCATGAGTACG'
-        tag_barcode = tag_barcode[:-2]
+        # Remove '-<sample_nr>' added at end by ema e.g 'TTTGTTCATGAGTACG-1' --> 'TTTGTTCATGAGTACG'
+        tag_barcode = tag_barcode[:16]
 
         # Ema also trims the barcode to 16bp (10x Barcode length) so it need to be exchanged for the one in the header.
         # Make sure that the SAM tag barcode is a substring of the header barcode
