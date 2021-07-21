@@ -464,7 +464,7 @@ rule tagbam:
         " -o {output.bam}"
         " --mapper {config[read_mapper]}"
         " --sample-nr {config[sample_nr]}"
-        " --barcode-tag {config[barcode_tag]}"
+        " --barcode-tag {config[cluster_tag]}"
         " {input.bam} 2> {log}"
 
 
