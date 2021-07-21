@@ -234,7 +234,7 @@ def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_
                 _, nr_and_index2 = read2.name.split(maxsplit=1)
                 raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
                 read1.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index1}"
-                read1.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index2}"
+                read2.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index2}"
 
         yield read1, read2, corrected_barcode_seq
 
