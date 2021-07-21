@@ -6,6 +6,7 @@ from snakemake.utils import validate
 
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
+from blr.cli.config import load_yaml
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -149,9 +150,12 @@ rule multiqc_summarize:
 
 rule report_configs:
     """Translate configs to HTML to include in MultiQC report"""
+    input:
+        yaml = "blr.yaml"
     output:
         yaml = temp("blr_mqc.yaml")
     run:
+        config_data, _ = load_yaml(input.yaml)
         with open(output.yaml, "w") as configs:
             text = "id: 'run_configs'\n"
             text += "section_name: 'Run configs'\n"
@@ -159,7 +163,7 @@ rule report_configs:
             text += "description: ' for current analysis. Describes which parameter values was used.'\n"
             text += "data: |\n"
             text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
-            for param, value in config.items():
+            for param, value in config_data.items():
                 text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
             text += "\t</dl>".expandtabs(4)
             print(text, file=configs)
