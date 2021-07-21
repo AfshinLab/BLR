@@ -208,31 +208,37 @@ def add_arguments(parser):
         "input1",
         help="Input FASTQ/FASTA file. Assumes to contain read1 if given with second input file. "
              "If only input1 is given, input is assumed to be an interleaved. If reading from stdin"
-             "is requested use '-' as a placeholder.")
+             "is requested use '-' as a placeholder."
+    )
     parser.add_argument(
         "input2", nargs='?',
-        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved.")
+        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved."
+    )
     parser.add_argument(
         "--output1", "--o1",
         help="Output FASTQ/FASTA file name for read1. If not specified the result is written to "
              "stdout as interleaved. If output1 given but not output2, output will be written as "
-             "interleaved to output1.")
+             "interleaved to output1."
+    )
     parser.add_argument(
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
-             "result is written as interleaved .")
+             "result is written as interleaved ."
+    )
     parser.add_argument(
         "--barcodes",
         help="stLFR barocode list for tab separated barcode sequences and indexes. If not provided a IUPAC barcode "
-             "of length 16 nt will be generated for each stLFR barcode.")
+             "of length 16 nt will be generated for each stLFR barcode."
+    )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )
     parser.add_argument(
         "-m", "--mapper",
-        help="Specify read mapper for labeling reads with barcodes. "
+        help="Specify read mapper for labeling reads with barcodes."
     )
     parser.add_argument(
         "--sample-nr", type=int, default=1,
-        help="Sample number to append to barcode string. Default: %(default)s"
+        help="Sample number to append to barcode string. Default: %(default)s."
     )

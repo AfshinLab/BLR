@@ -139,10 +139,16 @@ def flatten(d: Dict, parent_key: str = '', sep: str = '.') -> Dict:
 
 
 def add_arguments(parser):
-    parser.add_argument("-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
-                        help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values "
-                             "write 'null'. Can be given multiple times.")
-    parser.add_argument("-f", "--file", default=DEFAULT_PATH, type=Path, metavar="YAML",
-                        help="Configuration file to modify. Default: %(default)s in current directory.")
-    parser.add_argument("-u", "--update-from", type=Path, metavar="YAML",
-                        help="Update configuration using other configuration file.")
+    parser.add_argument(
+        "-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
+        help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values write 'null'. Can be "
+             "given multiple times."
+    )
+    parser.add_argument(
+        "-f", "--file", default=DEFAULT_PATH, type=Path, metavar="YAML",
+        help="Configuration file to modify. Default: %(default)s in current directory."
+    )
+    parser.add_argument(
+        "-u", "--update-from", type=Path, metavar="YAML",
+        help="Update configuration using other configuration file."
+    )

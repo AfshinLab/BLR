@@ -97,10 +97,10 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-             "Default: %(default)s"
+             "Default: %(default)s."
     )

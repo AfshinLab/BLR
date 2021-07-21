@@ -655,20 +655,32 @@ def parse_assembled_blocks(a_blocklist):
 
 
 def add_arguments(parser):
-    parser.add_argument('-v1', '--vcf1',
-                        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype "
-                             "statistics on.")
-    parser.add_argument('-v2', '--vcf2',
-                        help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' "
-                             "haplotype.")
-    parser.add_argument('-i', '--indels', action="store_true",
-                        help='Use this flag to consider indel variants. Default: %(default)s', default=False)
-    parser.add_argument('--per-chrom', action="store_true", default=False,
-                        help="Include separate stats for each chromosome. Default: %(default)s")
-    parser.add_argument('-c', '--chromosomes',
-                        help="Name(s) of chromsome(s) to calculate stats for. Multiple chromsomes are joined through"
-                             " commas. Default: use all chromosomes")
-    parser.add_argument("-o", "--output", help="Output file name. Default: Print to stdout.")
-    parser.add_argument("-t", "--threads", type=int, default=1,
-                        help="Number of threads for reading VCFs. Multithread parsing requires indexed VCFs (.cbi or "
-                             ".tbi). Default: %(default)s.")
+    parser.add_argument(
+        '-v1', '--vcf1',
+        help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype statistics on."
+    )
+    parser.add_argument(
+        '-v2', '--vcf2',
+        help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' haplotype."
+    )
+    parser.add_argument(
+        '-i', '--indels', action="store_true",
+        help='Use this flag to consider indel variants. Default: %(default)s.', default=False
+    )
+    parser.add_argument(
+        '--per-chrom', action="store_true", default=False,
+        help="Include separate stats for each chromosome. Default: %(default)s."
+    )
+    parser.add_argument(
+        '-c', '--chromosomes',
+        help="Name(s) of chromsome(s) to calculate stats for. Multiple chromsomes are joined through commas. "
+             "Default: use all chromosomes."
+    )
+    parser.add_argument(
+        "-o", "--output", help="Output file name. Default: Print to stdout."
+    )
+    parser.add_argument(
+        "-t", "--threads", type=int, default=1,
+        help="Number of threads for reading VCFs. Multithread parsing requires indexed VCFs (.cbi or .tbi). "
+             "Default: %(default)s."
+    )

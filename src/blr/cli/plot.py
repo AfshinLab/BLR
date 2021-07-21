@@ -218,5 +218,5 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-o", "--output-dir", type=Path, default=Path(os.getcwd()),
-        help="Output directory for plot images. Default: CWD e.g %(default)s"
+        help="Output directory for plot images. Default: CWD e.g %(default)s."
     )

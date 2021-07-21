@@ -103,14 +103,23 @@ def is_sequence(string: str) -> bool:
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
-                        help="BAM file with SAM tag info in header. To read from stdin use '-'.")
-
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
-    parser.add_argument("-m", "--mapper", default="bowtie2",
-                        help="Mapper used for aligning reads. Default: %(default)s")
-    parser.add_argument("-s", "--sample-nr", default=1, type=int,
-                        help="Add sample number to each barcode. Default: %(default)s")
-    parser.add_argument("-b", "--barcode-tag", default="BX",
-                        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+    parser.add_argument(
+        "input",
+        help="BAM file with SAM tag info in header. To read from stdin use '-'."
+    )
+    parser.add_argument(
+        "-o", "--output", default="-",
+        help="Write output BAM to file rather then stdout."
+    )
+    parser.add_argument(
+        "-m", "--mapper", default="bowtie2",
+        help="Mapper used for aligning reads. Default: %(default)s."
+    )
+    parser.add_argument(
+        "-s", "--sample-nr", default=1, type=int,
+        help="Add sample number to each barcode. Default: %(default)s."
+    )
+    parser.add_argument(
+        "-b", "--barcode-tag", default="BX",
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )

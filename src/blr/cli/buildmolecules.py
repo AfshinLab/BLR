@@ -353,31 +353,30 @@ def add_arguments(parser):
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,
         help="Threshold for how many reads are required for including given molecule in statistics "
-             "(except_reads_per_molecule). Default: %(default)s"
+             "(except_reads_per_molecule). Default: %(default)s."
     )
     parser.add_argument(
         "-w", "--window", type=int, default=30000,
-        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: "
-             "%(default)s"
+        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: %(default)s."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
         "-s", "--stats-tsv", metavar="FILE",
-        help="Write molecule stats in TSV format to FILE"
+        help="Write molecule stats in TSV format to FILE."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-             "Default: %(default)s"
+             "Default: %(default)s."
     )
     parser.add_argument(
         "--min-mapq", type=int, default=0,
-        help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s."
     )
     parser.add_argument(
         "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
-        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s"
+        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s."
     )

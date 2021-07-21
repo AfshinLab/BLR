@@ -401,28 +401,34 @@ class UnionFind:
 def add_arguments(parser):
     parser.add_argument(
         "input",
-        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
+        help="Coordinate-sorted SAM/BAM file tagged with barcodes."
+    )
     parser.add_argument(
         "--output-pickle",
-        help="Output python dict of barcodes to merge as pickle object.")
+        help="Output python dict of barcodes to merge as pickle object."
+    )
     parser.add_argument(
         "--output-merges",
-        help="Output a CSV log file containing all merges done. File is in format: {old barcode id},{new barcode id}")
+        help="Output a CSV log file containing all merges done. File is in format: {old barcode id},{new barcode id}."
+    )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )
     parser.add_argument(
         "-w", "--window", type=int, default=30000,
         help="Window size. Duplicate positions within this distance will be used to find cluster "
-        "duplicates. Default: %(default)s")
+        "duplicates. Default: %(default)s."
+    )
     parser.add_argument(
         "--min-mapq", type=int, default=0,
-        help="Minimum mapping-quality to include reads in analysis Default: %(default)s")
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s."
+    )
     parser.add_argument(
         "-q", "--quantile-threshold", type=float, default=0.99,
-        help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s"
+        help="Quantile to filter out positions with to high barcode coverage. Default: %(default)s."
     )
     parser.add_argument(
         "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
-        help="Library type of data. Default: %(default)s"
+        help="Library type of data. Default: %(default)s."
     )

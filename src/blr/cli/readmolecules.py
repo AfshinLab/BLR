@@ -128,27 +128,27 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-o", "--output-tsv",
-        help="Write output stats to TSV file. Default: write to stdout"
+        help="Write output stats to TSV file. Default: write to stdout."
     )
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,
         help="Threshold for how many reads are required for including given molecule in statistics."
-             "Default: %(default)s"
+             "Default: %(default)s."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-             "Default: %(default)s"
+             "Default: %(default)s."
     )
     parser.add_argument(
         "--min-mapq", type=int, default=0,
-        help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s."
     )
     parser.add_argument(
         "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
-        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s"
+        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s."
     )

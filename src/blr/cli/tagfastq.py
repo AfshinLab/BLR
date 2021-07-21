@@ -523,37 +523,45 @@ class ChunkHandler:
 def add_arguments(parser):
     parser.add_argument(
         "uncorrected_barcodes",
-        help="FASTQ/FASTA for uncorrected barcodes.")
+        help="FASTQ/FASTA for uncorrected barcodes."
+    )
     parser.add_argument(
         "corrected_barcodes",
         help="FASTQ/FASTA for error corrected barcodes. Currently accepts output from starcode "
-             "clustering with '--print-clusters' enabled.")
+             "clustering with '--print-clusters' enabled."
+    )
     parser.add_argument(
         "input1",
         help="Input FASTQ/FASTA file. Assumes to contain read1 if given with second input file. "
              "If only input1 is given, input is assumed to be an interleaved. If reading from stdin"
-             "is requested use '-' as a placeholder.")
+             "is requested use '-' as a placeholder."
+    )
     parser.add_argument(
         "input2", nargs='?',
-        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved.")
+        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved."
+    )
     output = parser.add_mutually_exclusive_group(required=False)
     output.add_argument(
         "--output1", "--o1",
         help="Output FASTQ/FASTA file name for read1. If not specified the result is written to "
              "stdout as interleaved. If output1 given but not output2, output will be written as "
-             "interleaved to output1.")
+             "interleaved to output1."
+    )
     parser.add_argument(
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
-             "result is written as interleaved.")
+             "result is written as interleaved."
+    )
     parser.add_argument(
         "--output-nobc1", "--n1",
         help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read1 reads. "
              "If output_nobc1 given but not output_nobc2, output will be written as interleaved to "
-             "output_nobc1.")
+             "output_nobc1."
+    )
     parser.add_argument(
         "--output-nobc2", "--n2",
-        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads.")
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads."
+    )
     output.add_argument(
         "--output-bins",
         help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "
@@ -561,14 +569,16 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--nr-bins", type=int, default=100,
-        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s"
+        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )
     parser.add_argument(
         "-s", "--sequence-tag", default="RX",
-        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s")
+        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s."
+    )
     parser.add_argument(
         "-m", "--mapper", default="bowtie2", choices=["bowtie2", "minimap2", "bwa", "ema", "lariat"],
         help="Specify read mapper for labeling reads with barcodes. Selecting 'ema' or 'lariat' produces output "
@@ -585,5 +595,5 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--sample-nr", type=int, default=1,
-        help="Sample number to append to barcode string. Default: %(default)s"
+        help="Sample number to append to barcode string. Default: %(default)s."
     )

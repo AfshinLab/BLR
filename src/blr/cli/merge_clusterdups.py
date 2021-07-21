@@ -48,13 +48,17 @@ def run_mergeclusters(
 def add_arguments(parser):
     parser.add_argument(
         "input",
-        help="Coordinate-sorted SAM/BAM file tagged with barcodes.")
+        help="Coordinate-sorted SAM/BAM file tagged with barcodes."
+    )
     parser.add_argument(
         "input_merges",
-        help="CSV log file containing all merges to be done. File is in format: {old barcode},{new barcode}")
+        help="CSV log file containing all merges to be done. File is in format: {old barcode},{new barcode}."
+    )
     parser.add_argument(
         "-o", "--output", default="-",
-        help="Write output BAM to file rather then stdout.")
+        help="Write output BAM to file rather then stdout."
+    )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )
