@@ -74,7 +74,6 @@ def test_ema_formatted_read_no_barcode():
     read = build_read(name)
 
     modified_read = read.__copy__()
-    sample_nr = 3
     mode_ema(modified_read, 3, "BX", Counter())
     assert not modified_read.has_tag("BX")
     assert modified_read.query_name == name
