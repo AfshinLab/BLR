@@ -97,26 +97,26 @@ def run_process_stlfr(
             # Write to out
             if mapper == "ema":
                 chunks.build_chunk(
-                    heaps.get_heap(barcode),
-                    read1.name,
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
+                    f"{heaps.get_heap(barcode)}\t"
+                    f"{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\n"
                 )
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(barcode)
                 chunks.build_chunk(
-                    heaps.get_heap(barcode),
-                    f"@{name}",
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
-                    f"{barcode}-{sample_number}",
-                    corrected_barcode_qual,
-                    "AAAAAA",
-                    "KKKKKK"
+                    f"{heaps.get_heap(barcode)}\t"
+                    f"@{name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\t"
+                    f"{barcode}-{sample_number}\t"
+                    f"{corrected_barcode_qual}\t"
+                    "AAAAAA}\t"
+                    "KKKKKK}\n"
                 )
             else:
                 summary["Read pairs written"] += 1
