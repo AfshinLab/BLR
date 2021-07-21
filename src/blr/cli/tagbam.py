@@ -67,8 +67,10 @@ def mode_samtags_underline_separation(read, sample_nr, summary):
     # Set SAM tags
     for tag in header[1:]:
         tag, tag_type, val = tag.split(":")
+        assert is_sequence(val)
+
         if tag == "BX":
-            val += "-" + str(sample_nr)
+            val = f"{val}-{sample_nr}"
 
         read.set_tag(tag, val, value_type=tag_type)
         summary[f"Reads with tag {tag}"] += 1
@@ -87,7 +89,7 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
     if tag_barcode is not None:
         # Split header into original read name and barcode and check that the header barcode is valid
         read.query_name, header_barcode = read.query_name.rsplit(":", 1)
-        assert set(header_barcode).issubset(DNA_BASES)
+        assert is_sequence(header_barcode)
 
         # Modify tag barcode to remove '-1' added at end by ema e.g 'TTTGTTCATGAGTACG-1' --> 'TTTGTTCATGAGTACG'
         tag_barcode = tag_barcode[:-2]
@@ -101,9 +103,14 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
 def mode_lariat(read, sample_nr, _):
     # Modify tag barcode to replace '-1' added at end by lariat with the correct sample_nr
     current_barcode = get_bamtag(read, "BX")
-    if current_barcode and current_barcode.endswith("-1"):
+    if current_barcode:
         modified_barcode = current_barcode[:-2]
-        read.set_tag("BX", modified_barcode + "-" + str(sample_nr), value_type="Z")
+        read.set_tag("BX", f"{modified_barcode}-{sample_nr}", value_type="Z")
+
+
+def is_sequence(string: str) -> bool:
+    """Check if string is DNA sequence"""
+    return set(string).issubset(DNA_BASES)
 
 
 def add_arguments(parser):
