@@ -53,15 +53,11 @@ def run_tagbam(
 
 def mode_samtags_underline_separation(read, sample_nr, barcode_tag, summary):
     """
-    Trims header from tags and sets SAM tags according to values found in header.
-    Assumes format: @header_<tag>:<type>:<seq> (can be numerous tags). Constrictions are: Header includes SAM tags
-    separated by "_".
-    :param read: pysam read alignment
-    :param sample_nr: barcodes samples tag.
-    :param summary: Collections's Counter object
-    :return:
-    """
+    Trims tag strings from header and sets them as SAM tags according to values found in header.
+    Header should have suffix of SAM tag(s) separeted by underline ('_') e.g.
 
+        header:name:with:stuff_<tag1>:<type1>:<seq1>_<tag2>:<type2>:<seq2>....
+    """
     # Strip header
     header = read.query_name.split("_")
     read.query_name = header[0]
@@ -80,11 +76,10 @@ def mode_samtags_underline_separation(read, sample_nr, barcode_tag, summary):
 
 def mode_ema(read, sample_nr, barcode_tag, _):  # summary is passed to this function but is not used
     """
-    Trims header from barcode sequences.
-    Assumes format @header:and:more...:header:<seq>. Constrictions: There must be exactly 9 elements separated by ":"
-    :param read: pysam read alignment
-    :param sample_nr:
-    :return:
+    Extract barcode from read header and replace trunkated barcode in SAM tag placed by EMA. Non-barcoded reads
+    left intact. Assumes header format as below
+
+        header:and:more...:header:<seq>
     """
     # Check if read is barcoded before doing correction
     tag_barcode = get_bamtag(read, barcode_tag)
