@@ -31,7 +31,7 @@ import tempfile
 import dnaio
 from xopen import xopen
 
-from blr.utils import tqdm, Summary
+from blr.utils import tqdm, Summary, ACCEPTED_READ_MAPPERS
 
 logger = logging.getLogger(__name__)
 
@@ -580,7 +580,7 @@ def add_arguments(parser):
         help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s."
     )
     parser.add_argument(
-        "-m", "--mapper", default="bowtie2", choices=["bowtie2", "minimap2", "bwa", "ema", "lariat"],
+        "-m", "--mapper", default="bowtie2", choices=ACCEPTED_READ_MAPPERS,
         help="Specify read mapper for labeling reads with barcodes. Selecting 'ema' or 'lariat' produces output "
              "required for these particular mappers. Default: %(default)s."
     )

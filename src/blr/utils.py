@@ -18,6 +18,7 @@ else:
 
 
 ACCEPTED_LIBRARY_TYPES = ["blr", "10x", "stlfr", "tellseq"]
+ACCEPTED_READ_MAPPERS = ["ema", "lariat", "bwa", "bowtie2", "minimap2"]
 
 
 def is_1_2(s, t):

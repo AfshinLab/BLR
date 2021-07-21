@@ -12,7 +12,7 @@ import sys
 from tqdm import tqdm
 import dnaio
 
-from blr.utils import Summary
+from blr.utils import Summary, ACCEPTED_READ_MAPPERS
 from blr.cli.tagfastq import Output, ChunkHandler, write_ema_output, write_lariat_output
 
 logger = logging.getLogger(__name__)
@@ -235,8 +235,8 @@ def add_arguments(parser):
         help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
-        "-m", "--mapper",
-        help="Specify read mapper for labeling reads with barcodes."
+        "-m", "--mapper", default="bowtie2", choices=ACCEPTED_READ_MAPPERS,
+        help="Specify read mapper for labeling reads with barcodes. Default: %(default)s."
     )
     parser.add_argument(
         "--sample-nr", type=int, default=1,

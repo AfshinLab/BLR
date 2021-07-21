@@ -4,7 +4,7 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 
 import logging
 
-from blr.utils import Summary, PySAMIO, get_bamtag, tqdm
+from blr.utils import Summary, PySAMIO, get_bamtag, tqdm, ACCEPTED_READ_MAPPERS
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ def add_arguments(parser):
         help="Write output BAM to file rather then stdout."
     )
     parser.add_argument(
-        "-m", "--mapper", default="bowtie2",
+        "-m", "--mapper", default="bowtie2", choices=ACCEPTED_READ_MAPPERS,
         help="Mapper used for aligning reads. Default: %(default)s."
     )
     parser.add_argument(
