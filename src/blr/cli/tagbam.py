@@ -8,6 +8,8 @@ from blr.utils import Summary, PySAMIO, get_bamtag, tqdm
 
 logger = logging.getLogger(__name__)
 
+DNA_BASES = {"A", "T", "C", "G"}
+
 
 def main(args):
     run_tagbam(
@@ -80,18 +82,20 @@ def mode_ema(read, sample_nr, _):  # summary is passed to this function but is n
     :param sample_nr:
     :return:
     """
+    # Check if read is barcoded before doing correction
+    tag_barcode = get_bamtag(read, "BX")
+    if tag_barcode is not None:
+        # Split header into original read name and barcode and check that the header barcode is valid
+        read.query_name, header_barcode = read.query_name.rsplit(":", 1)
+        assert set(header_barcode).issubset(DNA_BASES)
 
-    # Split header into original read name and barcode
-    read.query_name, header_barcode = read.query_name.rsplit(":", 1)
+        # Modify tag barcode to remove '-1' added at end by ema e.g 'TTTGTTCATGAGTACG-1' --> 'TTTGTTCATGAGTACG'
+        tag_barcode = tag_barcode[:-2]
 
-    # Modify tag barcode to remove '-1' added at end by ema e.g 'BX:Z:TTTGTTCATGAGTACG-1' --> 'BX:Z:TTTGTTCATGAGTACG'
-    # Ema also trims the barcode to 16bp (10x Barcode length) so it need to be exchanged for the one in the header.
-    current_barcode = get_bamtag(read, "BX")
-    if current_barcode and current_barcode.endswith("-1"):
-        modified_barcode = current_barcode[:-2]
+        # Ema also trims the barcode to 16bp (10x Barcode length) so it need to be exchanged for the one in the header.
         # Make sure that the SAM tag barcode is a substring of the header barcode
-        assert header_barcode.startswith(modified_barcode)
-        read.set_tag("BX", header_barcode + "-" + str(sample_nr), value_type="Z")
+        assert header_barcode.startswith(tag_barcode)
+        read.set_tag("BX", f"{header_barcode}-{sample_nr}", value_type="Z")
 
 
 def mode_lariat(read, sample_nr, _):
