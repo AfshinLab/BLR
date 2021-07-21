@@ -33,7 +33,7 @@ def run_tagbam(
     if mapper == "ema":
         processing_function = mode_ema
     elif mapper == "lariat":
-        processing_function = lambda *args: None
+        processing_function = mode_void
     else:
         processing_function = mode_samtags_underline_separation
 
@@ -95,6 +95,10 @@ def mode_ema(read, sample_nr, barcode_tag, _):  # summary is passed to this func
         # Make sure that the SAM tag barcode is a substring of the header barcode
         assert header_barcode.startswith(tag_barcode)
         read.set_tag(barcode_tag, f"{header_barcode}-{sample_nr}", value_type="Z")
+
+
+def mode_void(*args, **kwargs):
+    pass
 
 
 def is_sequence(string: str) -> bool:
