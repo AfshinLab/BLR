@@ -445,7 +445,7 @@ rule get_unmapped_reads:
     log: "unmapped.bam.log"
     params:
         tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']}"
-                                      f" -b {configs['barcode_tag']} -o",
+                                      f" -b {config['barcode_tag']} -o",
         outtype = "-bh" if skip_tagbam else "-h"
     shell:
         "samtools view {params.outtype} {input.bam} '*' {params.tag} {output.bam} 2> {log}"
