@@ -35,11 +35,15 @@ run_modules:
     - custom_content
 
 sp:
-    picard/markdups:
-        fn: "final.duplicate_metrics.txt"
     picard/alignment_metrics:
         fn: "final.alignment_summary_metrics.txt"
     picard/basedistributionbycycle:
+        skip: true
+    picard/collectilluminabasecallingmetrics:
+        skip: true
+    picard/collectilluminalanemetrics:
+        skip: true
+    picard/crosscheckfingerprints:
         skip: true
     picard/gcbias:
         skip: true
@@ -47,6 +51,10 @@ sp:
         skip: true
     picard/insertsize:
         fn: "final.insert_size_metrics.txt"
+    picard/markdups:
+        fn: "final.duplicate_metrics.txt"
+    picard/markilluminaadapters:
+        skip: true
     picard/oxogmetrics:
         skip: true
     picard/pcr_metrics:
