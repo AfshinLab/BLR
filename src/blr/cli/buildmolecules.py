@@ -8,6 +8,7 @@ a maximum distance of --window between any given reads.
 from collections import defaultdict, OrderedDict
 import logging
 import statistics
+from itertools import chain
 
 import pandas as pd
 import pysam
@@ -28,6 +29,7 @@ def main(args):
         window=args.window,
         barcode_tag=args.barcode_tag,
         stats_tsv=args.stats_tsv,
+        bed_file=args.bed,
         molecule_tag=args.molecule_tag,
         min_mapq=args.min_mapq,
         library_type=args.library_type
@@ -41,6 +43,7 @@ def run_buildmolecules(
     window: int,
     barcode_tag: str,
     stats_tsv: str,
+    bed_file: str,
     molecule_tag: str,
     min_mapq: int,
     library_type: str
@@ -72,13 +75,37 @@ def run_buildmolecules(
 
     header_to_mol_dict.clear()
 
+    # Make list of molecules
+    molecules = [molecule for molecule in chain.from_iterable(bc_to_mol_dict.values())]
+    del bc_to_mol_dict
+
+    # Generate dataframe with molecule information
+    df = pd.DataFrame(molecules)
+    if not df.empty:
+        update_summary_from_molecule_stats(df, summary)
+
     # Write molecule/barcode file stats
     if stats_tsv:
         logger.info(f"Writing {stats_tsv}")
-        df = compute_molecule_stats_dataframe(bc_to_mol_dict)
-        df.to_csv(stats_tsv, sep="\t", index=False)
-        if not df.empty:
-            update_summary_from_molecule_stats(df, summary)
+        stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
+        df.loc[:, stats_columns].to_csv(stats_tsv, sep="\t", index=False)
+
+    # Write BED file
+    if bed_file:
+        # Create DataFrame with 6 columns in bed-like order
+        #   1. Chromosome
+        #   2. Start position of molecule
+        #   3. End position of molecule
+        #   4. Molecule index integer
+        #   5. Barcode string
+        #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+        bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
+        bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
+                      ";BpCovered=" + df["BpCovered"].astype(str)
+        del df
+        bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
+        bed.to_csv(bed_file, sep="\t", index=False, header=False)
+
     summary.print_stats(name=__name__)
 
 
@@ -140,12 +167,13 @@ class Molecule:
     """
     molecule_counter = 0
 
-    def __init__(self, read, barcode, id=None):
+    def __init__(self, read, barcode, index=None):
         """
         :param read: pysam.AlignedSegment
         :param barcode: barcode ID
         """
         self.barcode = barcode
+        self.chromosome = read.reference_name
         self.start = read.reference_start
         self.stop = read.reference_end
         self.read_headers = {read.query_name}
@@ -153,7 +181,7 @@ class Molecule:
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
-        self.id = Molecule.molecule_counter if id is None else id
+        self.index = Molecule.molecule_counter if index is None else index
 
     def length(self):
         return self.stop - self.start
@@ -194,11 +222,14 @@ class Molecule:
 
     def to_dict(self):
         return OrderedDict({
-            "MoleculeID": self.id,
+            "MoleculeID": self.index,
             "Barcode": self.barcode,
             "Reads": self.number_of_reads,
             "Length": self.length(),
             "BpCovered": self.bp_covered,
+            "Chromsome": self.chromosome,
+            "StartPosition": self.start,
+            "EndPosition": self.stop,
         })
 
 
@@ -231,7 +262,7 @@ class AllMolecules:
         self.bc_to_mol = defaultdict(list)
 
         # Dict for finding mol ID when writing out
-        self.header_to_mol = dict()
+        self.header_to_mol = {}
 
     def assign_read(self, read, barcode, summary):
         """
@@ -299,7 +330,7 @@ class AllMolecules:
         if molecule.number_of_reads >= self.min_reads:
             self.bc_to_mol[barcode].append(molecule.to_dict())
             self.header_to_mol.update(
-                {header: molecule.id for header in molecule.read_headers}
+                {header: molecule.index for header in molecule.read_headers}
             )
 
     def terminate(self, barcode):
@@ -316,19 +347,6 @@ class AllMolecules:
         for barcode in self.molecule_cache:
             self.report(barcode)
         self.molecule_cache.clear()
-
-
-def compute_molecule_stats_dataframe(bc_to_mol_dict):
-    """
-    Writes stats file for molecules and barcode with information like how many reads, barcodes, molecules etc they
-    have
-    """
-    molecule_data = list()
-    while bc_to_mol_dict:
-        _, molecules = bc_to_mol_dict.popitem()
-        molecule_data.extend(molecules)
-
-    return pd.DataFrame(molecule_data)
 
 
 def update_summary_from_molecule_stats(df, summary):
@@ -366,6 +384,10 @@ def add_arguments(parser):
     parser.add_argument(
         "-s", "--stats-tsv", metavar="FILE",
         help="Write molecule stats in TSV format to FILE."
+    )
+    parser.add_argument(
+        "--bed",
+        help="Write molecule bounds to BED file."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",

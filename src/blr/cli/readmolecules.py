@@ -1,5 +1,5 @@
 """
-Parse molecule information from BAM with BX and MI tags
+Parse molecule information from BAM and output stats
 """
 import logging
 import sys
@@ -17,6 +17,7 @@ def main(args):
     run_readmolecules(
         input=args.input,
         output_tsv=args.output_tsv,
+        bed_file=args.bed,
         threshold=args.threshold,
         barcode_tag=args.barcode_tag,
         molecule_tag=args.molecule_tag,
@@ -28,6 +29,7 @@ def main(args):
 def run_readmolecules(
     input: str,
     output_tsv: str,
+    bed_file: str,
     threshold: int,
     barcode_tag: str,
     molecule_tag: str,
@@ -50,13 +52,34 @@ def run_readmolecules(
     pysam.set_verbosity(save)
 
     if output_tsv is None:
-        output_tsv = sys.stdout.buffer
+        output_tsv = sys.stdout
 
     # Write molecule/barcode file stats
     df = pd.DataFrame(stats)
-    df.to_csv(output_tsv, sep="\t", index=False)
+    stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
+    stats = df.loc[:, stats_columns]
+    stats.to_csv(output_tsv, sep="\t", index=False)
+    del stats
+
     if not df.empty:
         update_summary_from_molecule_stats(df, summary)
+
+    # Write BED file
+    if bed_file:
+        # Create DataFrame with 6 columns in bed-like order
+        #   1. Chromosome
+        #   2. Start position of molecule
+        #   3. End position of molecule
+        #   4. Molecule index integer
+        #   5. Barcode string
+        #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+        bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
+        bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
+                      ";BpCovered=" + df["BpCovered"].astype(str)
+        del df
+        bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
+        bed.to_csv(bed_file, sep="\t", index=False, header=False)
+
     summary.print_stats(name=__name__)
 
 
@@ -98,7 +121,7 @@ def parse_molecules(openbam, barcode_tag, molecule_tag, library_type, min_mapq, 
 
         index = (barcode, molecule_id)
         if index not in molecules:
-            molecules[index] = Molecule(read, barcode, id=molecule_id)
+            molecules[index] = Molecule(read, barcode, index=molecule_id)
         elif molecules[index].has_acceptable_overlap(read, library_type, summary):
             molecules[index].add_read(read)
             molecules.move_to_end(index)
@@ -129,6 +152,10 @@ def add_arguments(parser):
     parser.add_argument(
         "-o", "--output-tsv",
         help="Write output stats to TSV file. Default: write to stdout."
+    )
+    parser.add_argument(
+        "--bed",
+        help="Write molecule bounds to BED file."
     )
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,
