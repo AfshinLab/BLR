@@ -34,8 +34,10 @@ rule index_bam:
         bai = "{base}.bam.bai"
     input:
         bam = "{base}.bam"
+    threads: workflow.cores
     shell:
         "samtools index"
+        " -@ {threads}"
         " {input.bam}"
         " {output.bai}"
 
