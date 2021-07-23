@@ -53,31 +53,31 @@ def run_buildmolecules(
     # Build molecules from BCs and reads
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with pysam.AlignmentFile(input, "rb") as infile:
-        bc_to_mol_dict, header_to_mol_dict = build_molecules(pysam_openfile=infile,
-                                                             barcode_tag=barcode_tag,
-                                                             window=window,
-                                                             min_reads=threshold,
-                                                             library_type=library_type,
-                                                             min_mapq=min_mapq,
-                                                             summary=summary)
+        barcode_to_mol, header_to_mol_id = build_molecules(pysam_openfile=infile,
+                                                           barcode_tag=barcode_tag,
+                                                           window=window,
+                                                           min_reads=threshold,
+                                                           library_type=library_type,
+                                                           min_mapq=min_mapq,
+                                                           summary=summary)
     pysam.set_verbosity(save)
 
     # Writes filtered out
     with PySAMIO(input, output, __name__) as (openin, openout):
         logger.info("Writing filtered bam file")
         for read in tqdm(openin.fetch(until_eof=True)):
-            name = read.query_name
+            header = read.query_name
 
-            molecule_id = header_to_mol_dict.get(name, DEFAULT_MOLECULE_ID)
+            molecule_id = header_to_mol_id.get(header, DEFAULT_MOLECULE_ID)
             read.set_tag(molecule_tag, molecule_id)
 
             openout.write(read)
 
-    header_to_mol_dict.clear()
+    header_to_mol_id.clear()
 
     # Make list of molecules
-    molecules = [molecule for molecule in chain.from_iterable(bc_to_mol_dict.values())]
-    del bc_to_mol_dict
+    molecules = [molecule for molecule in chain.from_iterable(barcode_to_mol.values())]
+    del barcode_to_mol
 
     # Generate dataframe with molecule information
     df = pd.DataFrame(molecules)
@@ -126,12 +126,12 @@ def parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
 
 def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type, min_mapq, summary):
     """
-    Builds all_molecules.bc_to_mol ([barcode][moleculeID] = molecule) and
+    Builds all_molecules.barcode_to_mol ([barcode][moleculeID] = molecule) and
     all_molecules.header_to_mol ([read_name]=mol_ID)
     :param pysam_openfile: Pysam open file instance.
     :param barcode_tag: Tag used to store barcode in bam file.
     :param window: Max distance between reads to include in the same molecule.
-    :param min_reads: Minimum reads to include molecule in all_molecules.bc_to_mol
+    :param min_reads: Minimum reads to include molecule in all_molecules.barcode_to_mol
     :param library_type: str. Library construction method.
     :param min_mapq: int
     :param summary: dict for stats collection
@@ -157,7 +157,7 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type
 
     all_molecules.report_and_remove_all()
 
-    return all_molecules.bc_to_mol, all_molecules.header_to_mol
+    return all_molecules.barcode_to_mol, all_molecules.header_to_mol_id
 
 
 class Molecule:
@@ -235,13 +235,13 @@ class Molecule:
 
 class AllMolecules:
     """
-    Tracks all molecule information, with finished molecules in .bc_to_mol, and molecules which still might get more
+    Tracks all molecule information, with finished molecules in .barcode_to_mol, and molecules which still might get more
     reads in .molecule_cache.
     """
 
     def __init__(self, min_reads, window, library_type):
         """
-        :param min_reads: Minimum reads required to add molecule to .bc_to_mol from .cache_dict
+        :param min_reads: Minimum reads required to add molecule to .barcode_to_mol from .cache_dict
         :param window: Current window for detecting molecules.
         :param library_type: str. Library construction method
         """
@@ -259,10 +259,10 @@ class AllMolecules:
         self.molecule_cache = LastUpdatedOrderedDict()
 
         # Dict for finding mols belonging to the same BC
-        self.bc_to_mol = defaultdict(list)
+        self.barcode_to_mol = defaultdict(list)
 
         # Dict for finding mol ID when writing out
-        self.header_to_mol = {}
+        self.header_to_mol_id = {}
 
     def assign_read(self, read, barcode, summary):
         """
@@ -324,12 +324,12 @@ class AllMolecules:
 
     def report(self, barcode):
         """
-        Commit molecule to .bc_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is required.
+        Commit molecule to .barcode_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is required.
         """
         molecule = self.molecule_cache[barcode]
         if molecule.number_of_reads >= self.min_reads:
-            self.bc_to_mol[barcode].append(molecule.to_dict())
-            self.header_to_mol.update(
+            self.barcode_to_mol[barcode].append(molecule.to_dict())
+            self.header_to_mol_id.update(
                 {header: molecule.index for header in molecule.read_headers}
             )
 
@@ -341,7 +341,7 @@ class AllMolecules:
 
     def report_and_remove_all(self):
         """
-        Commit all .molecule_cache molecules to .bc_to_mol and empty .molecule_cache (provided they meet criterias by
+        Commit all .molecule_cache molecules to .barcode_to_mol and empty .molecule_cache (provided they meet criterias by
         report function).
         """
         for barcode in self.molecule_cache:
