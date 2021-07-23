@@ -3,6 +3,7 @@ Parse molecule information from BAM and output stats
 """
 import logging
 import sys
+from contextlib import ExitStack
 
 import pandas as pd
 import pysam
@@ -41,44 +42,36 @@ def run_readmolecules(
     stats = []
     # Read molecules from BAM
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
-    with pysam.AlignmentFile(input, "rb") as infile:
+    with ExitStack() as stack:
+        infile = stack.enter_context(pysam.AlignmentFile(input, "rb"))
+
+        # Setup TSV
+        if output_tsv is None:
+            tsv = sys.stdout
+        else:
+            tsv = stack.enter_context(open(output_tsv, "w"))
+        print("MoleculeID", "Barcode", "Reads", "Length", "BpCovered", sep="\t", file=tsv)
+
+        # Setup BED
+        if bed_file:
+            bed = stack.enter_context(open(bed_file, "w"))
+
         for molecule in parse_molecules(openbam=infile, barcode_tag=barcode_tag, molecule_tag=molecule_tag,
                                         library_type=library_type, min_mapq=min_mapq, summary=summary):
             summary["Molecules candidate"] += 1
-            if molecule.number_of_reads >= threshold:
+            if molecule.nr_reads >= threshold:
                 summary["Molecules called"] += 1
-                stats.append(molecule.to_dict())
+                stats.append({"Length": molecule.length(), "BpCovered": molecule.bp_covered})
+
+                print(molecule.to_tsv(), file=tsv)
+                if bed_file:
+                    print(molecule.to_bed(), file=bed)
 
     pysam.set_verbosity(save)
 
-    if output_tsv is None:
-        output_tsv = sys.stdout
-
-    # Write molecule/barcode file stats
     df = pd.DataFrame(stats)
-    stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
-    stats = df.loc[:, stats_columns]
-    stats.to_csv(output_tsv, sep="\t", index=False)
-    del stats
-
     if not df.empty:
         update_summary_from_molecule_stats(df, summary)
-
-    # Write BED file
-    if bed_file:
-        # Create DataFrame with 6 columns in bed-like order
-        #   1. Chromosome
-        #   2. Start position of molecule
-        #   3. End position of molecule
-        #   4. Molecule index integer
-        #   5. Barcode string
-        #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
-        bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
-        bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
-                      ";BpCovered=" + df["BpCovered"].astype(str)
-        del df
-        bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
-        bed.to_csv(bed_file, sep="\t", index=False, header=False)
 
     summary.print_stats(name=__name__)
 
@@ -155,7 +148,7 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--bed",
-        help="Write molecule bounds to BED file."
+        help="Write molecule bounds to unsorted BED file"
     )
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,

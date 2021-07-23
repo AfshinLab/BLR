@@ -177,7 +177,7 @@ class Molecule:
         self.start = read.reference_start
         self.stop = read.reference_end
         self.read_headers = {read.query_name}
-        self.number_of_reads = 1
+        self.nr_reads = 1
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
@@ -194,7 +194,7 @@ class Molecule:
         self.stop = max(read.reference_end, self.stop)
         self.read_headers.add(read.query_name)
 
-        self.number_of_reads += 1
+        self.nr_reads += 1
 
     def has_acceptable_overlap(self, read, library_type, summary):
         if read.query_name in self.read_headers:  # Within pair
@@ -224,13 +224,29 @@ class Molecule:
         return OrderedDict({
             "MoleculeID": self.index,
             "Barcode": self.barcode,
-            "Reads": self.number_of_reads,
+            "Reads": self.nr_reads,
             "Length": self.length(),
             "BpCovered": self.bp_covered,
             "Chromsome": self.chromosome,
             "StartPosition": self.start,
             "EndPosition": self.stop,
         })
+
+    def to_tsv(self):
+        return "{index}\t{barcode}\t{nr_reads}\t{length}\t{bp_covered}".format(**vars(self), length=self.length())
+
+    def to_bed(self):
+        """
+        Create a bed entry for the molecule with 6-columns.
+           1. Chromosome
+           2. Start position of molecule
+           3. End position of molecule
+           4. Molecule index integer
+           5. Barcode string
+           6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+        """
+        return "{chromosome}\t{start}\t{stop}\t{index}\t{barcode}\tReads={nr_reads};Length={length};" \
+               "BpCovered={bp_covered}".format(**vars(self), length=self.length())
 
 
 class AllMolecules:
@@ -327,7 +343,7 @@ class AllMolecules:
         Commit molecule to .barcode_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is required.
         """
         molecule = self.molecule_cache[barcode]
-        if molecule.number_of_reads >= self.min_reads:
+        if molecule.nr_reads >= self.min_reads:
             self.barcode_to_mol[barcode].append(molecule.to_dict())
             self.header_to_mol_id.update(
                 {header: molecule.index for header in molecule.read_headers}
