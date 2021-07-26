@@ -1,5 +1,6 @@
 from io import StringIO
 from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks, get_bamtag
+from blr.utils import calculate_N50
 from pathlib import Path
 import os
 
@@ -93,3 +94,10 @@ def test_get_bamtag():
     default_barcode = "DEFAULT"
     read2_barcode = get_bamtag(read2, "BX", default="DEFAULT")
     assert read2_barcode == default_barcode
+
+
+def test_calculate_N50():
+    # Used example from https://en.wikipedia.org/wiki/N50,_L50,_and_related_statistics#N50
+    # Sum of values is 54, half is 27. 10 + 9 + 8 = 27 --> N50 is 8
+    values = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert calculate_N50(values) == 8
