@@ -251,8 +251,8 @@ class Molecule:
 
 class AllMolecules:
     """
-    Tracks all molecule information, with finished molecules in .barcode_to_mol, and molecules which still might get more
-    reads in .molecule_cache.
+    Tracks all molecule information, with finished molecules in .barcode_to_mol, and molecules which still might get
+    more reads in .molecule_cache.
     """
 
     def __init__(self, min_reads, window, library_type):
@@ -340,7 +340,8 @@ class AllMolecules:
 
     def report(self, barcode):
         """
-        Commit molecule to .barcode_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is required.
+        Commit molecule to .barcode_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is
+        required.
         """
         molecule = self.molecule_cache[barcode]
         if molecule.nr_reads >= self.min_reads:
@@ -357,8 +358,8 @@ class AllMolecules:
 
     def report_and_remove_all(self):
         """
-        Commit all .molecule_cache molecules to .barcode_to_mol and empty .molecule_cache (provided they meet criterias by
-        report function).
+        Commit all .molecule_cache molecules to .barcode_to_mol and empty .molecule_cache (provided they meet
+        criterias by report function).
         """
         for barcode in self.molecule_cache:
             self.report(barcode)
