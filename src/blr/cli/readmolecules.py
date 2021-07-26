@@ -5,13 +5,17 @@ import logging
 import sys
 from contextlib import ExitStack
 
-import pandas as pd
 import pysam
+import numpy as np
 
-from blr.cli.buildmolecules import Molecule, update_summary_from_molecule_stats
-from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict
+from blr.cli.buildmolecules import Molecule
+from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict, calculate_N50
 
 logger = logging.getLogger(__name__)
+
+# This constant should be larger than the maximum possible molecules one could expect. The largest count I have
+# seen so far is about 60k so this takes some additional height to this. It could be expanded further if needed.
+MAX_MOLECULE_COUNT = 1_000_000_000
 
 
 def main(args):
@@ -39,7 +43,8 @@ def run_readmolecules(
 ):
 
     summary = Summary()
-    stats = []
+    stats = np.empty((MAX_MOLECULE_COUNT, 2))
+    i = 0
     # Read molecules from BAM
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with ExitStack() as stack:
@@ -61,7 +66,10 @@ def run_readmolecules(
             summary["Molecules candidate"] += 1
             if molecule.nr_reads >= threshold:
                 summary["Molecules called"] += 1
-                stats.append({"Length": molecule.length(), "BpCovered": molecule.bp_covered})
+
+                stats[i, 0] = molecule.length()
+                stats[i, 1] = molecule.bp_covered
+                i += 1
 
                 print(molecule.to_tsv(), file=tsv)
                 if bed_file:
@@ -69,9 +77,15 @@ def run_readmolecules(
 
     pysam.set_verbosity(save)
 
-    df = pd.DataFrame(stats)
-    if not df.empty:
-        update_summary_from_molecule_stats(df, summary)
+    if i > 0:
+        stats.resize((i, 2))
+        coverage = 100 * stats[:, 1] / stats[:, 0]
+        summary["Fragment N50 (bp)"] = calculate_N50(stats[:, 0])
+        summary["Mean fragment size (bp)"] = np.mean(stats[:, 0])
+        summary["Median fragment size (bp)"] = np.median(stats[:, 0])
+        summary["Longest fragment (bp)"] = np.max(stats[:, 0])
+        summary["Mean fragment read coverage (%)"] = np.mean(coverage)
+        summary["Median fragment read coverage (%)"] = np.median(coverage)
 
     summary.print_stats(name=__name__)
 

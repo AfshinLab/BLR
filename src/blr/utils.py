@@ -93,9 +93,9 @@ class Summary(Counter):
         # Print stats in columns
         for name, value in self.items():
             value_str = str(value)
-            if type(value) is int:
+            if isinstance(value, (int, np.integer)):
                 value_str = f"{value:>{value_width},}"
-            elif type(value) is float:
+            elif isinstance(value, (float, np.float)):
                 value_str = f"{value:>{value_width+4},.3f}"
 
             print(f"{name:<{max_name_width}} {value_str}", file=print_to)
@@ -178,7 +178,8 @@ def calculate_N50(lengths):
     :param lengths: list containing integers.
     :return int. N50 metric
     """
-    lengths = sorted(lengths, reverse=True)
+    lengths = np.array(lengths)
+    lengths[::-1].sort()
 
     csum = np.cumsum(lengths)
     n2 = int(sum(lengths) / 2)
