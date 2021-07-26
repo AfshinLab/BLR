@@ -8,7 +8,7 @@ from contextlib import ExitStack
 import pysam
 import numpy as np
 
-from blr.cli.buildmolecules import Molecule
+from blr.cli.buildmolecules import Molecule, DEFAULT_MOLECULE_ID
 from blr.utils import get_bamtag, Summary, tqdm, ACCEPTED_LIBRARY_TYPES, LastUpdatedOrderedDict, calculate_N50
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ def parse_reads(openbam, barcode_tag, molecule_tag, min_mapq, summary):
         summary[f"Reads with {barcode_tag} tag"] += 1
 
         molecule_id = get_bamtag(pysam_read=read, tag=molecule_tag)
-        if not molecule_id:
+        if not molecule_id or molecule_id == DEFAULT_MOLECULE_ID:
             summary["Non analyced reads"] += 1
             continue
 
