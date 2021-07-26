@@ -1,8 +1,12 @@
 """
 Tags SAM/BAM file with molecule information based on barcode sequence and genomic proximity.
 
-A molecule is defined by having 1) minimum --threshold reads and including all reads with the same barcode which are 2)
-a maximum distance of --window between any given reads.
+Molecules are a set of reads that:
+
+    1) share the same barcode sequence (accessed in SAM tag specified by -b/--barcode-tag)
+    2) have no neighbouring reads further appart then a specified window (set using -w/--window)
+    2) have minimum number of reads (set using -t/--threshold)
+
 """
 
 from collections import defaultdict, OrderedDict
