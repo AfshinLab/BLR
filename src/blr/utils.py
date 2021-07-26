@@ -59,17 +59,14 @@ def guess_paired_path(path: Path):
     return None
 
 
-def get_bamtag(pysam_read, tag):
+def get_bamtag(pysam_read: pysam.AlignedSegment, tag: str, default=None):
     """
-    Fetches tags from bam files. Return an empty value of the same type if not found.
-    :param pysam_read: pysam read object
-    :param tag: bam tag to fetch
-    :return: bam tag value
+    Fetches tags from bam files. Return default value of the same type if not found.
     """
     try:
         return pysam_read.get_tag(tag)
     except KeyError:
-        return None
+        return default
 
 
 class Summary(Counter):
