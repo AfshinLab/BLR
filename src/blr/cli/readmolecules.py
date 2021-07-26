@@ -162,7 +162,7 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--bed",
-        help="Write molecule bounds to unsorted BED file"
+        help="Write molecule bounds to BED file. Note that entries are unsorted but grouped per chromosome."
     )
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,

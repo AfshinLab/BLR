@@ -408,7 +408,7 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--bed",
-        help="Write molecule bounds to BED file."
+        help="Write molecule bounds to sorted BED file."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
