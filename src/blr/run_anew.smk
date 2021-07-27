@@ -34,8 +34,11 @@ rule index_bam:
         bai = "{base}.bam.bai"
     input:
         bam = "{base}.bam"
+    threads: workflow.cores
+    priority: 50
     shell:
         "samtools index"
+        " -@ {threads}"
         " {input.bam}"
         " {output.bai}"
 
@@ -83,6 +86,7 @@ rule merge_or_link_input_bams:
     input:
         dir = "inputs"
     threads: 20
+    priority: 50
     run:
         input_bams = glob.glob(input.dir + "/*." + output.bam)
         if len(input_bams) == 1:

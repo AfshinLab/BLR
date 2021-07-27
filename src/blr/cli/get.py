@@ -51,12 +51,19 @@ def print_counts(counts):
 
 
 def add_arguments(parser):
-    parser.add_argument("input",
-                        help="SAM/BAM file")
-    parser.add_argument("tag",
-                        help="SAM tag")
-    parser.add_argument("values", nargs="+",
-                        help="Values to match for output. Could be file with entries on separate lines.")
-
-    parser.add_argument("-o", "--output", default="-",
-                        help="Write output BAM to file rather then stdout.")
+    parser.add_argument(
+        "input",
+        help="SAM/BAM file."
+    )
+    parser.add_argument(
+        "tag",
+        help="SAM tag."
+    )
+    parser.add_argument(
+        "values", nargs="+",
+        help="Values to match for output. Could be file with entries on separate lines."
+    )
+    parser.add_argument(
+        "-o", "--output", default="-",
+        help="Write output BAM to file rather then stdout."
+    )

@@ -1,13 +1,18 @@
 """
 Tags SAM/BAM file with molecule information based on barcode sequence and genomic proximity.
 
-A molecule is defined by having 1) minimum --threshold reads and including all reads with the same barcode which are 2)
-a maximum distance of --window between any given reads.
+Molecules are a set of reads that:
+
+    1) share the same barcode sequence (accessed in SAM tag specified by -b/--barcode-tag)
+    2) have no neighbouring reads further appart then a specified window (set using -w/--window)
+    2) have minimum number of reads (set using -t/--threshold)
+
 """
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import logging
 import statistics
+from itertools import chain
 
 import pandas as pd
 import pysam
@@ -28,6 +33,7 @@ def main(args):
         window=args.window,
         barcode_tag=args.barcode_tag,
         stats_tsv=args.stats_tsv,
+        bed_file=args.bed,
         molecule_tag=args.molecule_tag,
         min_mapq=args.min_mapq,
         library_type=args.library_type
@@ -41,6 +47,7 @@ def run_buildmolecules(
     window: int,
     barcode_tag: str,
     stats_tsv: str,
+    bed_file: str,
     molecule_tag: str,
     min_mapq: int,
     library_type: str
@@ -50,35 +57,59 @@ def run_buildmolecules(
     # Build molecules from BCs and reads
     save = pysam.set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with pysam.AlignmentFile(input, "rb") as infile:
-        bc_to_mol_dict, header_to_mol_dict = build_molecules(pysam_openfile=infile,
-                                                             barcode_tag=barcode_tag,
-                                                             window=window,
-                                                             min_reads=threshold,
-                                                             library_type=library_type,
-                                                             min_mapq=min_mapq,
-                                                             summary=summary)
+        barcode_to_mol, header_to_mol_id = build_molecules(pysam_openfile=infile,
+                                                           barcode_tag=barcode_tag,
+                                                           window=window,
+                                                           min_reads=threshold,
+                                                           library_type=library_type,
+                                                           min_mapq=min_mapq,
+                                                           summary=summary)
     pysam.set_verbosity(save)
 
     # Writes filtered out
     with PySAMIO(input, output, __name__) as (openin, openout):
         logger.info("Writing filtered bam file")
         for read in tqdm(openin.fetch(until_eof=True)):
-            name = read.query_name
+            header = read.query_name
 
-            molecule_id = header_to_mol_dict.get(name, DEFAULT_MOLECULE_ID)
+            molecule_id = header_to_mol_id.get(header, DEFAULT_MOLECULE_ID)
             read.set_tag(molecule_tag, molecule_id)
 
             openout.write(read)
 
-    header_to_mol_dict.clear()
+    header_to_mol_id.clear()
+
+    # Make list of molecules
+    molecules = [molecule for molecule in chain.from_iterable(barcode_to_mol.values())]
+    del barcode_to_mol
+
+    # Generate dataframe with molecule information
+    df = pd.DataFrame(molecules)
+    if not df.empty:
+        update_summary_from_molecule_stats(df, summary)
 
     # Write molecule/barcode file stats
     if stats_tsv:
         logger.info(f"Writing {stats_tsv}")
-        df = compute_molecule_stats_dataframe(bc_to_mol_dict)
-        df.to_csv(stats_tsv, sep="\t", index=False)
-        if not df.empty:
-            update_summary_from_molecule_stats(df, summary)
+        stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
+        df.loc[:, stats_columns].to_csv(stats_tsv, sep="\t", index=False)
+
+    # Write BED file
+    if bed_file:
+        # Create DataFrame with 6 columns in bed-like order
+        #   1. Chromosome
+        #   2. Start position of molecule
+        #   3. End position of molecule
+        #   4. Molecule index integer
+        #   5. Barcode string
+        #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+        bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
+        bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
+                      ";BpCovered=" + df["BpCovered"].astype(str)
+        del df
+        bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
+        bed.to_csv(bed_file, sep="\t", index=False, header=False)
+
     summary.print_stats(name=__name__)
 
 
@@ -99,12 +130,12 @@ def parse_reads(pysam_openfile, barcode_tag, min_mapq, summary):
 
 def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type, min_mapq, summary):
     """
-    Builds all_molecules.bc_to_mol ([barcode][moleculeID] = molecule) and
+    Builds all_molecules.barcode_to_mol ([barcode][moleculeID] = molecule) and
     all_molecules.header_to_mol ([read_name]=mol_ID)
     :param pysam_openfile: Pysam open file instance.
     :param barcode_tag: Tag used to store barcode in bam file.
     :param window: Max distance between reads to include in the same molecule.
-    :param min_reads: Minimum reads to include molecule in all_molecules.bc_to_mol
+    :param min_reads: Minimum reads to include molecule in all_molecules.barcode_to_mol
     :param library_type: str. Library construction method.
     :param min_mapq: int
     :param summary: dict for stats collection
@@ -130,7 +161,7 @@ def build_molecules(pysam_openfile, barcode_tag, window, min_reads, library_type
 
     all_molecules.report_and_remove_all()
 
-    return all_molecules.bc_to_mol, all_molecules.header_to_mol
+    return all_molecules.barcode_to_mol, all_molecules.header_to_mol_id
 
 
 class Molecule:
@@ -140,20 +171,21 @@ class Molecule:
     """
     molecule_counter = 0
 
-    def __init__(self, read, barcode, id=None):
+    def __init__(self, read, barcode, index=None):
         """
         :param read: pysam.AlignedSegment
         :param barcode: barcode ID
         """
         self.barcode = barcode
+        self.chromosome = read.reference_name
         self.start = read.reference_start
         self.stop = read.reference_end
         self.read_headers = {read.query_name}
-        self.number_of_reads = 1
+        self.nr_reads = 1
         self.bp_covered = self.stop - self.start
 
         Molecule.molecule_counter += 1
-        self.id = Molecule.molecule_counter if id is None else id
+        self.index = Molecule.molecule_counter if index is None else index
 
     def length(self):
         return self.stop - self.start
@@ -166,7 +198,7 @@ class Molecule:
         self.stop = max(read.reference_end, self.stop)
         self.read_headers.add(read.query_name)
 
-        self.number_of_reads += 1
+        self.nr_reads += 1
 
     def has_acceptable_overlap(self, read, library_type, summary):
         if read.query_name in self.read_headers:  # Within pair
@@ -193,24 +225,43 @@ class Molecule:
         return False
 
     def to_dict(self):
-        return {
-            "MoleculeID": self.id,
+        return OrderedDict({
+            "MoleculeID": self.index,
             "Barcode": self.barcode,
-            "Reads": self.number_of_reads,
+            "Reads": self.nr_reads,
             "Length": self.length(),
             "BpCovered": self.bp_covered,
-        }
+            "Chromsome": self.chromosome,
+            "StartPosition": self.start,
+            "EndPosition": self.stop,
+        })
+
+    def to_tsv(self):
+        return "{index}\t{barcode}\t{nr_reads}\t{length}\t{bp_covered}".format(**vars(self), length=self.length())
+
+    def to_bed(self):
+        """
+        Create a bed entry for the molecule with 6-columns.
+           1. Chromosome
+           2. Start position of molecule
+           3. End position of molecule
+           4. Molecule index integer
+           5. Barcode string
+           6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+        """
+        return "{chromosome}\t{start}\t{stop}\t{index}\t{barcode}\tReads={nr_reads};Length={length};" \
+               "BpCovered={bp_covered}".format(**vars(self), length=self.length())
 
 
 class AllMolecules:
     """
-    Tracks all molecule information, with finished molecules in .bc_to_mol, and molecules which still might get more
-    reads in .molecule_cache.
+    Tracks all molecule information, with finished molecules in .barcode_to_mol, and molecules which still might get
+    more reads in .molecule_cache.
     """
 
     def __init__(self, min_reads, window, library_type):
         """
-        :param min_reads: Minimum reads required to add molecule to .bc_to_mol from .cache_dict
+        :param min_reads: Minimum reads required to add molecule to .barcode_to_mol from .cache_dict
         :param window: Current window for detecting molecules.
         :param library_type: str. Library construction method
         """
@@ -228,10 +279,10 @@ class AllMolecules:
         self.molecule_cache = LastUpdatedOrderedDict()
 
         # Dict for finding mols belonging to the same BC
-        self.bc_to_mol = defaultdict(list)
+        self.barcode_to_mol = defaultdict(list)
 
         # Dict for finding mol ID when writing out
-        self.header_to_mol = dict()
+        self.header_to_mol_id = {}
 
     def assign_read(self, read, barcode, summary):
         """
@@ -293,13 +344,14 @@ class AllMolecules:
 
     def report(self, barcode):
         """
-        Commit molecule to .bc_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is required.
+        Commit molecule to .barcode_to_mol, if molecule.reads >= min_reads. If molecule in cache only barcode is
+        required.
         """
         molecule = self.molecule_cache[barcode]
-        if molecule.number_of_reads >= self.min_reads:
-            self.bc_to_mol[barcode].append(molecule.to_dict())
-            self.header_to_mol.update(
-                {header: molecule.id for header in molecule.read_headers}
+        if molecule.nr_reads >= self.min_reads:
+            self.barcode_to_mol[barcode].append(molecule.to_dict())
+            self.header_to_mol_id.update(
+                {header: molecule.index for header in molecule.read_headers}
             )
 
     def terminate(self, barcode):
@@ -310,25 +362,12 @@ class AllMolecules:
 
     def report_and_remove_all(self):
         """
-        Commit all .molecule_cache molecules to .bc_to_mol and empty .molecule_cache (provided they meet criterias by
-        report function).
+        Commit all .molecule_cache molecules to .barcode_to_mol and empty .molecule_cache (provided they meet
+        criterias by report function).
         """
         for barcode in self.molecule_cache:
             self.report(barcode)
         self.molecule_cache.clear()
-
-
-def compute_molecule_stats_dataframe(bc_to_mol_dict):
-    """
-    Writes stats file for molecules and barcode with information like how many reads, barcodes, molecules etc they
-    have
-    """
-    molecule_data = list()
-    while bc_to_mol_dict:
-        _, molecules = bc_to_mol_dict.popitem()
-        molecule_data.extend(molecules)
-
-    return pd.DataFrame(molecule_data)
 
 
 def update_summary_from_molecule_stats(df, summary):
@@ -353,31 +392,34 @@ def add_arguments(parser):
     parser.add_argument(
         "-t", "--threshold", type=int, default=4,
         help="Threshold for how many reads are required for including given molecule in statistics "
-             "(except_reads_per_molecule). Default: %(default)s"
+             "(except_reads_per_molecule). Default: %(default)s."
     )
     parser.add_argument(
         "-w", "--window", type=int, default=30000,
-        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: "
-             "%(default)s"
+        help="Window size cutoff for maximum distance in between two reads in one molecule. Default: %(default)s."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s"
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
         "-s", "--stats-tsv", metavar="FILE",
-        help="Write molecule stats in TSV format to FILE"
+        help="Write molecule stats in TSV format to FILE."
+    )
+    parser.add_argument(
+        "--bed",
+        help="Write molecule bounds to sorted BED file."
     )
     parser.add_argument(
         "-m", "--molecule-tag", default="MI",
         help="SAM tag for storing molecule index specifying a identified molecule for each barcode. "
-             "Default: %(default)s"
+             "Default: %(default)s."
     )
     parser.add_argument(
         "--min-mapq", type=int, default=0,
-        help="Minimum mapping-quality to include reads in analysis Default: %(default)s"
+        help="Minimum mapping-quality to include reads in analysis Default: %(default)s."
     )
     parser.add_argument(
         "-l", "--library-type", default="dbs", choices=ACCEPTED_LIBRARY_TYPES,
-        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s"
+        help="Select library type from currently available technologies: %(choices)s. Default: %(default)s."
     )

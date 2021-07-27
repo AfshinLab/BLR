@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from shutil import get_terminal_size
 import sys
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Union, Optional
 
 from ruamel.yaml import YAML
 from snakemake.utils import validate
@@ -24,7 +24,11 @@ def main(args):
     run(yaml_file=args.file, changes_set=args.set, update_from=args.update_from)
 
 
-def run(yaml_file=DEFAULT_PATH, changes_set=None, update_from: Path = None):
+def run(
+    yaml_file: Optional[Path] = DEFAULT_PATH,
+    changes_set: Optional[List[Tuple[str, str]]] = None,
+    update_from: Optional[Path] = None
+):
     changes_set = [] if changes_set is None else changes_set
     if update_from is not None:
         configs, _ = load_yaml(update_from)
@@ -36,7 +40,7 @@ def run(yaml_file=DEFAULT_PATH, changes_set=None, update_from: Path = None):
         print_config(yaml_file)
 
 
-def print_config(filename: Path):
+def print_config(filename: Union[Path, str]):
     """
     Print out current configs to terminal.
     """
@@ -51,7 +55,7 @@ def print_config(filename: Path):
     print(f"{'=' * width}")
 
 
-def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
+def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]]):
     """
     Change config YAML file at filename using the changes_set key-value pairs.
     :param filename: Path to YAML config file to change.
@@ -88,7 +92,7 @@ def change_config(filename: Path, changes_set: List[Tuple[str, str]]):
     tmpfile.rename(filename)
 
 
-def load_yaml(filename: Path):
+def load_yaml(filename: Union[Path, str]) -> Tuple[MutableMapping, YAML]:
     """
     Load YAML file and return the yaml object and data.
     :param filename: Path to YAML file
@@ -100,7 +104,7 @@ def load_yaml(filename: Path):
     return data, yaml
 
 
-def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
+def make_paths_absolute(value: str, workdir: Union[Path, str] = Path.cwd()) -> str:
     """
     Detect if value is a relative path and make it absolut if so.
     :param value: Parameter value from arguments
@@ -114,7 +118,7 @@ def make_paths_absolute(value: str, workdir: Path = Path.cwd()) -> str:
     return value
 
 
-def update_changes_set(changes_set: List[Tuple[str, str]], configs: Dict) -> List[Tuple[str, str]]:
+def update_changes_set(changes_set: List[Tuple[str, str]], configs: MutableMapping) -> List[Tuple[str, str]]:
     """Update changes_set list of tuples with configs in dict configs"""
     configs = flatten(configs)
     configs = {k: str(v) if v is not None else "null" for k, v in configs.items()}
@@ -125,7 +129,7 @@ def update_changes_set(changes_set: List[Tuple[str, str]], configs: Dict) -> Lis
     return list(configs_primary.items())
 
 
-def flatten(d: Dict, parent_key: str = '', sep: str = '.') -> Dict:
+def flatten(d: MutableMapping, parent_key: str = '', sep: str = '.') -> MutableMapping:
     """Flatten nested dict into dict where keys are nested as KEY.SUBKEY[.SUBSUBKEY...]."""
     # Adapted from https://stackoverflow.com/a/6027615
     items = []
@@ -139,10 +143,16 @@ def flatten(d: Dict, parent_key: str = '', sep: str = '.') -> Dict:
 
 
 def add_arguments(parser):
-    parser.add_argument("-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
-                        help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values "
-                             "write 'null'. Can be given multiple times.")
-    parser.add_argument("-f", "--file", default=DEFAULT_PATH, type=Path, metavar="YAML",
-                        help="Configuration file to modify. Default: %(default)s in current directory.")
-    parser.add_argument("-u", "--update-from", type=Path, metavar="YAML",
-                        help="Update configuration using other configuration file.")
+    parser.add_argument(
+        "-s", "--set", nargs=2, metavar=("KEY", "VALUE"), action="append",
+        help="Set KEY to VALUE. Use KEY.SUBKEY[.SUBSUBKEY...] for nested keys. For empty values write 'null'. Can be "
+             "given multiple times."
+    )
+    parser.add_argument(
+        "-f", "--file", default=DEFAULT_PATH, type=Path, metavar="YAML",
+        help="Configuration file to modify. Default: %(default)s in current directory."
+    )
+    parser.add_argument(
+        "-u", "--update-from", type=Path, metavar="YAML",
+        help="Update configuration using other configuration file."
+    )

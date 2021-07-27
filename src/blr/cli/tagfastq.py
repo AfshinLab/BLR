@@ -31,7 +31,7 @@ import tempfile
 import dnaio
 from xopen import xopen
 
-from blr.utils import tqdm, Summary
+from blr.utils import tqdm, Summary, ACCEPTED_READ_MAPPERS
 
 logger = logging.getLogger(__name__)
 
@@ -133,43 +133,16 @@ def run_tagfastq(
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
-        for read1, read2 in tqdm(reader, desc="Read pairs processed", disable=False):
-            # Header parsing
-            summary["Read pairs read"] += 1
-            # TODO Handle reads with single header
-            name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
-            _, nr_and_index2 = read2.name.split(maxsplit=1)
-
-            # TODO Check that sample_index is ATCG.
-            sample_index = nr_and_index1.split(':')[-1]
-            uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
-            corrected_barcode_seq = None
-
-            # Check if barcode was found and update header with barcode info.
-            if uncorrected_barcode_seq and uncorrected_barcode_seq in corrected_barcodes:
-                corrected_barcode_seq = corrected_barcodes[uncorrected_barcode_seq]
-
-                raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
-                corr_barcode_id = f"{barcode_tag}:Z:{corrected_barcode_seq}"
-
-                # Create new name with barcode information.
-                if mapper == "ema":
-                    # The EMA aligner requires reads in 10x format e.g.
-                    # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                    new_name = ":".join([name_and_pos, corrected_barcode_seq])
-                    new_name = " ".join((new_name, corr_barcode_id))
-                    read1.name, read2.name = new_name, new_name
-                elif mapper != "lariat":
-                    new_name = "_".join([name_and_pos, raw_barcode_id, corr_barcode_id])
-                    read1.name = " ".join([new_name, nr_and_index1])
-                    read2.name = " ".join([new_name, nr_and_index2])
-            else:
+        for read1, read2, corrected_barcode_seq in parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader,
+                                                               barcode_tag, sequence_tag, mapper, summary):
+            if corrected_barcode_seq is None:
                 summary["Reads missing barcode"] += 1
 
                 # Write non barcoded reads to separate file if exists for ema.
                 if mapper == "ema" and output_nobc1 is not None:
                     summary["Read pairs written"] += 1
                     writer.write_nobc(read1, read2)
+                    continue
 
                 # EMA and lairat aligner cannot handle reads without barcodes so these are skipped.
                 if mapper in ["ema", "lariat"]:
@@ -178,27 +151,26 @@ def run_tagfastq(
             # Write to out
             if mapper == "ema":
                 chunks.build_chunk(
-                    str(heap[corrected_barcode_seq]),
-                    read1.name,
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
+                    f"{str(heap[corrected_barcode_seq])}\t"
+                    f"{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\n"
                 )
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(corrected_barcode_seq)
-                sample_index_qual = "K" * len(sample_index)
                 chunks.build_chunk(
-                    str(heap[corrected_barcode_seq]),
-                    f"@{name_and_pos}",
-                    read1.sequence,
-                    read1.qualities,
-                    read2.sequence,
-                    read2.qualities,
-                    f"{corrected_barcode_seq}-{sample_number}",
-                    corrected_barcode_qual,
-                    sample_index,
-                    sample_index_qual,
+                    f"{str(heap[corrected_barcode_seq])}\t"
+                    f"@{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\t"
+                    f"{corrected_barcode_seq}-{sample_number}\t"
+                    f"{corrected_barcode_qual}\t"
+                    "AAAAAA\t"
+                    "KKKKKK\n"
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -238,6 +210,35 @@ def write_lariat_output(chunks, writer, summary):
         summary["Read pairs written"] += 1
 
 
+def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_tag, sequence_tag, mapper, summary):
+    for read1, read2 in tqdm(reader, desc="Read pairs processed"):
+        # Header parsing
+        summary["Read pairs read"] += 1
+        # TODO Handle reads with single header
+        name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
+
+        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
+        corrected_barcode_seq = corrected_barcodes.get(uncorrected_barcode_seq, None)
+
+        # Check if barcode was found and update header with barcode info.
+        if corrected_barcode_seq is not None:
+            corr_barcode_id = f"{barcode_tag}:Z:{corrected_barcode_seq}"
+
+            # Create new name with barcode information.
+            if mapper == "ema":
+                # The EMA aligner requires reads in 10x format e.g.
+                # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
+                read1.name = f"{name_and_pos}:{corrected_barcode_seq} {corr_barcode_id}"
+                read2.name = read1.name
+            elif mapper != "lariat":
+                _, nr_and_index2 = read2.name.split(maxsplit=1)
+                raw_barcode_id = f"{sequence_tag}:Z:{uncorrected_barcode_seq}"
+                read1.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index1}"
+                read2.name = f"{name_and_pos}_{raw_barcode_id}_{corr_barcode_id} {nr_and_index2}"
+
+        yield read1, read2, corrected_barcode_seq
+
+
 def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
@@ -247,26 +248,25 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     :param min_count: int. Skip clusters with fewer than min_count reads.
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
-    corrected_barcodes = dict()
-    canonical_seqs = list()
+    corrected_barcodes = {}
+    canonical_seqs = []
     heap_index = {}
-    for cluster in tqdm(open_file, desc="Clusters processed"):
-        canonical_seq, size, cluster_seqs = cluster.strip().split("\t", maxsplit=3)
+    for canonical_seq, size, cluster_seqs in tqdm(parse_clstr(open_file), desc="Clusters processed"):
         summary["Corrected barcodes"] += 1
-        summary["Reads with corrected barcodes"] += int(size)
-        summary["Uncorrected barcodes"] += len(cluster_seqs.split(","))
+        summary["Reads with corrected barcodes"] += size
+        summary["Uncorrected barcodes"] += len(cluster_seqs)
 
-        if int(size) < min_count:
+        if size < min_count:
             summary["Barcodes with too few reads"] += 1
-            summary["Reads with barcodes with too few reads"] += int(size)
+            summary["Reads with barcodes with too few reads"] += size
             continue
 
         if template and not match_template(canonical_seq, template):
             summary["Barcodes not matching pattern"] += 1
-            summary["Reads with barcodes not matching pattern"] += int(size)
+            summary["Reads with barcodes not matching pattern"] += size
             continue
 
-        corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs.split(",")})
+        corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs})
         canonical_seqs.append(canonical_seq)
 
     if mapper in ["ema", "lariat"]:
@@ -279,6 +279,13 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
 
     return corrected_barcodes, heap_index
+
+
+def parse_clstr(clstr_file):
+    """"Generator to parse open .clstr files from starcode."""
+    for cluster in clstr_file:
+        canonical_seq, size, cluster_seqs_list = cluster.strip().split("\t")
+        yield canonical_seq, int(size), cluster_seqs_list.split(",")
 
 
 def scramble(seqs, maxiter=10):
@@ -319,16 +326,16 @@ def match_template(sequence: str, template) -> bool:
 
 class BarcodeReader:
     def __init__(self, filename):
-        self._cache = dict()
+        self._cache = {}
         self._file = dnaio.open(filename, mode="r")
         self.barcodes = self.parse()
 
     def parse(self):
-        for barcode in tqdm(self._file, desc="Uncorrected barcodes processed", disable=True):
-            read_name, *_ = barcode.name.split(maxsplit=1)
-            yield read_name, barcode.sequence
+        for barcode_entry in self._file:
+            name, *_ = barcode_entry.name.split(" ")
+            yield name, barcode_entry.sequence
 
-    def get_barcode(self, read_name, maxiter=10):
+    def get_barcode(self, read_name, maxiter=128):
         if read_name in self._cache:
             return self._cache.pop(read_name)
 
@@ -339,7 +346,6 @@ class BarcodeReader:
                 return barcode_sequence
 
             self._cache[barcode_read_name] = barcode_sequence
-        return None
 
     def __enter__(self):
         return self
@@ -384,6 +390,13 @@ class Output:
         if file_nobc1 is not None:
             self._open_file_nobc = self._setup_single_output(file_nobc1, file_nobc2,
                                                              interleaved=file_nobc2 is None)
+        # Setup writers based on mapper.
+        if self._mapper == "lariat":
+            self._write = self._write_lariat
+            self._write_nobc = self._write_nobc_lariat
+        else:
+            self._write = self._write_default
+            self._write_nobc = self._write_nobc_default
 
     def set_bin_size(self, value):
         self._bin_size = value
@@ -418,37 +431,45 @@ class Output:
             self._bin_filled = True
             self._reads_written = 0
 
+    def _write_default(self, read1, read2):
+        self._open_file.write(read1, read2)
+
+    def _write_lariat(self, read1, _):
+        self._open_file.write(read1)
+
     def write(self, read1, read2=None, heap=None):
         self._pre_write(heap)
 
         # Write reads to output file
-        if self._mapper == "lariat":
-            self._open_file.write(read1)
-        else:
-            self._open_file.write(read1, read2)
+        self._write(read1, read2)
         self._reads_written += 1
 
         self._post_write()
 
+    def _write_nobc_default(self, read1, read2):
+        self._open_file_nobc.write(read1, read2)
+
+    def _write_nobc_lariat(self, read1, _):
+        self._open_file_nobc.write(read1)
+
     def write_nobc(self, read1, read2=None):
         if self._open_file_nobc is not None:
-            if self._mapper == "lariat":
-                self._open_file_nobc.write(read1)
-            else:
-                self._open_file_nobc.write(read1, read2)
+            self._write_nobc(read1, read2)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._open_file.close()
+        if self._open_file_nobc is not None:
+            self._open_file_nobc.close()
 
 
 class ChunkHandler:
     def __init__(self, chunk_size: int = 100_000):
         # Required for ema sorted output
         # Inspired by: https://stackoverflow.com/questions/56948292/python-sort-a-large-list-that-doesnt-fit-in-memory
-        self._output_chunk = list()
+        self._output_chunk = []
         self._chunk_size = chunk_size
         self._chunk_id = 0
         self._tmpdir = Path(tempfile.mkdtemp(prefix="tagfastq_sort"))
@@ -471,9 +492,9 @@ class ChunkHandler:
         self._chunk_id += 1
         return open(tmpfile, "w")
 
-    def build_chunk(self, *args: str):
+    def build_chunk(self, line: str):
         """Add entry to write to temporary file, first argument should be the heap index"""
-        self._output_chunk.append(self._chunk_sep.join(list(args)) + "\n")
+        self._output_chunk.append(line)
 
         if len(self._output_chunk) > self._chunk_size:
             self.write_chunk()
@@ -482,7 +503,7 @@ class ChunkHandler:
     def write_chunk(self):
         self._output_chunk.sort(key=self._get_heap)
         self._tmp_writer.writelines(self._output_chunk)
-        self._output_chunk.clear()
+        self._output_chunk *= 0  # Clear list faster than list.clear(). See https://stackoverflow.com/a/44349418
 
     def parse_chunks(self):
         if not self._tmp_writer.closed:
@@ -502,37 +523,45 @@ class ChunkHandler:
 def add_arguments(parser):
     parser.add_argument(
         "uncorrected_barcodes",
-        help="FASTQ/FASTA for uncorrected barcodes.")
+        help="FASTQ/FASTA for uncorrected barcodes."
+    )
     parser.add_argument(
         "corrected_barcodes",
         help="FASTQ/FASTA for error corrected barcodes. Currently accepts output from starcode "
-             "clustering with '--print-clusters' enabled.")
+             "clustering with '--print-clusters' enabled."
+    )
     parser.add_argument(
         "input1",
         help="Input FASTQ/FASTA file. Assumes to contain read1 if given with second input file. "
              "If only input1 is given, input is assumed to be an interleaved. If reading from stdin"
-             "is requested use '-' as a placeholder.")
+             "is requested use '-' as a placeholder."
+    )
     parser.add_argument(
         "input2", nargs='?',
-        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved.")
+        help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved."
+    )
     output = parser.add_mutually_exclusive_group(required=False)
     output.add_argument(
         "--output1", "--o1",
         help="Output FASTQ/FASTA file name for read1. If not specified the result is written to "
              "stdout as interleaved. If output1 given but not output2, output will be written as "
-             "interleaved to output1.")
+             "interleaved to output1."
+    )
     parser.add_argument(
         "--output2", "--o2",
         help="Output FASTQ/FASTA name for read2. If not specified but --o1/--output1 given the "
-             "result is written as interleaved.")
+             "result is written as interleaved."
+    )
     parser.add_argument(
         "--output-nobc1", "--n1",
         help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read1 reads. "
              "If output_nobc1 given but not output_nobc2, output will be written as interleaved to "
-             "output_nobc1.")
+             "output_nobc1."
+    )
     parser.add_argument(
         "--output-nobc2", "--n2",
-        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads.")
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads."
+    )
     output.add_argument(
         "--output-bins",
         help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "
@@ -540,16 +569,18 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--nr-bins", type=int, default=100,
-        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s"
+        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",
-        help="SAM tag for storing the error corrected barcode. Default: %(default)s")
+        help="SAM tag for storing the error corrected barcode. Default: %(default)s."
+    )
     parser.add_argument(
         "-s", "--sequence-tag", default="RX",
-        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s")
+        help="SAM tag for storing the uncorrected barcode sequence. Default: %(default)s."
+    )
     parser.add_argument(
-        "-m", "--mapper", default="bowtie2", choices=["bowtie2", "minimap2", "bwa", "ema", "lariat"],
+        "-m", "--mapper", default="bowtie2", choices=ACCEPTED_READ_MAPPERS,
         help="Specify read mapper for labeling reads with barcodes. Selecting 'ema' or 'lariat' produces output "
              "required for these particular mappers. Default: %(default)s."
     )
@@ -564,5 +595,5 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "--sample-nr", type=int, default=1,
-        help="Sample number to append to barcode string. Default: %(default)s"
+        help="Sample number to append to barcode string. Default: %(default)s."
     )

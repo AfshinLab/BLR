@@ -43,7 +43,8 @@ def execution_start():
         config.update_dict(config.sp,
                            {'stats': {'fn': '*.log',
                                       'contents_re': '^SETTINGS FOR:*',
-                                      'num_lines': 1}})
+                                      'num_lines': 1,
+                                      'max_filesize': 16384}})
 
     if 'stats/phaseblock_data' not in config.sp:
         config.update_dict(config.sp,

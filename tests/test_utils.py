@@ -1,8 +1,10 @@
 from io import StringIO
-from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks
+from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks, get_bamtag
+from blr.utils import calculate_N50
 from pathlib import Path
 import os
 
+from .test_tagbam import build_read
 
 def test_parse_fai():
     s = "chr1\t112233\t112\t70\t71\n"
@@ -77,3 +79,25 @@ def test_symlink_relpath(tmpdir):
     assert path_b.is_symlink()
     assert path_b.samefile(path_a)
     assert os.readlink(path_b) == path_a.name
+
+
+def test_get_bamtag():
+    barcode = "ATGCATGC"
+    read1 = build_read(name="read1", barcode=barcode)
+    read1_barcode = get_bamtag(read1, "BX")
+    assert read1_barcode == barcode
+
+    read2 = build_read(name="read2")
+    read2_barcode = get_bamtag(read2, "BX")
+    assert read2_barcode is None
+
+    default_barcode = "DEFAULT"
+    read2_barcode = get_bamtag(read2, "BX", default="DEFAULT")
+    assert read2_barcode == default_barcode
+
+
+def test_calculate_N50():
+    # Used example from https://en.wikipedia.org/wiki/N50,_L50,_and_related_statistics#N50
+    # Sum of values is 54, half is 27. 10 + 9 + 8 = 27 --> N50 is 8
+    values = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert calculate_N50(values) == 8

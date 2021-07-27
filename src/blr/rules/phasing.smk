@@ -196,7 +196,7 @@ rule lsv_calling:
         " python"
         " NAIBR.py"
         " {params.cwd}/{input.config}"
-        " > {params.cwd}/{log}"
+        " &> {params.cwd}/{log}"
         " &&"
         " cd -"
         " &&"

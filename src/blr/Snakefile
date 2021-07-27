@@ -7,6 +7,7 @@ from snakemake.logging import Logger
 
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
+from blr.cli.config import load_yaml
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
@@ -88,6 +89,11 @@ def final_input(wildcards):
                 "called.filtered.vcf.gz",
                 "called.filtered.vcf.gz.tbi"
             ])
+
+    if config["library_type"] in {"10x", "blr", "tellseq"} \
+        and config["read_mapper"] == "ema" \
+        and config["fastq_bins"] > 1:
+        files.append("remove_bins.tmp")
     return files
 
 
@@ -150,9 +156,12 @@ rule multiqc_summarize:
 
 rule report_configs:
     """Translate configs to HTML to include in MultiQC report"""
+    input:
+        yaml = "blr.yaml"
     output:
         yaml = temp("blr_mqc.yaml")
     run:
+        config_data, _ = load_yaml(input.yaml)
         with open(output.yaml, "w") as configs:
             text = "id: 'run_configs'\n"
             text += "section_name: 'Run configs'\n"
@@ -160,7 +169,7 @@ rule report_configs:
             text += "description: ' for current analysis. Describes which parameter values was used.'\n"
             text += "data: |\n"
             text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
-            for param, value in config.items():
+            for param, value in config_data.items():
                 text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
             text += "\t</dl>".expandtabs(4)
             print(text, file=configs)
@@ -215,6 +224,7 @@ rule map_sort_ema_bins:
         " -d"
         " -p 10x"
         " -R {readgroup}"
+        " -i {config[sample_nr]}"
         " -r {config[genome_reference]}"
         " -1 {input.interleaved_fastq}"
         " 2>> {log.map}"
@@ -308,6 +318,16 @@ rule merge_mapped_ema_bins:
         " cat {config[ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
         " &&"
         " cat {config[ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
+
+
+rule remove_bins:
+    """Remove ema_bins_dir directory when mapping and merging is done."""
+    output:
+        temp("remove_bins.tmp")
+    input:
+        "initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"
+    shell:
+        "rm -rf {config[ema_bins_dir]} && touch {output}"
 
 
 rule map_sort:
@@ -435,7 +455,8 @@ rule get_unmapped_reads:
         bai = "initialmapping.bam.bai"
     log: "unmapped.bam.log"
     params:
-        tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']} -o",
+        tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']}"
+                                      f" -b {config['cluster_tag']} -o",
         outtype = "-bh" if skip_tagbam else "-h"
     shell:
         "samtools view {params.outtype} {input.bam} '*' {params.tag} {output.bam} 2> {log}"
@@ -453,7 +474,8 @@ rule tagbam:
         " -o {output.bam}"
         " --mapper {config[read_mapper]}"
         " --sample-nr {config[sample_nr]}"
-        " {input.bam}  2> {log}"
+        " --barcode-tag {config[cluster_tag]}"
+        " {input.bam} 2> {log}"
 
 
 rule find_clusterdups:
@@ -802,10 +824,10 @@ rule call_variants:
             # TODO: Add a conditional installation of deepvariant for Linux systems and add to pipeline docs.
             "deepvariant":
                 "deepvariant"
-	            " --model_type=WGS"
-	            " --output_vcf={output.vcf}"
-	            " --reads={input.bam}"
-	            " --ref={config[genome_reference]}"
+                " --model_type=WGS"
+                " --output_vcf={output.vcf}"
+                " --reads={input.bam}"
+                " --ref={config[genome_reference]}"
                 }
         shell(commands[config["variant_caller"]])
 

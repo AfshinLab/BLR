@@ -18,6 +18,7 @@ else:
 
 
 ACCEPTED_LIBRARY_TYPES = ["dbs", "blr", "10x", "stlfr", "tellseq"]  # TODO Remove blr
+ACCEPTED_READ_MAPPERS = ["ema", "lariat", "bwa", "bowtie2", "minimap2"]
 
 
 def is_1_2(s, t):
@@ -58,17 +59,14 @@ def guess_paired_path(path: Path):
     return None
 
 
-def get_bamtag(pysam_read, tag):
+def get_bamtag(pysam_read: pysam.AlignedSegment, tag: str, default=None):
     """
-    Fetches tags from bam files. Return an empty value of the same type if not found.
-    :param pysam_read: pysam read object
-    :param tag: bam tag to fetch
-    :return: bam tag value
+    Fetches tags from bam files. Return default value of the same type if not found.
     """
     try:
         return pysam_read.get_tag(tag)
     except KeyError:
-        return None
+        return default
 
 
 class Summary(Counter):
@@ -92,9 +90,9 @@ class Summary(Counter):
         # Print stats in columns
         for name, value in self.items():
             value_str = str(value)
-            if type(value) is int:
+            if isinstance(value, (int, np.integer)):
                 value_str = f"{value:>{value_width},}"
-            elif type(value) is float:
+            elif isinstance(value, (float, np.float)):
                 value_str = f"{value:>{value_width+4},.3f}"
 
             print(f"{name:<{max_name_width}} {value_str}", file=print_to)
@@ -177,7 +175,8 @@ def calculate_N50(lengths):
     :param lengths: list containing integers.
     :return int. N50 metric
     """
-    lengths = sorted(lengths, reverse=True)
+    lengths = np.array(lengths)
+    lengths[::-1].sort()
 
     csum = np.cumsum(lengths)
     n2 = int(sum(lengths) / 2)
