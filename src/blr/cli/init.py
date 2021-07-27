@@ -53,7 +53,8 @@ def add_arguments(parser):
 def main(args):
     # TODO remove in next version
     if args.library_type == "blr":
-        logger.warn("Deprecation: Replace 'blr' with 'dbs' for library_type.")
+        logger.warn("Deprecation: Replacing 'blr' with 'dbs' for library_type.")
+        args.library_type = "dbs"
 
     if args.reads1:
         init(args.directory, args.reads1, args.library_type)
