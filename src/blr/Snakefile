@@ -818,10 +818,10 @@ rule call_variants:
             # TODO: Add a conditional installation of deepvariant for Linux systems and add to pipeline docs.
             "deepvariant":
                 "deepvariant"
-	            " --model_type=WGS"
-	            " --output_vcf={output.vcf}"
-	            " --reads={input.bam}"
-	            " --ref={config[genome_reference]}"
+                " --model_type=WGS"
+                " --output_vcf={output.vcf}"
+                " --reads={input.bam}"
+                " --ref={config[genome_reference]}"
                 }
         shell(commands[config["variant_caller"]])
 
