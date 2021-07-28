@@ -13,6 +13,7 @@ from collections import defaultdict, OrderedDict
 import logging
 import statistics
 from itertools import chain
+from pathlib import Path
 
 import pandas as pd
 import pysam
@@ -46,8 +47,8 @@ def run_buildmolecules(
     threshold: int,
     window: int,
     barcode_tag: str,
-    stats_tsv: str,
-    bed_file: str,
+    stats_tsv: Path,
+    bed_file: Path,
     molecule_tag: str,
     min_mapq: int,
     library_type: str
@@ -88,27 +89,33 @@ def run_buildmolecules(
     if not df.empty:
         update_summary_from_molecule_stats(df, summary)
 
-    # Write molecule/barcode file stats
-    if stats_tsv:
-        logger.info(f"Writing {stats_tsv}")
-        stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
-        df.loc[:, stats_columns].to_csv(stats_tsv, sep="\t", index=False)
+        # Write molecule/barcode file stats
+        if stats_tsv:
+            logger.info(f"Writing {stats_tsv}")
+            stats_columns = ["MoleculeID", "Barcode", "Reads", "Length", "BpCovered"]
+            df.loc[:, stats_columns].to_csv(stats_tsv, sep="\t", index=False)
 
-    # Write BED file
-    if bed_file:
-        # Create DataFrame with 6 columns in bed-like order
-        #   1. Chromosome
-        #   2. Start position of molecule
-        #   3. End position of molecule
-        #   4. Molecule index integer
-        #   5. Barcode string
-        #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
-        bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
-        bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
-                      ";BpCovered=" + df["BpCovered"].astype(str)
-        del df
-        bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
-        bed.to_csv(bed_file, sep="\t", index=False, header=False)
+        # Write BED file
+        if bed_file:
+            # Create DataFrame with 6 columns in bed-like order
+            #   1. Chromosome
+            #   2. Start position of molecule
+            #   3. End position of molecule
+            #   4. Molecule index integer
+            #   5. Barcode string
+            #   6. Misc information about molecule i.e. Nr Reads, Length in bp, bp covered with reads.
+            bed = df.loc[:, ["Chromsome", "StartPosition", "EndPosition", "MoleculeID", "Barcode"]]
+            bed["Info"] = "Reads=" + df["Reads"].astype(str) + ";Length=" + df["Length"].astype(str) + \
+                          ";BpCovered=" + df["BpCovered"].astype(str)
+            del df
+            bed.sort_values(by=["Chromsome", "StartPosition"], inplace=True)
+            bed.to_csv(bed_file, sep="\t", index=False, header=False)
+    else:
+        # Touch output files if no molecules
+        if stats_tsv:
+            stats_tsv.touch()
+        if bed_file:
+            bed_file.touch()
 
     summary.print_stats(name=__name__)
 
@@ -403,11 +410,11 @@ def add_arguments(parser):
         help="SAM tag for storing the error corrected barcode. Default: %(default)s."
     )
     parser.add_argument(
-        "-s", "--stats-tsv", metavar="FILE",
+        "-s", "--stats-tsv", metavar="FILE", type=Path,
         help="Write molecule stats in TSV format to FILE."
     )
     parser.add_argument(
-        "--bed",
+        "--bed",  type=Path,
         help="Write molecule bounds to sorted BED file."
     )
     parser.add_argument(
