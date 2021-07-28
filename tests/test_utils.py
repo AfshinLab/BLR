@@ -6,6 +6,7 @@ import os
 
 from .test_tagbam import build_read
 
+
 def test_parse_fai():
     s = "chr1\t112233\t112\t70\t71\n"
     s += "\n"
