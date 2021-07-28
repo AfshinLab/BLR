@@ -104,7 +104,7 @@ rule extract_barcode:
         " -j {threads}"
         " -m 19"
         " -M 21"
-	    " --max-n 0"
+        " --max-n 0"
         " -o {output.fastq}"
         " {input.fastq}"
         " > {log}"
