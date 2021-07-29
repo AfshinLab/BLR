@@ -94,7 +94,7 @@ rule extract_DBS:
         fastq="barcodes.fasta.gz"
     input:
         fastq="reads.1.fastq.gz"
-    log: "barcode.fasta.gz.log"
+    log: "barcodes.fasta.gz.log"
     threads: 20
     shell:
         "cutadapt"
@@ -117,7 +117,7 @@ rule starcode_clustering:
     input:
         "barcodes.fasta.gz"
     threads: 20
-    log: "barcode.clstr.log"
+    log: "barcodes.clstr.log"
     shell:
         "pigz -cd {input} |"
         " starcode"
