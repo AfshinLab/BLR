@@ -116,6 +116,10 @@ def process_molecule_stats(files, directory: Path, summary):
     summary["Mean molecule count"] = float(molecule_count.mean())
     summary["Median molecule count"] = float(molecule_count.median())
     summary["Single molecule droplets (%)"] = float(100 * sum(molecule_count.values == 1) / len(molecule_count))
+
+    dna_per_barcode = data.groupby("Barcode").sum()["Length"]
+    summary["Mean DNA per barcode"] = float(dna_per_barcode.mean())
+    summary["Median DNA per barcode"] = float(dna_per_barcode.median())
     plot_molecule_stats(data, directory)
 
 
