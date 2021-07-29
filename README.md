@@ -12,7 +12,7 @@
 
 ## About the pipeline
 
-The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs. It was originally developed for the prep-processing of data for the paper [High throughput barcoding method for genome-scale phasing][1] for input into the 10x LongRanger pipeline (see [Old version](#Old-version)) but have since been heavily modified to run completely independant of LongRanger. The pipeline also allowes for input FASTQs from other linked-read technologies such as: 10x Genomics Chromium Genome, Universal Sequencing TELL-seq and MGI stLFR. Read more about the integrated linked-read platforms [here](doc/platforms.rst).
+The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs. It was originally developed for the prep-processing of Droplet Barcode Sequencing (DBS) data for the paper [High throughput barcoding method for genome-scale phasing][1] for input into the 10x LongRanger pipeline (see [Old version](#Old-version)) but have since been heavily modified to run completely independant of LongRanger. The pipeline also allow for input FASTQs from other linked-read technologies such as: 10x Genomics Chromium Genome, Universal Sequencing TELL-seq and MGI stLFR. Read more about the integrated linked-read platforms [here](doc/platforms.rst).
 
 ## Usage
 
