@@ -1,5 +1,6 @@
 import os
 import pickle
+from pathlib import Path
 
 import pandas as pd
 from snakemake.utils import validate
@@ -21,7 +22,9 @@ if config["library_type"] == "blr":
 #  in ema when discussed https://github.com/arshajii/ema/issues/15
 
 # Hidden config options
-config["ema_bins_dir"] = "fastq_bins"
+config["ema_bins_dir"] = Path("fastq_bins")
+if config["fastq_bins"] > 1:
+    config["fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
 
 # Import rules for trimming fastq files.
 if config["library_type"] in {"blr", "dbs"}:  # TODO Remove blr
@@ -303,8 +306,7 @@ rule merge_mapped_ema_bins:
         mapping_log = "initialmapping.bam.mapping.log",
         sorting_log = "initialmapping.bam.sorting.log",
     input:
-        bams = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}.bam"),
-                                   nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
+        bams = expand(config['ema_bins_dir'] / "ema-bin-{nr}.bam", nr=config["fastq_bin_nrs"]),
         bam_nobc = "initialmapping_nobc.mkdup.bam"
     threads: 20
     shell:

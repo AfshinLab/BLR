@@ -47,9 +47,7 @@ rule trim:
 
 
 if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
-    output_name = os.path.join(config['ema_bins_dir'], "ema-bin-{nr}")
-    output_nrs = [str(i).zfill(3) for i in range(config['fastq_bins'])]
-    tag_output = temp(expand(output_name, nr=output_nrs))
+    tag_output = temp(expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]))
     output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"
     ruleorder: merge_bins > tag
 else:
