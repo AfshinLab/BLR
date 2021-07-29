@@ -17,7 +17,7 @@ else:
         return iterable
 
 
-ACCEPTED_LIBRARY_TYPES = ["blr", "10x", "stlfr", "tellseq"]
+ACCEPTED_LIBRARY_TYPES = ["dbs", "blr", "10x", "stlfr", "tellseq"]  # TODO Remove blr
 ACCEPTED_READ_MAPPERS = ["ema", "lariat", "bwa", "bowtie2", "minimap2"]
 
 

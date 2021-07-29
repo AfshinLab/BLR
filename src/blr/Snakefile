@@ -3,6 +3,7 @@ import pickle
 
 import pandas as pd
 from snakemake.utils import validate
+from snakemake.logging import Logger
 
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
 from blr.cli.find_clusterdups import UnionFind
@@ -11,6 +12,11 @@ from blr.cli.config import load_yaml
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
 
+# TODO remove in next version
+if config["library_type"] == "blr":
+    Logger().warning("DEPRECIATION: The 'blr' option for library type will soon be replaced with 'dbs'. "
+                     "Replace 'blr' with 'dbs' for library_type in the future.")
+
 # TODO include handling of reads from `longranger basic` that already have barcodes extracted and trimmed? See issue
 #  in ema when discussed https://github.com/arshajii/ema/issues/15
 
@@ -18,8 +24,8 @@ validate(config, "config.schema.yaml")
 config["ema_bins_dir"] = "fastq_bins"
 
 # Import rules for trimming fastq files.
-if config["library_type"] == "blr":
-    include: "rules/trim_blr.smk"
+if config["library_type"] in {"blr", "dbs"}:  # TODO Remove blr
+    include: "rules/trim_dbs.smk"
 elif config["library_type"] == "10x":
     include: "rules/trim_10x.smk"
 elif config["library_type"] == "stlfr":
@@ -37,15 +43,15 @@ readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_ty
 
 
 # For parallelization, we split the initial mapped BAM file into non-overlapping "chunks",
-# which are computed from the FASTA index file. 
-chunks = generate_chunks(reference=config["genome_reference"], 
-                         size=config["chunk_size"], 
+# which are computed from the FASTA index file.
+chunks = generate_chunks(reference=config["genome_reference"],
+                         size=config["chunk_size"],
                          phasing_contigs_string=config["phasing_contigs"],
                          contigs_skipped=config["contigs_skipped"])
 
 skip_tagbam = (config["library_type"] == "10x" and config["read_mapper"] == "ema") or \
-              config["read_mapper"] == "lariat" 
- 
+              config["read_mapper"] == "lariat"
+
 bcmerge = ".bcmerge" if not config["skip_bcmerge"] else ""
 
 # Duplicates and molecules are already marked by ema but need to re-marked if barcodes are merged.
@@ -182,7 +188,7 @@ rule generate_ideogram:
 
 
 def plot_figures_input(wildcards):
-    if config["library_type"] in {"blr", "tellseq"}:
+    if config["library_type"] in {"dbs", "blr", "tellseq"}:
         return "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"
     else:
         return "final.molecule_stats.filtered.tsv"
@@ -246,7 +252,7 @@ rule map_sort_nobc:
         sort = "initialmapping_nobc.bam.sorting.log"
     params:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
-    shell: 
+    shell:
         "bwa mem"
         " -t {threads}"
         " -R {readgroup}"
@@ -1099,9 +1105,9 @@ ruleorder: compress_vcf > gzip
 
 rule gzip:
     """Compress file using pigz"""
-    output: 
+    output:
         "{file}.gz"
-    input: 
+    input:
         "{file}"
     shell:
         "pigz --stdout {input} > {output}"

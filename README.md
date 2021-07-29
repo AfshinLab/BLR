@@ -28,9 +28,9 @@ Activate your Conda environment.
 
     conda activate blr
 
-Create the analysis directory using `blr init`. Choose a name for the analysis, `output_folder` in this example. Specify the library type using the `-l` flag, here we choose `blr`.
+Create the analysis directory using `blr init`. Choose a name for the analysis, `output_folder` in this example. Specify the library type using the `-l` flag, here we choose `dbs`.
 
-    blr init --reads1=path/to/sample.R1.fastq.gz -l blr path/to/output_folder
+    blr init --reads1=path/to/sample.R1.fastq.gz -l dbs path/to/output_folder
 
 Note that BLR expects paired-end reads. However, only the path to the R1 file needs to be provided. The R2 file will be found automatically.
 
@@ -76,9 +76,9 @@ This is useful if you want to test your changes before submitting them as a PR.
 
 If you have two or more libraries run on the same sample it is possible to merge these inorder to increase coverage. First analysis should be run separately for each library. Make sure that different `sample_nr` (set using `blr config`) have been assigned to each library in order to not mix overlapping barcodes. The files that will be merged from each library is the filtered BAM (`final.bam`), the molecule stats TSV (`final.molecule_stats.tsv`) and the clustered barcodes (`barcodes.clstr`).
 
-To merge the different runs we initialize a new analysis folder using `blr init`. In this example we have analysed two blr library runs called `MySample_1` and `MySample_2`. Using the command below we can initialize a new folder called `MySample_merged`.
+To merge the different runs we initialize a new analysis folder using `blr init`. In this example we have analysed two DBS library runs called `MySample_1` and `MySample_2`. Using the command below we can initialize a new folder called `MySample_merged`.
 
-    blr init -w /path/to/MySample_1 -w /path/to/MySample_2 --library-type blr MySample_merged
+    blr init -w /path/to/MySample_1 -w /path/to/MySample_2 --library-type dbs MySample_merged
 
 Configs can then be updated as usual using `blr config`.
 

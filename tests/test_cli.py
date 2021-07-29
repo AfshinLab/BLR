@@ -84,7 +84,7 @@ def _workdir(tmp_path_factory):
     the BAM file ready for variant calling
     """
     path = tmp_path_factory.mktemp(basename="analysis-") / "analysis"
-    init(path, TESTDATA_BLR_READ1, "blr")
+    init(path, TESTDATA_BLR_READ1, "dbs")
     change_config(
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
@@ -107,12 +107,12 @@ def workdir(_workdir, tmp_path):
 
 
 def test_init(tmp_path):
-    init(tmp_path / "analysis", TESTDATA_BLR_READ1, "blr")
+    init(tmp_path / "analysis", TESTDATA_BLR_READ1, "dbs")
 
 
 def test_config(tmp_path):
     workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+    init(workdir, TESTDATA_BLR_READ1, "dbs")
     change_config(workdir / "blr.yaml", [("read_mapper", "bwa")])
 
 
@@ -228,7 +228,7 @@ non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lari
 @pytest.mark.parametrize("read_mapper", non_default_mappers)
 def test_nondefault_read_mappers(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "blr")
+    init(workdir, TESTDATA_BLR_READ1, "dbs")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
@@ -325,7 +325,7 @@ def test_init_from_workdir(tmp_path, workdir):
     run(workdir=old_workdir, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
 
     # Initialize new dir based on old and run setup.
-    init_from_dir(new_workdir, [old_workdir], "blr")
+    init_from_dir(new_workdir, [old_workdir], "dbs")
     change_config(
         new_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),
@@ -351,7 +351,7 @@ def test_merge_workdirs(tmp_path, workdir):
     )
 
     # Initialize new dir based on old and run setup.
-    init_from_dir(merge_workdir, [workdir, other_workdir], "blr")
+    init_from_dir(merge_workdir, [workdir, other_workdir], "dbs")
     change_config(
         merge_workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),

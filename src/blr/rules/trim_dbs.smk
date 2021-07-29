@@ -1,10 +1,10 @@
 """
-Rules for trimming and demultiplexing of raw BLR FASTQ files.
+Rules for trimming and demultiplexing of raw DBS FASTQ files.
 
 READ1 LAYOUT
 
 5'-CAGTTGATCATCAGCAGGTAATCTGG BDVHBDVHBDVHBDVHBDVH CATGACCTCTTGGAACTGTCAGATGTGTATAAGAGACAG NNNN...NNNN (CTGTCTCTTATACACATCT)-3'
-   <------------h1----------> <-------DBS--------> <-----------------h2------------------> <---gDNA--> <---------h3-------->
+   <------------h1----------> <-----Barcode------> <-----------------h2------------------> <---gDNA--> <---------h3-------->
     h1 may inlude frameshift                                                                           Presence depends on
     oligos varying from 0-4                                                                            insert length
     extra oligos in 5' end
@@ -50,7 +50,7 @@ if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
     output_name = os.path.join(config['ema_bins_dir'], "ema-bin-{nr}")
     output_nrs = [str(i).zfill(3) for i in range(config['fastq_bins'])]
     tag_output = expand(output_name, nr=output_nrs)
-    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"    
+    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"
     ruleorder: merge_bins > tag
 else:
     tag_output = expand("trimmed.barcoded.{nr}.fastq.gz", nr=["1", "2"])
@@ -88,7 +88,7 @@ rule tag:
         " 2> {log}"
 
 
-rule extract_DBS:
+rule extract_barcode:
     """Extract barcode sequence from read1 FASTQ"""
     output:
         fastq="barcodes.fasta.gz"
@@ -111,7 +111,7 @@ rule extract_DBS:
 
 
 rule starcode_clustering:
-    """Cluster DBS barcodes using starcode"""
+    """Cluster barcodes using starcode"""
     output:
         temp("barcodes.clstr")
     input:

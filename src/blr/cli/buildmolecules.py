@@ -215,7 +215,7 @@ class Molecule:
             return True
 
         # If Tn5 transposase was used for library construction, overlaps of ~9 bp are accepted.
-        if library_type in {'blr', 'stlfr'} and 8 <= self.stop - read.reference_start <= 10:
+        if library_type in {'dbs', 'blr', 'stlfr'} and 8 <= self.stop - read.reference_start <= 10:  # TODO Remove blr
             summary["Tn5-overlapping reads"] += 1
             return True
 
@@ -427,6 +427,6 @@ def add_arguments(parser):
         help="Minimum mapping-quality to include reads in analysis Default: %(default)s."
     )
     parser.add_argument(
-        "-l", "--library-type", default="blr", choices=ACCEPTED_LIBRARY_TYPES,
+        "-l", "--library-type", default="dbs", choices=ACCEPTED_LIBRARY_TYPES,
         help="Select library type from currently available technologies: %(choices)s. Default: %(default)s."
     )

@@ -50,9 +50,9 @@ properties:
     description: Barcode sequence
     default: BDHVBDHVBDHVBDHVBDHV
     pattern: "^[AGCTYRWSKMBDVHN]+$"
-  min_count: 
+  min_count:
     type: integer
-    default: 1 
+    default: 1
     description: Minimum number of reads per barcode to tag reads with barcode
   reference_variants:
     type: [ "string", "null" ]
@@ -85,7 +85,7 @@ properties:
     default: 6
   library_type:
     type: string
-    pattern: "(blr)|(10x)|(stlfr)|(tellseq)"
+    pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
     description: Library type
   barcode_whitelist:
     type: [ "string", "null" ]

@@ -2,7 +2,7 @@ Platforms
 ==========
 This text contains information about the different linked-read platforms supported or not supported by the pipeline and which requirements for input and possible preprocessing they have.
 
-- BLR_ (fully supported)
+- DBS_ (fully supported)
 - `10x Genomics`_ (supported)
 - stLFR_ (supported)
 - TELL-seq_ (supported)
@@ -10,9 +10,9 @@ This text contains information about the different linked-read platforms support
 - Haplotagging_ (not supported)
 
 
-BLR
+DBS
 ---
-Barcode Linked Reads (BLR) is based on the technology described in `Redin el al. 2019 <https://doi.org/10.1038/s41598-019-54446-x>`__. Long DNA fragments are subjected to tagmentation using Tn5-covered beads to cut, tag and wrap the fragment around the beads. The DNA-wrapped beads are then used in emmulsion PCR along with barcoded oligo. Within each emmulsion droplet the barcode and tagged fragments are amplified independently and then linked using overlap-extension. Barcode-linked fragments are recovered and indexed for Illumina sequencing.
+Droplet Barcode Sequencing (DBS) is based on the technology described in `Redin el al. 2019 <https://doi.org/10.1038/s41598-019-54446-x>`__. Long DNA fragments are subjected to tagmentation using Tn5-covered beads to cut, tag and wrap the fragment around the beads. The DNA-wrapped beads are then used in emmulsion PCR along with barcoded oligo. Within each emmulsion droplet the barcode and tagged fragments are amplified independently and then linked using overlap-extension. Barcode-linked fragments are recovered and indexed for Illumina sequencing.
 
 :Barcodes:
     Semi-degerate sequence of 20 bases with about 3.5 billion possible sequences.

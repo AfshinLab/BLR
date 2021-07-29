@@ -8,7 +8,8 @@ from blr.cli.find_clusterdups import get_non_acceptable_overlap_func, UnionFind
 def test_get_non_acceptable_overlap_func(library_type):
     test_values = [100, 0, -1, -5, -9, -100]
     acceptable = {
-        "blr":     [0, 0, 1, 1, 0, 1],
+        "dbs":     [0, 0, 1, 1, 0, 1],
+        "blr":     [0, 0, 1, 1, 0, 1],  # TODO Remove blr
         "stlfr":   [0, 0, 1, 1, 0, 1],
         "10x":     [0, 0, 0, 0, 0, 0],
         "tellseq": [0, 0, 1, 0, 1, 1],
