@@ -1000,7 +1000,6 @@ rule aggregate_phaseblock_data:
     input:
         phase = expand("chunks/{chunk[0].name}.calling.phase", chunk=chunks["phased"])
     run:
-        data = list()
         with open(output.tsv, "w") as output_tsv:
             print("Variants spanned", "Variants phased", "Length", "Fragments", sep="\t", file=output_tsv)
             for input_file in input.phase:
