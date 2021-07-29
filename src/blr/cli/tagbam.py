@@ -65,6 +65,9 @@ def mode_samtags_underline_separation(read, sample_nr, barcode_tag, summary):
     # Set SAM tags
     for tag in header[1:]:
         tag, tag_type, val = tag.split(":")
+
+        # Input from 10x has "-1" attached to the barcode which needs to be removed.
+        val = val.split("-")[0]
         assert is_sequence(val)
 
         if tag == barcode_tag:
