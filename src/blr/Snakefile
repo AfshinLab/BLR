@@ -89,11 +89,6 @@ def final_input(wildcards):
                 "called.filtered.vcf.gz",
                 "called.filtered.vcf.gz.tbi"
             ])
-
-    if config["library_type"] in {"10x", "blr", "tellseq"} \
-        and config["read_mapper"] == "ema" \
-        and config["fastq_bins"] > 1:
-        files.append("remove_bins.tmp")
     return files
 
 
@@ -318,16 +313,6 @@ rule merge_mapped_ema_bins:
         " cat {config[ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
         " &&"
         " cat {config[ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
-
-
-rule remove_bins:
-    """Remove ema_bins_dir directory when mapping and merging is done."""
-    output:
-        temp("remove_bins.tmp")
-    input:
-        "initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"
-    shell:
-        "rm -rf {config[ema_bins_dir]} && touch {output}"
 
 
 rule map_sort:
