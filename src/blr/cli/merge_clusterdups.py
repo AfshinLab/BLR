@@ -25,18 +25,17 @@ def run_mergeclusters(
     barcode_tag: str,
 ):
     summary = Summary()
-    merge_dict = dict()
+
+    # Create mapping from old to new barcode from CSV with old-new pairs.
     with open(input_merges) as file:
-        for line in file:
-            current_barcode, new_barcode = line.strip().split(",")
-            merge_dict[current_barcode] = new_barcode
+        old_to_new_barcode = dict(tuple(line.strip().split(",")) for line in file)
 
     with PySAMIO(input, output, __name__) as (infile, out):
         for read in tqdm(infile, desc="Writing output", total=summary["Total reads"]):
-            current_barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
-            if current_barcode in merge_dict:
+            old_barcode = get_bamtag(pysam_read=read, tag=barcode_tag)
+            if old_barcode in old_to_new_barcode:
                 summary["Reads with new barcode"] += 1
-                new_barcode = merge_dict[current_barcode]
+                new_barcode = old_to_new_barcode[old_barcode]
                 read.set_tag(barcode_tag, new_barcode, value_type="Z")
 
             out.write(read)
