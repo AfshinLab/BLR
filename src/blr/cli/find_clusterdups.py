@@ -144,7 +144,7 @@ def paired_reads(path: str, min_mapq: int, summary):
     :param summary: dict
     :return: read, mate: both as pysam AlignedSegment objects.
     """
-    cache = dict()
+    cache = {}
     save = set_verbosity(0)  # Fix for https://github.com/pysam-developers/pysam/issues/939
     with AlignmentFile(path) as openin:
         for read in openin:
@@ -198,7 +198,7 @@ def find_duplicate_positions(positions, dup_positions):
     Parse positions to find duplicate positions, i.e. containing more than one barcode, and add these to the
     dup_positions list. Non duplicate positions are removed.
     """
-    positions_to_remove = list()
+    positions_to_remove = []
     for position, tracked_position in positions.items():
         if tracked_position.has_updated_barcodes:
             if tracked_position.is_duplicate():
