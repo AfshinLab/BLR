@@ -6,6 +6,7 @@ This is a small wrapper around Snakemake that sets some default parameters
 from importlib_resources import path as resource_path
 import logging
 import sys
+import os
 
 from snakemake import snakemake
 from snakemake.utils import available_cpu_count
@@ -104,6 +105,8 @@ def run(
 ):
     snake_kws = {} if snake_kws is None else snake_kws
 
+    conda_prefix = get_conda_prefix(snake_kws)
+
     # snakemake sets up its own logging, and this cannot be easily changed
     # (setting keep_logger=True crashes), so remove our own log handler
     # for now
@@ -125,6 +128,7 @@ def run(
             workdir=workdir,
             use_conda=True,
             printreason=dryrun,
+            conda_prefix=conda_prefix,
             log_handler=[print_log_on_error],
             **snake_kws
         )
@@ -142,3 +146,10 @@ def print_log_on_error(msg):
                 with open(log) as f:
                     print(f.read().strip())
             print("-"*len(head))
+
+
+def get_conda_prefix(snakemake_kws):
+    if "conda_prefix" in snakemake_kws:
+        return snakemake_kws["conda_prefix"]
+    elif "CONDA_ENVS" in os.environ:
+        return os.environ["CONDA_ENVS"]

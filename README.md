@@ -160,6 +160,28 @@ The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR) w
 
     blr config --set naibr_path /path/to/NAIBR/
 
+### 4. Reusing snakemake generated conda environment
+
+Snakemake will generate separate conda environments for certain tools, e.g
+. NAIBR, when needed. These are by default generated in the `.snakemake/conda
+ /` folder within the analysis directory. To reuse the same
+  enviroment across different runs its possible to set the environment
+   variable `$CONDA_ENVS` with the path to a common directory where
+    environments can be reused or generated as needed. To set the environment
+     variable temporary one can use:
+
+    export CONDA_ENVS=/path/to/common/conda-envs/
+
+It is also possible to set this variable as a part of the main conda
+ environment (in this case `blr`) using the following command:
+ 
+    conda env config vars set CONDA_ENVS=/path/to/common/conda-envs/ -n blr
+
+Deactivate and re-activate the environment for the change to take effect. To
+ remove this variable from the environment run:
+ 
+    conda env config vars unset CONDA_ENVS -n blr
+
 ## Development
 
 Issues are tracked through [FrickTobias/BLR/issues](https://github.com/FrickTobias/BLR/issues). For more information on development go [here](doc/develop.rst).
