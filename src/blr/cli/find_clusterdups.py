@@ -170,19 +170,13 @@ def pair_is_mapped_and_proper(read: AlignedSegment, min_mapq: int, summary) -> b
     :param summary: dict
     :return: bool
     """
-    if read.is_unmapped:
+    if read.is_unmapped or read.mate_is_unmapped:
         summary["Unmapped reads"] += 1
         return False
-
-    if read.mate_is_unmapped:
-        summary["Unmapped reads"] += 1
-        return False
-
-    if read.mapping_quality < min_mapq:
+    elif read.mapping_quality < min_mapq:
         summary["Reads low MAPQ"] += 1
         return False
-
-    if not read.is_proper_pair:
+    elif not read.is_proper_pair:
         summary["Reads not proper pair"] += 1
         return False
     return True
