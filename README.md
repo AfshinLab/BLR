@@ -103,6 +103,7 @@ The `-d` option prepends the directory name to each sample allowing differentiat
 - [1. Setup conda](#1-setup-conda)
 - [2. Create environment and install `blr`](#2-create-environment-and-install-blr)
 - [3. Optional installations](#3-optional-installations)
+- [4. Reusing conda environments](#4-reusing-conda-environments)
 
 ### 1. Setup conda
 
@@ -160,7 +161,7 @@ The latest version of the [NAIBR repo](https://github.com/raphael-group/NAIBR) w
 
     blr config --set naibr_path /path/to/NAIBR/
 
-### 4. Reusing snakemake generated conda environment
+### 4. Reusing conda environments
 
 Snakemake will generate separate conda environments for certain tools, e.g
 . NAIBR, when needed. These are by default generated in the `.snakemake/conda
