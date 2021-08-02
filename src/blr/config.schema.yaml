@@ -1,35 +1,59 @@
 $schema: "http://json-schema.org/draft-06/schema#"
-description: Configuration parameters for running BLR pipeline
+description: Configuration parameters in alphabetical order for running BLR pipeline
 properties:
-  cluster_tag:
+  apply_hamming_correction:
+    type: boolean
+    default: false
+    description: Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
+  barcode:
     type: string
-    description: SAM tag to use for store barcode cluster id in bam file. 'BX' is 10x genomic default
-    default: BX
-  molecule_tag:
-    type: string
-    description: SAM flag used to store molecule ID, same as 10x default.
-    default: MI
-  sequence_tag:
-    type: string
-    description: SAM tag to use for store original barcode sequence in bam file. 'RX' is 10x genomic default
-    default: RX
-  read_mapper:
-    type: string
-    pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
-    description: Which read mapper to use
-    default: bowtie2
-  genome_reference:
+    description: Barcode sequence
+    default: BDHVBDHVBDHVBDHVBDHV
+    pattern: "^[AGCTYRWSKMBDVHN]+$"
+  barcode_max_dist:
+    type: integer
+    description: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
+    default: 2
+  barcode_ratio:
+    type: integer
+    description: Starcode parameter. Minimum difference in ratio for read count to cluster nodes
+    default: 5
+  barcode_whitelist:
     type: [ "string", "null" ]
-    description: Reference index prefix
-    default: null
-  dbSNP:
-    type: ["string", "null" ]
-    description: dbSNP, common SNP positions
+    description: Path to barcode whitelist for 10x linked-read demultiplexing
     default: null
   BQSR:
     type: boolean
     default: false
     description: Run gatk base score recalibration or not
+  chunk_size:
+    type: integer
+    default: 20000000
+    description: Chunk size for parallelization
+  cluster_tag:
+    type: string
+    description: SAM tag to use for store barcode cluster id in bam file. 'BX' is 10x genomic default
+    default: BX
+  contigs_skipped:
+    type: ["string", "null"]
+    description: Regex pattern for chromosomes to skip in primary analysis.
+    default: null
+  dbSNP:
+    type: ["string", "null" ]
+    description: dbSNP, common SNP positions
+    default: null
+  fastq_bins:
+    type: integer
+    default: 500
+    description: Number of bins to split FASTQ over for ema mapping
+  filter_variants:
+    type: boolean
+    default: false
+    description: Filter called variants (SNPs and INDELs) before phasing
+  genome_reference:
+    type: [ "string", "null" ]
+    description: Reference index prefix
+    default: null
   h1:
     type: string
     description: h1 adaptor sequnce, appears before barcode in read1
@@ -45,60 +69,80 @@ properties:
     description: h3 adaptor sequence, appears after genomics insert in read1 and read2.
     default: CTGTCTCTTATACACATCT
     pattern: "^[AGCTYRWSKMBDVHN]+$"
-  barcode:
+  heap_space:
+    type: integer
+    description: Memory per core for heap space max limit
+    default: 6
+  ideogram_assembly:
+    type: "string"
+    description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
+    default: GRCh38
+    pattern: "(GRCh38)|(GRCh37)"
+  library_type:
     type: string
-    description: Barcode sequence
-    default: BDHVBDHVBDHVBDHVBDHV
-    pattern: "^[AGCTYRWSKMBDVHN]+$"
+    pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
+    description: Library type
+  max_molecules_per_bc:
+    type: integer
+    description: Max number of molecules allowed for a single barcode
+    default: 260
   min_count:
     type: integer
     default: 1
     description: Minimum number of reads per barcode to tag reads with barcode
-  reference_variants:
-    type: [ "string", "null" ]
-    description: Path to reference variants, if not provided then variant will be called by freebayes
+  min_mapq:
+    type: integer
+    default: 0
+    description: Minimum MAPQ to include reads in certain analysis steps.
+  molecule_tag:
+    type: string
+    description: SAM flag used to store molecule ID, same as 10x default.
+    default: MI
+  naibr_blacklist:
+    type: ["string", "null"]
+    description: Bed file containing region to skip
+    default: null
+  naibr_min_mapq:
+    type: integer
+    description: Minimum mapping quality for NAIBR SV calling
+    default: 40
+  naibr_path:
+    type: ["string", "null"]
+    description: Path to NAIBR folder
+    default: null
+  phase_indels:
+    type: boolean
+    default: true
+    description: Phase INDELs along with SNPs
+  phasing_contigs:
+    type: ["string", "null"]
+    description: Chromosomes/contigs to perform phasing on. Must be a continous string with comma separated contigs.
     default: null
   phasing_ground_truth:
     type: [ "string", "null" ]
     description: Path to phased variants used to compute phasing stats.
     default: null
-  barcode_max_dist:
-    type: integer
-    description: Max edit distance (Leveshtein distance) allowed to cluster two barcode sequences together
-    default: 2
-  barcode_ratio:
-    type: integer
-    description: Starcode parameter. Minimum difference in ratio for read count to cluster nodes
-    default: 5
-  max_molecules_per_bc:
-    type: integer
-    description: Max number of molecules allowed for a single barcode
-    default: 260
-  variant_caller:
+  read_mapper:
     type: string
-    description: Which variant caller to use.
-    pattern: "(gatk)|(bcftools)|(freebayes)|(deepvariant)"
-    default: freebayes
-  heap_space:
-    type: integer
-    description: Memory per core for heap space max limit
-    default: 6
-  library_type:
-    type: string
-    pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
-    description: Library type
-  barcode_whitelist:
+    pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
+    description: Which read mapper to use
+    default: bowtie2
+  reference_variants:
     type: [ "string", "null" ]
-    description: Path to barcode whitelist for 10x linked-read demultiplexing
+    description: Path to reference variants, if not provided then variant will be called by freebayes
     default: null
-  apply_hamming_correction:
+  sample_nr:
+    type: integer
+    default: 1
+    description: Sample nr used to distiguish barcodes when merging BAM files.
+  sequence_tag:
+    type: string
+    description: SAM tag to use for store original barcode sequence in bam file. 'RX' is 10x genomic default
+    default: RX
+  skip_bcmerge:
     type: boolean
     default: false
-    description: Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
-  fastq_bins:
-    type: integer
-    default: 500
-    description: Number of bins to split FASTQ over for ema mapping
+    description: Skip merging of overlapping barcodes
   stlfr_barcodes:
     type: ["string", "null"]
     description: Path to stLFR barcodes
@@ -108,73 +152,29 @@ properties:
     description: Adaptor sequence for stLFR constructs (from tagmentation)
     default: CTGTCTCTTATACACATCT
     pattern: "^[AGCTYRWSKMBDVHN]+$"
-  chunk_size:
-    type: integer
-    default: 20000000
-    description: Chunk size for parallelization
-  window_size:
-    type: integer
-    default: 30000
-    description: Window size used for linking reads by barcodes.
-  tellseq_index:
-    type: [ "string", "null" ]
-    description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
-    default: null
-  tellseq_correction:
-    type: string
-    description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
-    pattern: "(cluster)|(correct_singles)"
-    default: correct_singles
   tellseq_barcode:
     type: string
     description: Barcode sequence
     default: NNHNNYRNNNNYRNNHNN
     pattern: "^[AGCTYRWSKMBDVHN]+$"
-  sample_nr:
+  tellseq_correction:
+    type: string
+    description: Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
+    pattern: "(cluster)|(correct_singles)"
+    default: correct_singles
+  tellseq_index:
+    type: [ "string", "null" ]
+    description: Path to TELL-seq index 1 file containing the associated 18 bp barcode sequences.
+    default: null
+  variant_caller:
+    type: string
+    description: Which variant caller to use.
+    pattern: "(gatk)|(bcftools)|(freebayes)|(deepvariant)"
+    default: freebayes
+  window_size:
     type: integer
-    default: 1
-    description: Sample nr used to distiguish barcodes when merging BAM files.
-  min_mapq:
-    type: integer
-    default: 0
-    description: Minimum MAPQ to include reads in certain analysis steps.
-  filter_variants:
-    type: boolean
-    default: false
-    description: Filter called variants (SNPs and INDELs) before phasing
-  phase_indels:
-    type: boolean
-    default: true
-    description: Phase INDELs along with SNPs
-  phasing_contigs:
-    type: ["string", "null"]
-    description: Chromosomes/contigs to perform phasing on. Must be a continous string with comma separated contigs.
-    default: null
-  contigs_skipped:
-    type: ["string", "null"]
-    description: Regex pattern for chromosomes to skip in primary analysis.
-    default: null
-  skip_bcmerge:
-    type: boolean
-    default: false
-    description: Skip merging of overlapping barcodes
-  naibr_path:
-    type: ["string", "null"]
-    description: Path to NAIBR folder
-    default: null
-  naibr_min_mapq:
-    type: integer
-    description: Minimum mapping quality for NAIBR SV calling
-    default: 40
-  naibr_blacklist:
-    type: ["string", "null"]
-    description: Bed file containing region to skip
-    default: null
-  ideogram_assembly:
-    type: "string"
-    description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
-    default: GRCh38
-    pattern: "(GRCh38)|(GRCh37)"
+    default: 30000
+    description: Window size used for linking reads by barcodes.
 
 required:
   - genome_reference
