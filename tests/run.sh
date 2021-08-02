@@ -30,13 +30,13 @@ pytest -v tests/
 
 # Test full run on BLR library.
 rm -rf outdir-bowtie2
-blr init --r1=blr-testdata/blr_reads.1.fastq.gz -l dbs outdir-bowtie2
+blr init --r1=blr-testdata/dbs_reads.1.fastq.gz -l dbs outdir-bowtie2
 blr config \
     --file outdir-bowtie2/blr.yaml \
     --set genome_reference ../blr-testdata/ref.fasta \
     --set dbSNP ../blr-testdata/dbSNP.vcf.gz \
-    --set reference_variants ../blr-testdata/HG002_GRCh38_GIAB_highconf.vcf \
-    --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.vcf \
+    --set reference_variants ../blr-testdata/HG002_GRCh38_GIAB_highconf.vcf.gz \
+    --set phasing_ground_truth ../blr-testdata/HG002_GRCh38_GIAB_highconf_triophased.vcf.gz \
     --set max_molecules_per_bc 1 \
     --set heap_space 1 \
     --set chunk_size 10000 \
@@ -46,4 +46,4 @@ blr config \
 cd outdir-bowtie2
 blr run
 m=$(samtools view final.bam | $md5 | cut -f1 -d" ")
-test $m == 94a546d0c54e90a64a6dbdb58f4acc1f
+test $m == 13f08e596232d44660ac337606f87279

@@ -38,7 +38,7 @@ jobs:
       - name: Download test dataset
         shell: bash -l {0}
         env:
-          testdata_version: "0.5"
+          testdata_version: "0.6"
         run: |
           wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
           tar xf blr-testdata-${testdata_version}.tar.gz
