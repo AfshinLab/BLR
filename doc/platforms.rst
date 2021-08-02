@@ -57,7 +57,7 @@ TELL-seq is based on the technology from `Chen et al. 2020 <https://doi.org/10.1
 :Barcodes:
     Semi-degenerated sequence of 18 bases with about 2.4 billion possible sequences.
 :Preprocessing:
-    Barcodes are either (A) clustered using `starcode <https://github.com/gui11aume/starcode>`__ as for BLR_ or (B) single count barcodes are corrected to any barcode within a hamming distance of 1 or discarded. Option B follows the method used in `Chen et al. 2020`_. Reads are subsequently tagged in the header with the corrected barcode.
+    Barcodes are either (A) clustered using `starcode <https://github.com/gui11aume/starcode>`__ as for DBS_ or (B) single count barcodes are corrected to any barcode within a hamming distance of 1 or discarded. Option B follows the method used in `Chen et al. 2020`_. Reads are subsequently tagged in the header with the corrected barcode.
 :Required input files:
     Read1 FASTQ,
     Read2 FASTQ,
