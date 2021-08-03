@@ -88,12 +88,12 @@ To run the pipeline you need to provide a path to a FASTA with your reference
  - `bowtie2` uses a `bowtie2`-indexed reference
 
 
- -     bowtie2-build genome.fasta genome.fasta
+        bowtie2-build genome.fasta genome.fasta
 
  - `bwa`, `minimap2`, `ema` and `lariat` uses a `bwa`-indexed reference 
 
 
- -     bwa index genome.fasta  
+        bwa index genome.fasta  
 
 Additionally you need to index your FASTA using `samtools faidx` to get the
  `genome.fasta.fai` file
