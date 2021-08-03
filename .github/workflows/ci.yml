@@ -23,7 +23,7 @@ jobs:
       - name: Update env
         run: |
           conda activate testenv
-          conda install -n testenv flake8 pytest
+          pip install flake8 pytest
           pip install -e .
       - name: Env info
         run: |
