@@ -24,7 +24,7 @@ jobs:
         run: |
           conda activate testenv
           pip install flake8 pytest
-          pip install -e .
+          pip install .
       - name: Env info
         run: |
           conda activate testenv
