@@ -37,7 +37,6 @@ jobs:
         shell: bash -l {0}
         run: |
           conda info
-          mamba info
           conda list
       - name: Run flake8
         shell: bash -l {0}
