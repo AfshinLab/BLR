@@ -13,7 +13,7 @@ dependencies:
   - bwa
   - minimap2
   - pysam
-  - cutadapt>=2.5
+  - cutadapt=2.5
   - hapcut2=1.3.2
   - samtools
   - snakemake-minimal>=5.32.0
