@@ -19,15 +19,10 @@ jobs:
         with:
           environment-file: environment.linux-64.lock
           use-only-tar-bz2: true
-      - name: Update env
-        run: |
-          pip install flake8 pytest
-          pip install --no-deps .
-      - name: Env info
-        run: |
-          conda info
-          conda list
-          pip list
+      - name: Install test deps
+        run: conda install flake8 pytest
+      - name: Install BLR
+        run: pip install .
       - name: Run flake8
         run: |
           flake8 src/ tests/
