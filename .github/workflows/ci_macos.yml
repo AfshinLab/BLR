@@ -3,7 +3,6 @@ name: CI macos
 on: 
   schedule:
     - cron: 0 8 7 * *
-  pull_request:
 
 jobs:
   run:
