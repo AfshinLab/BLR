@@ -13,8 +13,8 @@ from blr.utils import get_bamtag
 
 TESTDATA = Path("blr-testdata")
 
-TESTDATA_BLR_READ1 = TESTDATA / "blr_reads.1.fastq.gz"
-TESTDATA_BLR_READ2 = TESTDATA / "blr_reads.2.fastq.gz"
+TESTDATA_DBS_READ1 = TESTDATA / "dbs_reads.1.fastq.gz"
+TESTDATA_DBS_READ2 = TESTDATA / "dbs_reads.2.fastq.gz"
 TESTDATA_TENX_READ1 = TESTDATA / "tenx_reads.1.fastq.gz"
 TESTDATA_TENX_READ2 = TESTDATA / "tenx_reads.2.fastq.gz"
 TESTDATA_TENX_BARCODES = str((TESTDATA / "tenx_barcode_whitelist.txt").absolute())
@@ -26,7 +26,7 @@ TESTDATA_TELLSEQ_READ2 = TESTDATA / "tellseq_reads.2.fastq.gz"
 TESTDATA_TELLSEQ_INDEX = str((TESTDATA / "tellseq_index.fastq.gz").absolute())
 DEFAULT_CONFIG = "blr.yaml"
 REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
-REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf").absolute())
+REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf.gz").absolute())
 DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
 
 
@@ -84,7 +84,7 @@ def _workdir(tmp_path_factory):
     the BAM file ready for variant calling
     """
     path = tmp_path_factory.mktemp(basename="analysis-") / "analysis"
-    init(path, TESTDATA_BLR_READ1, "dbs")
+    init(path, TESTDATA_DBS_READ1, "dbs")
     change_config(
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
@@ -107,12 +107,12 @@ def workdir(_workdir, tmp_path):
 
 
 def test_init(tmp_path):
-    init(tmp_path / "analysis", TESTDATA_BLR_READ1, "dbs")
+    init(tmp_path / "analysis", TESTDATA_DBS_READ1, "dbs")
 
 
 def test_config(tmp_path):
     workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "dbs")
+    init(workdir, TESTDATA_DBS_READ1, "dbs")
     change_config(workdir / "blr.yaml", [("read_mapper", "bwa")])
 
 
@@ -124,7 +124,7 @@ def test_default_read_mapper(workdir):
 # The read mapper will partly determine the output format so we test for different mappers here. Bowtie2, bwa and
 # minimap2 all use the same format so only bowtie2 is tested.
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
-def test_trim_blr(workdir, read_mapper):
+def test_trim_dbs(workdir, read_mapper):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("read_mapper", read_mapper),
@@ -132,19 +132,19 @@ def test_trim_blr(workdir, read_mapper):
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed, force_run=["trim"])
-    assert count_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
-    assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_BLR_READ2) > 0.9
+    assert count_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_DBS_READ1) > 0.9
+    assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_DBS_READ2) > 0.9
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
-def test_trim_blr_lariat(workdir):
+def test_trim_dbs_lariat(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed, force_run=["trim"])
-    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_BLR_READ1) > 0.9
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_DBS_READ1) > 0.9
 
 
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
@@ -192,20 +192,37 @@ def test_trim_stlfr_lariat(tmp_path):
     assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_STLFR_READ1) > 0.8
 
 
-@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
-def test_trim_tellseq(tmp_path, read_mapper):
+# Trimming is the same for minimap2, bowtie2, and bwa
+def test_trim_tellseq_bowtie2(tmp_path):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", read_mapper),
+         ("read_mapper", "bowtie2"),
+         ("fastq_bins", "5")]
+    )
+    targets = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=targets)
+    for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), targets):
+        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9
+
+
+def test_trim_tellseq_ema(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+    change_config(
+        workdir / DEFAULT_CONFIG,
+        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
+         ("read_mapper", "ema"),
          ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
-    for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed):
-        assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
+    trimmed_nobc = ["trimmed.non_barcoded.1.fastq.gz", "trimmed.non_barcoded.2.fastq.gz"]
+    run(workdir=workdir, targets=trimmed + trimmed_nobc)
+    for raw, trim, trim_nobc in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed, trimmed_nobc):
+        count_trimmed = count_fastq_reads(workdir / trim) + count_fastq_reads(workdir / trim_nobc)
+        assert count_trimmed / count_fastq_reads(raw) > 0.9
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
@@ -219,7 +236,7 @@ def test_trim_tellseq_lariat(tmp_path):
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
-    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_TELLSEQ_READ1) > 0.7
+    assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_TELLSEQ_READ1) > 0.3
 
 
 non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lariat") else ["bwa", "minimap2", "ema"]
@@ -228,7 +245,7 @@ non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lari
 @pytest.mark.parametrize("read_mapper", non_default_mappers)
 def test_nondefault_read_mappers(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_BLR_READ1, "dbs")
+    init(workdir, TESTDATA_DBS_READ1, "dbs")
     change_config(
         workdir / DEFAULT_CONFIG,
         [("genome_reference", REFERENCE_GENOME),

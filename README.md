@@ -69,15 +69,16 @@ For more options, see the documentation.
 
 For unit testing we use test files for different platforms. The latest version of these can be downloaded and unpacked using the following commands:
 
-    wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-0.5.tar.gz
-    tar xf blr-testdata-0.5.tar.gz
-    ln -s blr-testdata-0.5 blr-testdata
+    wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-0.6.tar.gz
+    tar xf blr-testdata-0.6.tar.gz
+    ln -s blr-testdata-0.6 blr-testdata
 
 Now unit testing can be run locally from within the BLR directory using:
 
     bash tests/run.sh
 
-This is useful if you want to test your changes before submitting them as a PR.
+This is useful if you want to test your changes localy before submitting them
+ as a PR.
 
 ### 4. Reference genome setup
 
