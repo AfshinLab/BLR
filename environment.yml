@@ -1,6 +1,6 @@
-# Whenever this file is updated, you need to run misc/condalock.sh to create
-# the environment.lock.yml file.
-
+# Whenever this file is updated, you need to run: `conda-lock -f environment.yml -p linux-64 -p osx-64
+# --filename-template "environment.{platform}.lock"` to generate the environment.{platform}.lock files.
+# conda-lock is avialable from pip (`pip install conda-lock`) or conda (`conda install conda-lock -c conda-forge`).
 channels:
   - conda-forge
   - bioconda

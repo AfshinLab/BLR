@@ -19,14 +19,12 @@ jobs:
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir/usr/share/miniconda/envs/testenv
-          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.linux.lock.yml') }}
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.linux-64.lock') }}
           restore-keys: ${{ runner.os }}-conda-
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          mamba-version: "*"
-          use-mamba: true
           activate-environment: testenv
-          environment-file: environment.linux.lock.yml
+          environment-file: environment.linux-64.lock
           auto-update-conda: false
           use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Update env
@@ -34,7 +32,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           conda activate testenv
-          mamba install -n testenv flake8 pytest
+          conda install -n testenv flake8 pytest
       - name: Env info
         shell: bash -l {0}
         run: |
