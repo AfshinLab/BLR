@@ -19,7 +19,7 @@ jobs:
           environment-file: environment.osx-64.lock
           use-only-tar-bz2: true
       - name: Install test deps
-        run: conda install flake8 pytest
+        run: conda install flake8 pytest pip
       - name: Install BLR
         run: pip install .
       - name: Run flake8
