@@ -22,7 +22,9 @@ jobs:
       - name: Install test deps
         run: conda install flake8 pytest
       - name: Install BLR
-        run: pip install .
+        run: |
+          pip install --no-deps .
+          blr --version
       - name: Run flake8
         run: |
           flake8 src/ tests/
