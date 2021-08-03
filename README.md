@@ -19,12 +19,13 @@ The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping a
 - [1. Setup analysis](#1-setup-an-analysis-folder)
 - [2. Run analysis](#2-running-an-analysis)
 - [3. Test files](#3-test-files)
-- [4. Merging different analysis runs](#4-merging-different-analysis-runs)
-- [5. MultiQC plugin](#5-multiqc-plugin)
+- [4. Reference genome setup](#4-reference-genome-setup)
+- [5. Merging different analysis runs](#5-merging-different-analysis-runs)
+- [6. MultiQC plugin](#6-multiqc-plugin)
 
 ### 1. Setup an analysis folder
 
-Activate your Conda environment.
+Activate your generated conda environment (see [Installation](#Installation)).
 
     conda activate blr
 
@@ -38,11 +39,17 @@ Move into your newly created analysis folder.
 
     cd path/to/output_folder
 
-Then, you may need to edit the configuration file `blr.yaml`, in particular to enter the path to your reference genome.
+Then, you may need to edit the configuration file `blr.yaml`, in particular
+ to enter the path to your indexed reference genome (see [Reference genome
+  setup](#4-reference-genome-setup) for more info).
 
     blr config --set genome_reference path/to/GRCh38.fasta
 
-To see what other configurations can be altered, read the documentation in the `blr.yaml` file or run `blr config` to print the current configs to the terminal.
+To see what other configurations can be altered, read the documentation in
+ the `blr.yaml` file or run `blr config` to print the current configs to the
+  terminal. Some configurations are specific to the linked
+  -read technology used for generating the library, more information can be
+   found [here](doc/platforms.rst).
 
 ### 2. Running an analysis
 
@@ -72,7 +79,34 @@ Now unit testing can be run locally from within the BLR directory using:
 
 This is useful if you want to test your changes before submitting them as a PR.
 
-### 4. Merging different analysis runs
+### 4. Reference genome setup
+
+To run the pipeline you need to provide a path to a FASTA with your reference
+ genome. The FASTA should be indexed depending on which mapper you whish to
+  use. 
+  
+ - `bowtie2` uses a `bowtie2`-indexed reference
+
+
+ -     bowtie2-build genome.fasta genome.fasta
+
+ - `bwa`, `minimap2`, `ema` and `lariat` uses a `bwa`-indexed reference 
+
+
+ -     bwa index genome.fasta  
+
+Additionally you need to index your FASTA using `samtools faidx` to get the
+ `genome.fasta.fai` file
+
+    samtools faidx genome.fasta`
+    
+If using `gatk` for variant calling or doing base recalibrartion you will
+ need to generate a sequence dictionary (`genome.dict` file) which can be done
+  using:
+
+    gatk CreateSequenceDictionary -R genome.fasta  
+
+### 5. Merging different analysis runs
 
 If you have two or more libraries run on the same sample it is possible to merge these inorder to increase coverage. First analysis should be run separately for each library. Make sure that different `sample_nr` (set using `blr config`) have been assigned to each library in order to not mix overlapping barcodes. The files that will be merged from each library is the filtered BAM (`final.bam`), the molecule stats TSV (`final.molecule_stats.tsv`) and the clustered barcodes (`barcodes.clstr`).
 
@@ -88,7 +122,7 @@ In order to merge the files and run analysis on the merged files a special subsc
 
 Using this the files will be merged and the workflow run from varinat calling and on.
 
-### 5. MultiQC plugin
+### 6. MultiQC plugin
 
 There is a MultiQC plugin included in the BLR pipeline called MultiQC_BLR. If you wish to run MultiQC without this plugin include `--disable-blr-plugin` in your multiqc command.
 

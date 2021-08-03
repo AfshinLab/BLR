@@ -18,9 +18,8 @@ Droplet Barcode Sequencing (DBS) is based on the technology described in `Redin 
     Semi-degerate sequence of 20 bases with about 3.5 billion possible sequences.
 :Preprocessing:
     Barcode sequences are extracted from read 1 and clustered using `starcode <https://github.com/gui11aume/starcode>`__ to error-correct barcodes. Read 1 and 2 is then trimmed using `cutadapt <https://github.com/marcelm/cutadapt>`__ and the corrected barcode attached to the header.
-:Reguired input files:
-    Read1 FASTQ,
-    Read2 FASTQ
+:Additional input files:
+    None
 
 10x Genomics
 ------------
@@ -29,11 +28,10 @@ Droplet Barcode Sequencing (DBS) is based on the technology described in `Redin 
 :Barcodes:
     10x Genomics uses a barcode library of 16 base sequences. GemCode libraries have maximum of 737 thousand sequences while the Chromium Genome has about 4 million.
 :Preprocessing:
-    Barcode need to be extracted from read 1 and error-corrected using a whitelist (Download from `here <https://github.com/10XGenomics/supernova/tree/master/tenkit/lib/python/tenkit/barcodes>`__). Reads are trimmed and the corrected barcode appended to the header. Preprocessing uses the `ema <https://github.com/arshajii/ema>`__ ``count`` and ``preproc`` tools.
-:Required input files:
-    Read1 FASTQ,
-    Read2 FASTQ,
-    Barcode whitelist
+    Barcodes need to be extracted from read 1 and error-corrected using a whitelist (Download from `here <https://github
+    .com/10XGenomics/supernova/tree/master/tenkit/lib/python/tenkit/barcodes>`__). Reads are trimmed and the corrected barcode appended to the header. Preprocessing uses the `ema <https://github.com/arshajii/ema>`__ ``count`` and ``preproc`` tools.
+:Additional input files:
+    TXT with valid barcode sequences, parameter ``barcode_whitelist`` in configs.
 
 
 stLFR
@@ -44,10 +42,8 @@ stLFR (single-tube long fragment read) is based on the technology described in `
     The barcodes are genereated using a combinatorial split-and-pool approach. The barcode is a combination of three barcodes from a 1,536 barcode library in which each barcode is 10 bp. The total number of possible barcodes is about 3.6 billion.
 :Preprocessing:
     **The barcode needs to be extracted and error-corrected externaly using the** `stLFR_read_demux <https://github.com/stLFR/stLFR_read_demux>`__ **or alternatively** `SuperPlus split_barcode <https://github.com/MGI-tech-bioinformatics/SuperPlus/tree/master/split_barcode>`_ **before beign inputted to the pipeline**. Following this the reads are trimmed using `cutadapt <https://github.com/marcelm/cutadapt>`__. The stLFR_read_demux inserts a index based barcode to the read header (e.g. ``#1024_323_231``) based on which three barcodes were detected. This is not compatible with some aligners such as `ema <https://github.com/arshajii/ema>`__ due to not cosisting of IUPAC base symbols. Therefore the index barcodes are replaced with either (A) a concatemer of the three detect barcodes or (B) a uniquely generated 16 base sequence (recommended). For option B a whitelist of barcodes from the stLFR_read_demux (Download from `here <https://github.com/stLFR/stLFR_read_demux/blob/master/scripts/barcode.list>`__ tools needs to be provided.
-:Required input files:
-    Read1 FASTQ,
-    Read2 FASTQ,
-    Barcode whitelist (Optional)
+:Additional input files:
+    Optional list of barcodes with corresponding index, see parameter ``stlfr_barcodes`` in configs.
 
 
 TELL-seq
@@ -58,10 +54,8 @@ TELL-seq is based on the technology from `Chen et al. 2020 <https://doi.org/10.1
     Semi-degenerated sequence of 18 bases with about 2.4 billion possible sequences.
 :Preprocessing:
     Barcodes are either (A) clustered using `starcode <https://github.com/gui11aume/starcode>`__ as for DBS_ or (B) single count barcodes are corrected to any barcode within a hamming distance of 1 or discarded. Option B follows the method used in `Chen et al. 2020`_. Reads are subsequently tagged in the header with the corrected barcode.
-:Required input files:
-    Read1 FASTQ,
-    Read2 FASTQ,
-    Index1 FASTQ (contains barcodes)
+:Additional input files:
+    Index1 FASTQ containing the barcode sequences, see parameter ``tellseq_index`` in configs.
 
 
 CPT-seq
