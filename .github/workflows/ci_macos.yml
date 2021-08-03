@@ -9,34 +9,27 @@ jobs:
     name: Run pipeline
     timeout-minutes: 15
     runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
         with:
           mamba-version: "*"
           use-mamba: true
-          activate-environment: testenv
-          environment-file: environment.osx.lock.yml
-          auto-update-conda: false
-      - name: Update env
-        shell: bash -l {0}
-        run: |
-          conda activate testenv
-          mamba install -n testenv flake8 pytest
-      - name: Env info
-        shell: bash -l {0}
-        run: |
-          conda info
-          mamba info
-          conda list
+          channels: conda-forge
+          environment-file: environment.osx-64.lock
+          use-only-tar-bz2: true
+      - name: Install test deps
+        run: mamba install flake8 pytest pip
+      - name: Install BLR
+        run: pip install .
       - name: Run flake8
-        shell: bash -l {0}
         run: |
-          conda activate testenv
           flake8 src/ tests/
           flake8 --select=W292 --filename '*.yaml,*.yml'
       - name: Download test dataset
-        shell: bash -l {0}
         env:
           testdata_version: "0.6"
         run: |
@@ -44,8 +37,5 @@ jobs:
           tar xf blr-testdata-${testdata_version}.tar.gz
           ln -s blr-testdata-${testdata_version} blr-testdata
       - name: Run tests
-        shell: bash -l {0}
         run: |
-          conda activate testenv
-          pip install -e .
           tests/run.sh

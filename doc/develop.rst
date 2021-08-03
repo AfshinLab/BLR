@@ -4,20 +4,36 @@ Development
 Conda environment files
 -----------------------
 
-There are two types of files that describe Conda environments.
+There are two types of files in this repository that describe conda environments.
 
 - The file ``environment.yml`` contains abstract dependencies such as ``pysam`` or
   ``bowtie2``. This file is managed manually and needs to be
   updated whenever there are new dependencies or when the required version for a
   dependency changes.
 
-- The ``environment.linux.lock.yml`` and ``environment.osx.lock.yml`` files
-  (lock files) contain a fully specified description of the entire environment,
-  with locked-down versions.  These files are used to create the test
-  environment.
+- The ``environment.linux-64.lock`` and ``environment.osx-64.lock`` files
+  (lock files) contain explicitly-defined environments which are reproducible and platform
+  dependant.  These files are used to create the test environments.
 
-Use the script ``misc/condalock.sh`` to update the lock files whenever you make
-changes to ``environment.yml``.
+Whenever the ``environment.yml`` file is updated, you need to run:
+
+.. code-block::
+
+    conda-lock -f environment.yml -p linux-64 -p osx-64 --filename-template "environment.{platform}.lock"`
+
+to generate the ``environment.{platform}.lock`` files.
+
+Install conda-lock using pip
+
+.. code-block::
+
+    pip install conda-lock
+
+or conda
+
+.. code-block::
+
+    conda install conda-lock -c conda-forge
 
 
 SAM Tags
