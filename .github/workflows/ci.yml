@@ -19,6 +19,7 @@ jobs:
         with:
           mamba-version: "*"
           use-mamba: true
+          channels: conda-forge
           environment-file: environment.linux-64.lock
           use-only-tar-bz2: true
       - name: Install test deps
