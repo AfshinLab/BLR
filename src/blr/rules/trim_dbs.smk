@@ -133,8 +133,7 @@ rule merge_bins:
         r1_fastq="trimmed.barcoded.1.fastq.gz",
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
-        bins = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}"),
-                      nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
+        bins = expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]),
     run:
         modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
         shell(
