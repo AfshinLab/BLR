@@ -76,7 +76,7 @@ sp:
     picard/wgs_metrics:
         skip: true
     cutadapt:
-        fn: "cutadapt_trim.log"
+        fn: "trimmed.fastq.log"
     whatshap/stats:
         fn: "final.whatshap_stats.tsv"
     whatshap/haplotag:
