@@ -7,6 +7,7 @@ partialy degenerate.
 from collections import Counter
 from dataclasses import dataclass
 import logging
+from typing import List
 
 import dnaio
 
@@ -31,8 +32,8 @@ def main(args):
     summary["Corrected singles (%)"] = 100*summary["Corrected singles"] / summary["Barcodes with count = 1"]
 
     with smart_open(args.output) as output:
-        for barcode, cluster in sorted(multiples.items(), key=lambda x: x[1].count, reverse=True):
-            print(barcode, cluster.count, ",".join(cluster.barcodes), sep="\t", file=output)
+        for barcode, cluster in sorted(multiples.items(), key=lambda x: x[1], reverse=True):
+            print(cluster, file=output)
 
         for barcode in singles:
             print(barcode, 1, barcode, sep="\t", file=output)
@@ -45,14 +46,20 @@ def count_barcodes(file):
         return Counter([barcode.sequence for barcode in tqdm(barcodes, desc="Count barcodes")])
 
 
-@dataclass
+@dataclass(order=False)
 class Cluster:
     count: int
-    barcodes: list
+    barcodes: List[str]
 
-    def add(self, barcode):
+    def add(self, barcode: str):
         self.count += 1
         self.barcodes.append(barcode)
+
+    def __lt__(self, other):
+        return self.count < other.count
+
+    def __str__(self):
+        return f"{self.barcodes[0]}\t{self.count}\t{','.join(self.barcodes)}"
 
 
 def split_by_count(barcodes, count=1):
