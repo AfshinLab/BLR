@@ -920,8 +920,6 @@ rule split_or_symlink_phase_input_vcf:
         unpack(get_phase_input_vcf)
     run:
         if config["reference_variants"]:
-            # TODO
-            # bcftools view -T is possibly a bit inefficient (use an indexed VCF instead)
             shell("bcftools view -o {output.vcf} -T {input.bed} {input.vcf}")
         else:
             symlink_relpath(input.vcf, output.vcf)
