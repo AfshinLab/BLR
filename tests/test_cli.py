@@ -400,3 +400,26 @@ def test_phasing_contigs(workdir):
     assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrB")
     assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrC")
     assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrD")
+
+
+def test_multiqc_report_complete(workdir):
+    expected_sections = {
+        "HapCUT2",
+        "Stats",
+        "Whatshap",
+        "mosdepth",
+        "Picard",
+        "Cutadapt",
+        "FastQC",
+    }
+    targets = ["multiqc_report.html", "multiqc_data"]
+    run(workdir=workdir, targets=targets)
+    assert all((workdir / t).exists() for t in targets)
+
+    sections = set()
+    with (workdir / "multiqc_data" / "multiqc_sources.txt").open() as f:
+        _ = next(f)  # skip header
+        for line in f:
+            sections.add(line.split("\t")[0])
+
+    assert sections.issubset(expected_sections)
