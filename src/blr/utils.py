@@ -339,7 +339,7 @@ def parse_phaseblocks(file):
 @contextlib.contextmanager
 def smart_open(filename=None):
     # From https://stackoverflow.com/questions/17602878/how-to-handle-both-with-open-and-sys-stdout-nicely
-    if filename and filename is not None:
+    if filename and filename is not None and filename != "-":
         fh = open(filename, 'w')
     else:
         fh = sys.stdout

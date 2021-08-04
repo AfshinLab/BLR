@@ -5,14 +5,12 @@ This is the method used in Chen et al. 2019 (doi: 10.1101/gr.260380.119) to corr
 partialy degenerate.
 """
 from collections import Counter
-from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
-import sys
 
 import dnaio
 
-from blr.utils import tqdm, Summary
+from blr.utils import tqdm, Summary, smart_open
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +30,7 @@ def main(args):
 
     summary["Corrected singles (%)"] = 100*summary["Corrected singles"] / summary["Barcodes with count = 1"]
 
-    with open_output(args.output) as output:
+    with smart_open(args.output) as output:
         for barcode, cluster in sorted(multiples.items(), key=lambda x: x[1].count, reverse=True):
             print(barcode, cluster.count, ",".join(cluster.barcodes), sep="\t", file=output)
 
@@ -40,14 +38,6 @@ def main(args):
             print(barcode, 1, barcode, sep="\t", file=output)
 
     summary.print_stats(__name__)
-
-
-@contextmanager
-def open_output(output_file):
-    if output_file == "-":
-        yield sys.stdout
-    else:
-        yield open(output_file, "w")
 
 
 def count_barcodes(file):
@@ -75,27 +65,27 @@ def correct_singles(singles, multiples, summary):
     nucleotides = {"A", "T", "C", "G"}
     singles_corrected = set()
     for sequence in tqdm(singles, desc="Correcting singles"):
-        seq_list = list(sequence)
-        matched = None
-        found = 0
-        for i, base in enumerate(seq_list):
-            alt_seq_list = seq_list.copy()
-            subsitutions = nucleotides - set(base)
-            for sub_base in subsitutions:
-                alt_seq_list[i] = sub_base
-                alt_sequence = ''.join(alt_seq_list)
-                if alt_sequence in multiples:
-                    matched = alt_sequence
-                    found += 1
+        matched = [mut_seq for mut_seq in mutate(sequence, nucleotides) if mut_seq in multiples]
 
-        if found == 1:
-            multiples[matched].add(sequence)
+        if len(matched) == 1:
+            multiples[matched[0]].add(sequence)
             singles_corrected.add(sequence)
             summary["Corrected singles"] += 1
-        elif found > 1:
+        elif len(matched) > 1:
             summary["Singles matching multiple"] += 1
 
     singles -= singles_corrected
+
+
+def mutate(sequence, nucleotides):
+    """Generate all strings within Hamming distance of 1"""
+    seq_list = list(sequence)
+    for i, base in enumerate(seq_list):
+        alt_seq_list = seq_list.copy()
+        subsitutions = nucleotides - set(base)
+        for sub_base in subsitutions:
+            alt_seq_list[i] = sub_base
+            yield ''.join(alt_seq_list)
 
 
 def add_arguments(parser):
