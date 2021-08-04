@@ -277,6 +277,9 @@ rule mark_duplicates_nobc:
     input:
         bam = "initialmapping_nobc.bam"
     log: "initialmapping_nobc.mkdup.bam.log"
+    params:
+        # 250_000 per Gb is recommended according to https://sourceforge.net/p/picard/wiki/Main_Page/
+        max_records_in_ram = int(250_000 * config['heap_space'])
     shell:
         "picard -Xmx{config[heap_space]}g MarkDuplicates"
         " INPUT={input.bam}"
@@ -287,8 +290,9 @@ rule mark_duplicates_nobc:
         " USE_JDK_DEFLATER=true"
         " USE_JDK_INFLATER=true"
         " ASSUME_SORTED=true"
-        " MAX_RECORDS_IN_RAM=250000"
+        " MAX_RECORDS_IN_RAM={params.max_records_in_ram}"
         " VALIDATION_STRINGENCY=LENIENT"
+        " COMPRESSION_LEVEL=0"
         " &> {log}"
 
 
@@ -527,6 +531,9 @@ rule mark_duplicates:
     input:
         bam = "chunks/{base}.bam"
     log: "chunks/{base}.mkdup.bam.log"
+    params:
+        # 250_000 per Gb is recommended according to https://sourceforge.net/p/picard/wiki/Main_Page/
+        max_records_in_ram = int(250_000 * config['heap_space'])
     shell:
         "picard -Xmx{config[heap_space]}g MarkDuplicates"
         " INPUT={input.bam}"
@@ -539,8 +546,9 @@ rule mark_duplicates:
         " USE_JDK_DEFLATER=true"
         " USE_JDK_INFLATER=true"
         " ASSUME_SORTED=true"
-        " MAX_RECORDS_IN_RAM=250000"
+        " MAX_RECORDS_IN_RAM={params.max_records_in_ram}"
         " VALIDATION_STRINGENCY=LENIENT"
+        " COMPRESSION_LEVEL=0"
         " &> {log}"
 
 
