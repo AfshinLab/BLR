@@ -162,7 +162,7 @@ Create a conda environment, in which all dependencies will be installed. It
  is recommended to use one of the OS locked files, i.e. `environment.linux-64
   .lock` for linux or `environment.osx-64.lock` for mac, for reproducibility. One can also use the non-lock `environment.yml` file but this may introduce non-tested versions of software into the environment, so use with caution. For linux use the following to install and activate the environment.
 
-    conda create -n blr -f environment.linux-64.lock
+    conda create --name blr --file environment.linux-64.lock
     conda activate blr
 
 Install `blr` into the environment.
