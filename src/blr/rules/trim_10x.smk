@@ -18,6 +18,7 @@ https://github.com/arshajii/ema#end-to-end-workflow-10x
 # If not mapping with ema it is unneccessary to generate a lot of bins.
 if config["read_mapper"] != "ema":
     config["fastq_bins"] = min(config["fastq_bins"], workflow.cores)
+    config["fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
 
 
 rule link_to_whitelist:
@@ -46,9 +47,8 @@ rule count_10x:
 rule preproc_10x:
     """Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."""
     output:
-        bins = temp(expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}"),
-                                        nr=[str(i).zfill(3) for i in range(config['fastq_bins'])])),
-        nobc = temp(os.path.join(config['ema_bins_dir'], "ema-nobc"))
+        bins = temp(expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"])),
+        nobc = temp(config['ema_bins_dir'] / "ema-nobc")
     input:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",
@@ -58,16 +58,15 @@ rule preproc_10x:
     log: "ema_preproc.log"
     threads: 20
     params:
-        hamming_correction = "" if not config["apply_hamming_correction"] else " -h"
+        hamming_correction = "" if not config["apply_hamming_correction"] else " -h",
     shell:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
         " ema preproc"
         " -w {input.whitelist}"
         " -n {config[fastq_bins]}"
-        " {params.hamming_correction}"
+        "{params.hamming_correction}"
         " -t {threads}"
-        " -b"
         " -o {config[ema_bins_dir]} {input.counts_ncnt} 2>&1 | tee {log}"
 
 
@@ -76,17 +75,23 @@ rule merge_bins:
     output:
         interleaved_fastq=temp("trimmed.barcoded.fastq"),
     input:
-        bins = expand(os.path.join(config['ema_bins_dir'], "ema-bin-{nr}"),
-                      nr=[str(i).zfill(3) for i in range(config['fastq_bins'])]),
-        nobc = os.path.join(config['ema_bins_dir'], "ema-nobc")
+        bins = expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]),
+        nobc = config['ema_bins_dir'] / "ema-nobc"
     run:
+        # Format of rows is <barcode> <r1_name> <r1_seq> <r1_qual> <r2_seq> <r2_qual>
         if config["read_mapper"]  == "ema":
-           shell("cat {input.bins} > {output.interleaved_fastq}")
-        else:
+            # Header is <name>:<barcode> BX:Z:<barcode>-1
             shell(
-                "cat {input.bins}"
-                " |"
-                " tr ' ' '_' > {output.interleaved_fastq}"  # Modify header
+                "cat {input.bins} |"
+              """ awk -F " " 'BEGIN{{OFS="\\n"}} {{print $2":"$1" BX:Z:"$1"-1",$3,"+",$4,$2":"$1" BX:Z:"$1"-1",$5,"+",$6}}'"""
+                " > {output.interleaved_fastq}"
+            )
+        else:
+            # Header is <name>_BX:Z:<barcode>-1
+            shell(
+                "cat {input.bins} |"
+              """ awk -F " " 'BEGIN{{OFS="\\n"}} {{print $2"_BX:Z:"$1"-1",$3,"+",$4,$2"_BX:Z:"$1"-1",$5,"+",$6}}'"""
+                " > {output.interleaved_fastq}"
                 " &&"
                 " cat {input.nobc} >> {output.interleaved_fastq}" # Include non-barcoded reads.
             )
@@ -111,7 +116,7 @@ rule split_nobc_reads:
         r1_fastq="trimmed.non_barcoded.1.fastq.gz",
         r2_fastq="trimmed.non_barcoded.2.fastq.gz",
     input:
-        fastq = os.path.join(config["ema_bins_dir"], "ema-nobc")
+        fastq = config["ema_bins_dir"] / "ema-nobc"
     shell:
         "paste - - - - - - - - < {input} |"
         " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"
