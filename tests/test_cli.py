@@ -77,6 +77,32 @@ def chromsome_phased_in_vcf(path, chromosome):
     return False
 
 
+def fastq_ema_has_barcodes_grouped(fastq_bin):
+    barcodes = [None]
+    with xopen(fastq_bin) as f:
+        for line in f:
+            if line.startswith("@"):
+                barcode = line.split(" ")[-1]
+                if barcode.startswith("BX") and barcodes[-1] != barcode:
+                    barcodes.append(barcode)
+    return len(barcodes) == len(set(barcodes))
+
+
+def fastq_lariat_has_barcodes_grouped(fastq_lariat):
+    barcodes = [None]
+    with xopen(fastq_lariat) as f:
+        entry_row = 9
+        for line in f:
+            if line.startswith("@") and entry_row == 9:
+                entry_row = 0
+                continue
+
+            entry_row += 1
+            if entry_row == 5 and barcodes[-1] != line.strip():
+                barcodes.append(line.strip())
+    return len(barcodes) == len(set(barcodes))
+
+
 @pytest.fixture(scope="module")
 def _workdir(tmp_path_factory):
     """
@@ -121,17 +147,30 @@ def test_default_read_mapper(workdir):
     assert count_bam_alignments(workdir / "initialmapping.bam") / n_input_fastq_reads > 0.9
 
 
-# The read mapper will partly determine the output format so we test for different mappers here. Bowtie2, bwa and
-# minimap2 all use the same format so only bowtie2 is tested.
-@pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
-def test_trim_dbs(workdir, read_mapper):
+# Bowtie2, bwa and minimap2 all use the same format so only bowtie2 is tested.
+def test_trim_dbs_bowtie2(workdir):
+    # bowtie2 is the default so we don't need to rerun anything
+    trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    assert count_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_DBS_READ1) > 0.9
+    assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_DBS_READ2) > 0.9
+
+
+def test_trim_dbs_ema(workdir):
+    nr_bins = 5
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("read_mapper", read_mapper),
-         ("fastq_bins", "5")]
+        [("read_mapper", "ema"),
+         ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    run(workdir=workdir, targets=trimmed, force_run=["trim"], snake_kws={"notemp": True})
+
+    # Check that all bins exist and have barcodes in groups.
+    for nr in range(nr_bins):
+        bin_file = workdir / "fastq_bins" / f"ema-bin-00{nr}"
+        assert bin_file.exists()
+        assert fastq_ema_has_barcodes_grouped(bin_file)
+
     assert count_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_DBS_READ1) > 0.9
     assert count_fastq_reads(workdir / trimmed[1]) / count_fastq_reads(TESTDATA_DBS_READ2) > 0.9
 
@@ -145,20 +184,23 @@ def test_trim_dbs_lariat(workdir):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed, force_run=["trim"])
     assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_DBS_READ1) > 0.9
+    assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
 
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
 def test_trim_tenx(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TENX_READ1, "10x")
+    nr_bins = 5
     change_config(
         workdir / DEFAULT_CONFIG,
         [("barcode_whitelist", TESTDATA_TENX_BARCODES),
          ("read_mapper", read_mapper),
-         ("fastq_bins", "5")]
+         ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
+    run(workdir=workdir, targets=trimmed, snake_kws={"notemp": True})
+
     for raw, trimmed in zip((TESTDATA_TENX_READ1, TESTDATA_TENX_READ2), trimmed):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9  # More than 90% kept
 
@@ -176,6 +218,8 @@ def test_trim_stlfr(tmp_path, read_mapper):
     run(workdir=workdir, targets=trimmed)
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.7
+        if read_mapper == "ema":
+            assert fastq_ema_has_barcodes_grouped(workdir / trimmed)
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
@@ -190,6 +234,7 @@ def test_trim_stlfr_lariat(tmp_path):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_STLFR_READ1) > 0.8
+    assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
 
 # Trimming is the same for minimap2, bowtie2, and bwa
@@ -199,8 +244,7 @@ def test_trim_tellseq_bowtie2(tmp_path):
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", "bowtie2"),
-         ("fastq_bins", "5")]
+         ("read_mapper", "bowtie2")]
     )
     targets = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=targets)
@@ -211,15 +255,23 @@ def test_trim_tellseq_bowtie2(tmp_path):
 def test_trim_tellseq_ema(tmp_path):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+    nr_bins = 5
     change_config(
         workdir / DEFAULT_CONFIG,
         [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
          ("read_mapper", "ema"),
-         ("fastq_bins", "5")]
+         ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     trimmed_nobc = ["trimmed.non_barcoded.1.fastq.gz", "trimmed.non_barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed + trimmed_nobc)
+    run(workdir=workdir, targets=trimmed + trimmed_nobc, snake_kws={"notemp": True})
+
+    # Check that all bins exist and have barcodes in groups.
+    for nr in range(nr_bins):
+        bin_file = workdir / "fastq_bins" / f"ema-bin-00{nr}"
+        assert bin_file.exists()
+        assert fastq_ema_has_barcodes_grouped(bin_file)
+
     for raw, trim, trim_nobc in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), trimmed, trimmed_nobc):
         count_trimmed = count_fastq_reads(workdir / trim) + count_fastq_reads(workdir / trim_nobc)
         assert count_trimmed / count_fastq_reads(raw) > 0.9
@@ -237,6 +289,7 @@ def test_trim_tellseq_lariat(tmp_path):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
     assert count_lariat_fastq_reads(workdir / trimmed[0]) / count_fastq_reads(TESTDATA_TELLSEQ_READ1) > 0.3
+    assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
 
 non_default_mappers = ["bwa", "minimap2", "ema", "lariat"] if shutil.which("lariat") else ["bwa", "minimap2", "ema"]
