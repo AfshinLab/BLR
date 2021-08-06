@@ -169,7 +169,10 @@ rule get_naibr_path:
         if config["naibr_path"]:
             shell("ln -s {config[naibr_path]} {output.naibr_path}")
         else:
-            shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
+            # Using forked branch with fix for NAIBR repo.
+            # TODO Use original repo as below when https://github.com/raphael-group/NAIBR/pull/20 is merged.
+            # shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
+            shell("git clone --branch fix-19 https://github.com/pontushojer/NAIBR.git {output.naibr_path}")
 
 
 rule lsv_calling:
