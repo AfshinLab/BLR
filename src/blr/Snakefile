@@ -6,7 +6,7 @@ import pandas as pd
 from snakemake.utils import validate
 from snakemake.logging import Logger
 
-from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks
+from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters
 from blr.cli.find_clusterdups import UnionFind
 from blr.cli.config import load_yaml
 
@@ -860,43 +860,35 @@ rule extract_called:
 
 
 rule filter_called_snps:
-    """Filter SNPs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    """Hard filtering of SNPs"""
     output:
         vcf = temporary("chunks/{base}.variants.called.SNP.filtered.vcf")
     input:
         vcf = "chunks/{base}.variants.called.SNP.vcf"
     log: "chunks/{base}.variants.called.SNP.filtered.vcf.log"
+    params:
+        filters = parse_filters(config["hard_filters"]["snps"])
     shell:
-        # TODO Include genotype filtration for AD < 2
         "gatk VariantFiltration"
         " -V {input.vcf}"
-        " --filter-name 'lowQUAL'"
-        " --filter-expression 'QUAL < 15'"
-        " --filter-name 'highMQRankSum'"
-        " --filter-expression 'MQRankSum > 6.0'"
-        " --filter-name 'snpLowAF'"
-        " --filter-expression 'AF < 0.15'"
+        " {params.filters}" 
         " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 
 
 rule filter_called_indels:
-    """Filter INDELs. Thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)"""
+    """Hard filtering of INDELs"""
     output:
         vcf = temporary("chunks/{base}.variants.called.INDEL.filtered.vcf")
     input:
         vcf = "chunks/{base}.variants.called.INDEL.vcf"
     log: "chunks/{base}.variants.called.INDEL.filtered.vcf.log"
+    params:
+        filters = parse_filters(config["hard_filters"]["indels"])
     shell:
-        # TODO Include genotype filtration for AD < 4
         "gatk VariantFiltration"
         " -V {input.vcf}"
-        " --filter-name 'lowQUAL'"
-        " --filter-expression 'QUAL < 15'"
-        " --filter-name 'highMQRankSum'"
-        " --filter-expression 'MQRankSum > 6.0'"
-        " --filter-name 'indelLowAF'"
-        " --filter-expression 'AF < 0.25'"
+        " {params.filters}" 
         " --create-output-variant-index false"
         " -O {output.vcf} 2> {log}"
 

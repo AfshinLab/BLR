@@ -69,6 +69,15 @@ properties:
     description: h3 adaptor sequence, appears after genomics insert in read1 and read2.
     default: CTGTCTCTTATACACATCT
     pattern: "^[AGCTYRWSKMBDVHN]+$"
+  hard_filters:
+    type: object
+    properties:
+      snvs:
+        type: string
+        default: "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.15','snpLowAF'"
+      indels:
+        type: string
+        default: "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.25','indelLowAF'"
   heap_space:
     type: integer
     description: Memory per core for heap space max limit

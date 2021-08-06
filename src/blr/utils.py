@@ -357,3 +357,13 @@ class LastUpdatedOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
         self.move_to_end(key)
+
+
+def parse_filters(string: str):
+    """Parse filter string with semicolon separate pairs of commad separated filter expressions and names for
+    GATK VariantFiltration commands."""
+    filters = ""
+    for pair in string.split(";"):
+        filter_expression, filter_name = pair.split(",")
+        filters += f" -filter {filter_expression} --filter-name {filter_name}"
+    return filters

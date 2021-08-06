@@ -1,6 +1,6 @@
 from io import StringIO
 from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks, get_bamtag
-from blr.utils import calculate_N50
+from blr.utils import calculate_N50, parse_filters
 from pathlib import Path
 import os
 
@@ -102,3 +102,13 @@ def test_calculate_N50():
     # Sum of values is 54, half is 27. 10 + 9 + 8 = 27 --> N50 is 8
     values = [2, 3, 4, 5, 6, 7, 8, 9, 10]
     assert calculate_N50(values) == 8
+
+
+def test_parse_filters():
+    filter_command_ref = " -filter 'QUAL < 15' --filter-name 'lowQUAL'" \
+                         " -filter 'MQRankSum > 6.0' --filter-name 'highMQRankSum'" \
+                         " -filter 'AF < 0.15' --filter-name 'snpLowAF'"
+    filter_string = "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.15','snpLowAF'"
+    filter_command = parse_filters(filter_string)
+
+    assert filter_command == filter_command_ref
