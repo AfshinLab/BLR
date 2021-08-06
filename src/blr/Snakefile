@@ -99,8 +99,8 @@ rule final:
    input: final_input
 
 
-rule fastqc_raw_reads:
-    """Creates fastqc reports from raw read files. Output names are automatically given by fastqc."""
+rule fastqc:
+    """Creates FastQC reports from trimmed read files. Output names are automatically set by FastQC."""
     output:
         qc = "trimmed.barcoded.{nr,[12]}_fastqc.html",
         zip = "trimmed.barcoded.{nr,[12]}_fastqc.zip",
@@ -137,10 +137,8 @@ def get_multiqc_input(wildcards):
     return inputs
 
 
-rule multiqc_summarize:
-    """Summarizes all reports into one html report. Automatically identifies input/gives output names but by adding
-    more input files it controls when snakemake runs the multiqc summary.
-    """
+rule multiqc:
+    """Summarizes all stats into a MultiQC HTML report."""
     output:
         multiqc_data_dir = directory("multiqc_data"),
         summarized_reports = "multiqc_report.html"
@@ -174,7 +172,7 @@ rule report_configs:
 
 
 rule generate_ideogram:
-    """Generate ideogram"""
+    """Generate phaseblock ideogram over all phased chromomsomes"""
     output:
         html = temp("ideogram_mqc.html")
     input:
@@ -193,7 +191,7 @@ def plot_figures_input(wildcards):
 
 
 rule plot_figures:
-    """Generate plots for final report."""
+    """Generate plots and stats for MultiQC report."""
     output:
         images = directory("figures"),
         stats = "final.stats.txt"
@@ -206,6 +204,7 @@ rule plot_figures:
 
 
 rule map_sort_ema_bins:
+    """Map binned FASTQs using EMA and sort output"""
     output:
         bam = temp("{dir}/ema-bin-{bin_nr,\d+}.bam")
     input:
@@ -308,6 +307,7 @@ else:
 
 
 rule merge_mapped_ema_bins:
+    """Merge mapped and sorted bins from EMA with non-barcoded mapped reads. Output is sorted."""
     output:
         bam = "initialmapping.bam",
         mapping_log = "initialmapping.bam.mapping.log",
