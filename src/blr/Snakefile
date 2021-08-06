@@ -63,6 +63,11 @@ mol = ".mol" if config["read_mapper"] != "ema" or bcmerge else ""
 filt = ".filt" if config["max_molecules_per_bc"] > 0 else ""
 
 
+# Extension from indexed genome references
+BWA_INDEX_EXT = [".amb", ".ann", ".bwt", ".pac", ".sa"]
+BOWTIE2_INDEX_EXT = [".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.1.bt2"]
+
+
 def tempif(files, condition):
     """Mark files as temporary if condition is met"""
     if condition:
@@ -210,7 +215,8 @@ rule map_sort_ema_bins:
     output:
         bam = temp("{dir}/ema-bin-{bin_nr,\d+}.bam")
     input:
-        interleaved_fastq = "{dir}/ema-bin-{bin_nr}"
+        interleaved_fastq = "{dir}/ema-bin-{bin_nr}",
+        reference = multiext(config['genome_reference'], *BWA_INDEX_EXT)
     threads: 4
     log:
         map = "{dir}/ema-bin-{bin_nr}.bam.mapping.log",
@@ -247,7 +253,8 @@ rule map_sort_nobc:
         bam = temp("initialmapping_nobc.bam")
     input:
         r1_fastq = "trimmed.non_barcoded.1.fastq.gz",
-        r2_fastq = "trimmed.non_barcoded.2.fastq.gz"
+        r2_fastq = "trimmed.non_barcoded.2.fastq.gz",
+        reference = multiext(config['genome_reference'], *BWA_INDEX_EXT)
     threads: 4
     log:
         map = "initialmapping_nobc.bam.mapping.log",
@@ -333,7 +340,11 @@ rule map_sort:
         bam = "initialmapping.bam"
     input:
         r1_fastq = "trimmed.barcoded.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz"
+        r2_fastq = "trimmed.barcoded.2.fastq.gz",
+        ref = multiext(config['genome_reference'],
+                       *(BOWTIE2_INDEX_EXT
+                       if config["read_mapper"] == "bowtie2" else
+                       BWA_INDEX_EXT))
     threads: 20
     log:
         map = "initialmapping.bam.mapping.log",
