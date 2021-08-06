@@ -464,6 +464,7 @@ def test_multiqc_report_complete(workdir):
         "Picard",
         "Cutadapt",
         "FastQC",
+        "Samtools"
     }
     targets = ["multiqc_report.html", "multiqc_data"]
     run(workdir=workdir, targets=targets)

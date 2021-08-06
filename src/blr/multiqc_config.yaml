@@ -6,12 +6,20 @@ table_columns_visible:
     mosdepth:
         30_x_pc: False
         1_x_pc: True
-    Bowtie 2 / HiSAT2:
-        overall_alignment_rate: False
     Cutadapt:
         percent_trimmed: False
     FastQC:
         percent_duplicates: False
+        percent_gc: False
+        avg_sequence_length: False
+        total_sequences: False
+    Samtools:
+        error_rate: False
+        non-primary_alignments: False
+        reads_mapped: False
+        reads_properly_paired_percent: False
+    Picard:
+        PCT_PF_READS_ALIGNED: False
 
 extra_fn_clean_exts:
     - type: remove
@@ -30,6 +38,7 @@ module_order:
   - whatshap
   - mosdepth
   - picard
+  - samtools
   - cutadapt
   - fastqc
   - custom_content
@@ -40,6 +49,7 @@ run_modules:
     - picard
     - whatshap
     - stats
+    - samtools
     - hapcut2
     - cutadapt
     - custom_content
@@ -84,6 +94,14 @@ sp:
     picard/variant_calling_metrics:
         skip: true
     picard/wgs_metrics:
+        skip: true
+    samtools/stats:
+        fn: "final.samtools_stats.txt"
+    samtools/flagstat:
+        skip: true
+    samtools/idxstats:
+        skip: true
+    samtools/rmdup:
         skip: true
     cutadapt:
         fn: "trimmed.fastq.log"
