@@ -187,15 +187,40 @@ def test_trim_dbs_lariat(workdir):
     assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
 
+@pytest.fixture(scope="module")
+def _workdir_tenx(tmp_path_factory):
+    """
+    This sets up a workdir for tenx analysis
+    """
+    path = tmp_path_factory.mktemp(basename="analysis-tenx") / "analysis"
+    init(path, TESTDATA_TENX_READ1, "10x")
+    change_config(
+        path / DEFAULT_CONFIG, [
+            ("genome_reference", REFERENCE_GENOME),
+            ("barcode_whitelist", TESTDATA_TENX_BARCODES),
+            ("chunk_size", "50000"),
+            ("phasing_contigs", "null"),
+            ("heap_space", "1")
+        ]
+    )
+    return path
+
+
+@pytest.fixture
+def workdir_tenx(_workdir_tenx, tmp_path):
+    """Make a fresh copy of the prepared analysis directory"""
+    path = tmp_path / "analysis"
+    shutil.copytree(_workdir_tenx, path)
+    return path
+
+
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
-def test_trim_tenx(tmp_path, read_mapper):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_TENX_READ1, "10x")
+def test_trim_tenx(workdir_tenx, read_mapper):
+    workdir = workdir_tenx
     nr_bins = 5
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("barcode_whitelist", TESTDATA_TENX_BARCODES),
-         ("read_mapper", read_mapper),
+        [("read_mapper", read_mapper),
          ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -205,14 +230,39 @@ def test_trim_tenx(tmp_path, read_mapper):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9  # More than 90% kept
 
 
+@pytest.fixture(scope="module")
+def _workdir_stlfr(tmp_path_factory):
+    """
+    This sets up a workdir for tenx analysis
+    """
+    path = tmp_path_factory.mktemp(basename="analysis-stlfr") / "analysis"
+    init(path, TESTDATA_STLFR_READ1, "stlfr")
+    change_config(
+        path / DEFAULT_CONFIG, [
+            ("genome_reference", REFERENCE_GENOME),
+            ("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
+            ("chunk_size", "50000"),
+            ("phasing_contigs", "null"),
+            ("heap_space", "1")
+        ]
+    )
+    return path
+
+
+@pytest.fixture
+def workdir_stlfr(_workdir_stlfr, tmp_path):
+    """Make a fresh copy of the prepared analysis directory"""
+    path = tmp_path / "analysis"
+    shutil.copytree(_workdir_stlfr, path)
+    return path
+
+
 @pytest.mark.parametrize("read_mapper", ["bowtie2", "ema"])
-def test_trim_stlfr(tmp_path, read_mapper):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_STLFR_READ1, "stlfr")
+def test_trim_stlfr(workdir_stlfr, read_mapper):
+    workdir = workdir_stlfr
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
-         ("read_mapper", read_mapper)]
+        [("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
@@ -223,13 +273,11 @@ def test_trim_stlfr(tmp_path, read_mapper):
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
-def test_trim_stlfr_lariat(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_STLFR_READ1, "stlfr")
+def test_trim_stlfr_lariat(workdir_stlfr):
+    workdir = workdir_stlfr
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
-         ("read_mapper", "lariat")]
+        [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
@@ -237,14 +285,39 @@ def test_trim_stlfr_lariat(tmp_path):
     assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
 
+@pytest.fixture(scope="module")
+def _workdir_tellseq(tmp_path_factory):
+    """
+    This sets up a workdir for tenx analysis
+    """
+    path = tmp_path_factory.mktemp(basename="analysis-tellseq") / "analysis"
+    init(path, TESTDATA_TELLSEQ_READ1, "tellseq")
+    change_config(
+        path / DEFAULT_CONFIG, [
+            ("genome_reference", REFERENCE_GENOME),
+            ("tellseq_index", TESTDATA_TELLSEQ_INDEX),
+            ("chunk_size", "50000"),
+            ("phasing_contigs", "null"),
+            ("heap_space", "1")
+        ]
+    )
+    return path
+
+
+@pytest.fixture
+def workdir_tellseq(_workdir_tellseq, tmp_path):
+    """Make a fresh copy of the prepared analysis directory"""
+    path = tmp_path / "analysis"
+    shutil.copytree(_workdir_tellseq, path)
+    return path
+
+
 # Trimming is the same for minimap2, bowtie2, and bwa
-def test_trim_tellseq_bowtie2(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+def test_trim_tellseq_bowtie2(workdir_tellseq):
+    workdir = workdir_tellseq
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", "bowtie2")]
+        [("read_mapper", "bowtie2")]
     )
     targets = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=targets)
@@ -252,14 +325,12 @@ def test_trim_tellseq_bowtie2(tmp_path):
         assert count_fastq_reads(workdir / trimmed) / count_fastq_reads(raw) > 0.9
 
 
-def test_trim_tellseq_ema(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+def test_trim_tellseq_ema(workdir_tellseq):
+    workdir = workdir_tellseq
     nr_bins = 5
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", "ema"),
+        [("read_mapper", "ema"),
          ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -278,13 +349,11 @@ def test_trim_tellseq_ema(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
-def test_trim_tellseq_lariat(tmp_path):
-    workdir = tmp_path / "analysis"
-    init(workdir, TESTDATA_TELLSEQ_READ1, "tellseq")
+def test_trim_tellseq_lariat(workdir_tellseq):
+    workdir = workdir_tellseq
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("tellseq_index", TESTDATA_TELLSEQ_INDEX),
-         ("read_mapper", "lariat")]
+        [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, targets=trimmed)
