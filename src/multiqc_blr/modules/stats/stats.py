@@ -135,16 +135,21 @@ class MultiqcModule(BaseMultiqcModule):
                         "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
                         "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
                         "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"],
-                        "nr_barcodes_final_millions": data["barcodes_final"] / 1_000_000,
+                        "nr_barcodes_final": data["barcodes_final"],
                         "median_molecule_count": data["median_molecule_count"]
                     }
+
+                # Scale number of barcodes
+                nr_barcodes_max = max(v.get("nr_barcodes_final", 0) for v in general_stats_data.values())
+                barcode_multiplier = 0.000001 if nr_barcodes_max > 1_000_000 else 0.001
+                barcode_suffix = " M" if nr_barcodes_max > 1_000_000 else " K"
 
                 general_stats_header = OrderedDict({
                     "n50_lpm": {
                         'title': 'N50 LPM',
                         'description': 'N50 linked-reads per molecule',
                         'scale': 'OrRd',
-                        'format': '{:,}'
+                        'format': '{:,.0f}'
                     },
                     "mean_molecule_length_kbp": {
                         'title': 'Mean len',
@@ -174,10 +179,11 @@ class MultiqcModule(BaseMultiqcModule):
                         'suffix': '%',
                         'format': '{:.1f}'
                     },
-                    "nr_barcodes_final_millions": {
+                    "nr_barcodes_final": {
                         'title': '# Bc',
                         'description': 'Number of barcodes in final data.',
-                        'suffix': 'M',
+                        'modify': lambda x: x * barcode_multiplier,
+                        'suffix': barcode_suffix,
                         'scale': 'BuGn',
                         'format': '{:,.1f}'
                     },
@@ -185,7 +191,7 @@ class MultiqcModule(BaseMultiqcModule):
                         'title': ' # Mol',
                         'description': 'Median number of molecules per barcode',
                         'scale': 'OrRd',
-                        'format': '{:,}'
+                        'format': '{:,.0f}'
                     },
                 })
 
@@ -223,15 +229,19 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Add longest phaseblock to general stats table
         general_stats_data = {
-            name: {"longest_phaseblock": max(data) / 1_000_000} for name, data in data_lengths.items()  # Length in Mbp
+            name: {"longest_phaseblock": max(data)} for name, data in data_lengths.items()
         }
+        longest_phaseblock_overall = max(v["longest_phaseblock"] for v in general_stats_data.values())
+        multiplier = 0.000001 if longest_phaseblock_overall > 1_000_000 else 0.001
+        suffix = " Mbp" if longest_phaseblock_overall > 1_000_000 else " kbp"
         general_stats_header = OrderedDict({
             "longest_phaseblock": {
                 'title': 'Top block',
                 'description': 'Longest phaseblock created',
                 'scale': 'YlGn',
-                'suffix': ' Mbp',
-                'format': '{:,.3f}'
+                'modify': lambda x: x * multiplier,
+                'format': '{:,.3f}',
+                'suffix': suffix,
             }})
 
         self.general_stats_addcols(general_stats_data, general_stats_header)

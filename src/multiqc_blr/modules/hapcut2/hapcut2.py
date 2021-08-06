@@ -73,7 +73,7 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['AN50'] = {
-            'title': 'AN50 (Mbp)',
+            'title': 'AN50',
             'description': 'the AN50 metric of haplotype completeness',
             'format': '{:,.3f}',
             'scale': 'Blues',
@@ -81,7 +81,7 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['N50'] = {
-            'title': 'N50 (Mbp)',
+            'title': 'N50',
             'description': 'the N50 metric of haplotype completeness',
             'format': '{:,.3f}',
             'scale': 'Blues',
@@ -135,6 +135,15 @@ class MultiqcModule(BaseMultiqcModule):
             'scale': False,
             'share_key': False
         }
+
+        # Scale headers automatically
+        for metric in ["AN50", "N50"]:
+            metrix_max = max(v.get(metric, 0) for v in phasing_data.values())
+            multiplier = 0.000001 if metrix_max > 1_000_000 else 0.001
+            suffix = " Mbp" if metrix_max > 1_000_000 else " kbp"
+            headers[metric]["modify"] = lambda x: x * multiplier
+            headers[metric]["suffix"] = suffix
+
         table_html = table.plot(phasing_data, headers, pconfig)
 
         # Add a report section with table
@@ -187,14 +196,17 @@ class MultiqcModule(BaseMultiqcModule):
         general_stats_data = {
             sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
         }
-
+        max_n50 = max(v.get("N50", 0) for v in general_stats_data.values())
+        multiplier = 0.000001 if max_n50 > 1_000_000 else 0.001
+        suffix = " Mbp" if max_n50 > 1_000_000 else " kbp"
         general_stats_header = OrderedDict({
             "N50_phaseblock": {
                 'title': 'N50 block',
                 'description': 'N50 statistic for phaseblock lengths',
                 'scale': 'Blues',
-                'suffix': ' Mbp',
-                'format': '{:,.3f}'
+                'modify': lambda x: x * multiplier,
+                'format': '{:,.3f}',
+                'suffix': suffix,
             }})
 
         self.general_stats_addcols(general_stats_data, general_stats_header)
@@ -247,9 +259,4 @@ class MultiqcModule(BaseMultiqcModule):
                 continue
 
             value = float(value.strip())
-
-            # Make N50 and AN50 stats per Mbp instead of bp.
-            if parameter in ["N50", "AN50"]:
-                value /= 1_000_000
-
             yield chrom, parameter, value
