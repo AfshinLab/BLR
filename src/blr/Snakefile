@@ -162,7 +162,7 @@ rule report_configs:
     input:
         yaml = "blr.yaml"
     output:
-        yaml = temp("blr_mqc.yaml")
+        yaml = "blr_mqc.yaml"
     params:
         configs = config
     script:
