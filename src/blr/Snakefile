@@ -159,6 +159,8 @@ rule multiqc:
 
 rule report_configs:
     """Translate configs to HTML to include in MultiQC report"""
+    input:
+        yaml = "blr.yaml"
     output:
         yaml = temp("blr_mqc.yaml")
     params:
