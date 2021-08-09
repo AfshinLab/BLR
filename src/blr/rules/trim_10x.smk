@@ -18,7 +18,7 @@ https://github.com/arshajii/ema#end-to-end-workflow-10x
 # If not mapping with ema it is unneccessary to generate a lot of bins.
 if config["read_mapper"] != "ema":
     config["fastq_bins"] = min(config["fastq_bins"], workflow.cores)
-    config["fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
+    config["_fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
 
 
 rule link_to_whitelist:
@@ -47,8 +47,8 @@ rule count_10x:
 rule preproc_10x:
     """Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."""
     output:
-        bins = temp(expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"])),
-        nobc = temp(config['ema_bins_dir'] / "ema-nobc")
+        bins = temp(expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"])),
+        nobc = temp(config['_ema_bins_dir'] / "ema-nobc")
     input:
         r1_fastq="reads.1.fastq.gz",
         r2_fastq="reads.2.fastq.gz",
@@ -67,7 +67,7 @@ rule preproc_10x:
         " -n {config[fastq_bins]}"
         "{params.hamming_correction}"
         " -t {threads}"
-        " -o {config[ema_bins_dir]} {input.counts_ncnt} 2>&1 | tee {log}"
+        " -o {config[_ema_bins_dir]} {input.counts_ncnt} 2>&1 | tee {log}"
 
 
 rule merge_bins:
@@ -75,8 +75,8 @@ rule merge_bins:
     output:
         interleaved_fastq=temp("trimmed.barcoded.fastq"),
     input:
-        bins = expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]),
-        nobc = config['ema_bins_dir'] / "ema-nobc"
+        bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
+        nobc = config['_ema_bins_dir'] / "ema-nobc"
     run:
         # Format of rows is <barcode> <r1_name> <r1_seq> <r1_qual> <r2_seq> <r2_qual>
         if config["read_mapper"]  == "ema":
@@ -116,7 +116,7 @@ rule split_nobc_reads:
         r1_fastq="trimmed.non_barcoded.1.fastq.gz",
         r2_fastq="trimmed.non_barcoded.2.fastq.gz",
     input:
-        fastq = config["ema_bins_dir"] / "ema-nobc"
+        fastq = config["_ema_bins_dir"] / "ema-nobc"
     shell:
         "paste - - - - - - - - < {input} |"
         " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"

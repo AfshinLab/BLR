@@ -34,8 +34,8 @@ rule tellseq_barcodes_correction:
 
 
 if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
-    tag_output = temp(expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]))
-    output_cmd = f" --output-bins {config['ema_bins_dir']} --nr-bins {config['fastq_bins']}"    
+    tag_output = temp(expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]))
+    output_cmd = f" --output-bins {config['_ema_bins_dir']} --nr-bins {config['fastq_bins']}"
     ruleorder: merge_bins > tag_tellseq_reads
 else:
     tag_output = expand("trimmed.barcoded.{nr}.fastq.gz", nr=["1", "2"])
@@ -81,7 +81,7 @@ rule merge_bins:
         r1_fastq="trimmed.barcoded.1.fastq.gz",
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
-        bins = expand(config['ema_bins_dir'] / "ema-bin-{nr}", nr=config["fastq_bin_nrs"]),
+        bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
     run:
         modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
         shell(

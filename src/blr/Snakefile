@@ -21,10 +21,10 @@ if config["library_type"] == "blr":
 # TODO include handling of reads from `longranger basic` that already have barcodes extracted and trimmed? See issue
 #  in ema when discussed https://github.com/arshajii/ema/issues/15
 
-# Hidden config options
-config["ema_bins_dir"] = Path("fastq_bins")
+# Hidden config options, starts with '_'
+config["_ema_bins_dir"] = Path("fastq_bins")
 if config["fastq_bins"] > 1:
-    config["fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
+    config["_fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
 
 # Import rules for trimming fastq files.
 if config["library_type"] in {"blr", "dbs"}:  # TODO Remove blr
@@ -159,23 +159,12 @@ rule multiqc:
 
 rule report_configs:
     """Translate configs to HTML to include in MultiQC report"""
-    input:
-        yaml = "blr.yaml"
     output:
         yaml = temp("blr_mqc.yaml")
-    run:
-        config_data, _ = load_yaml(input.yaml)
-        with open(output.yaml, "w") as configs:
-            text = "id: 'run_configs'\n"
-            text += "section_name: 'Run configs'\n"
-            text += "plot_type: 'html'\n"
-            text += "description: ' for current analysis. Describes which parameter values was used.'\n"
-            text += "data: |\n"
-            text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
-            for param, value in config_data.items():
-                text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
-            text += "\t</dl>".expandtabs(4)
-            print(text, file=configs)
+    params:
+        configs = config
+    script:
+        "scripts/report_configs.py"
 
 
 rule generate_ideogram:
@@ -322,16 +311,16 @@ rule merge_mapped_ema_bins:
         mapping_log = "initialmapping.bam.mapping.log",
         sorting_log = "initialmapping.bam.sorting.log",
     input:
-        bams = expand(config['ema_bins_dir'] / "ema-bin-{nr}.bam", nr=config["fastq_bin_nrs"]),
+        bams = expand(config['_ema_bins_dir'] / "ema-bin-{nr}.bam", nr=config["_fastq_bin_nrs"]),
         # If we are goning to mark duplicates after merging there is no need to do if before for the nobc reads.
         bam_nobc = "initialmapping_nobc.bam" if mkdup else "initialmapping_nobc.mkdup.bam"
     threads: 20
     shell:
         "samtools merge -cp -@ {threads} {output.bam} {input.bams} {input.bam_nobc}"
         " &&"
-        " cat {config[ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
+        " cat {config[_ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
         " &&"
-        " cat {config[ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
+        " cat {config[_ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
 
 
 rule map_sort:
