@@ -213,7 +213,7 @@ class MultiqcModule(BaseMultiqcModule):
         # Filter out samples to ignore
         data_lengths = self.ignore_samples(data_lengths)
 
-        if len(data_lengths) == 0:
+        if sum(map(len, data_lengths.values())) == 0:
             log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
             return 0
 

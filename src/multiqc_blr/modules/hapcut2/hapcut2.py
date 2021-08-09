@@ -123,7 +123,7 @@ class MultiqcModule(BaseMultiqcModule):
         phasing_data = self.ignore_samples(phasing_data)
 
         # Skip if no data
-        if not phasing_data.values():
+        if sum(map(len, phasing_data.values())) == 0:
             return 0, 0
 
         # Write parsed report data to a file

@@ -310,7 +310,7 @@ class ErrorResult:
         return sum(self.num_snps.values())
 
     def get_phased_count(self):
-        return sum(self.phased_count.values())
+        return sum(self.phased_count.values()) if self.phased_count.values() else "n/a"
 
     # error rate accessor functions
     def get_switch_rate(self):
@@ -370,6 +370,9 @@ class ErrorResult:
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return statistics.median(spanlst)
 
+    def get_num_snps_max_blk(self):
+        return sum(self.maxblk_snps.values()) if self.maxblk_snps.values() else "n/a"
+
     def to_txt(self):
 
         s = f"switch rate:        {self.get_switch_rate()}\n" \
@@ -378,7 +381,7 @@ class ErrorResult:
             f"phased count:       {self.get_phased_count()}\n" \
             f"AN50:               {self.get_AN50()}\n" \
             f"N50:                {self.get_N50_phased_portion()}\n" \
-            f"num snps max blk:   {sum(self.maxblk_snps.values())}"
+            f"num snps max blk:   {self.get_num_snps_max_blk()}"
 
         return s
 
