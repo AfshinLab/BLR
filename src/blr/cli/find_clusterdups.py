@@ -71,7 +71,7 @@ def run_find_clusterdups(
         with open(output_merges, 'w') as file:
             for old_barcode, new_barcode in barcode_sets.items():
                 if old_barcode != new_barcode:
-                    print(old_barcode, new_barcode, sep=",", file=file)
+                    print(f"{old_barcode},{new_barcode}", file=file)
 
     logger.info("Finished")
     summary.print_stats(name=__name__)

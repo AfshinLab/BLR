@@ -36,7 +36,7 @@ def main(args):
             print(cluster, file=output)
 
         for barcode in singles:
-            print(barcode, 1, barcode, sep="\t", file=output)
+            print(f"{barcode}\t1\t{barcode}", file=output)
 
     summary.print_stats(__name__)
 

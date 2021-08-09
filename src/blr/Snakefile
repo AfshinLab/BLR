@@ -520,7 +520,7 @@ rule get_barcode_merges:
         with open(output.merges, 'w') as file:
             for old_barcode, new_barcode in uf.items():
                 if old_barcode != new_barcode:
-                    print(old_barcode, new_barcode, sep=",", file=file)
+                    print(f"{old_barcode},{new_barcode}", file=file)
 
 
 rule merge_clusterdups:
