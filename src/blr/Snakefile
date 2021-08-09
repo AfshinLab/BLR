@@ -859,7 +859,7 @@ rule extract_called:
         " -O {output.vcf} 2> {log}"
 
 
-rule filter_called_snps:
+rule apply_filter_snps:
     """Hard filtering of SNPs"""
     output:
         vcf = temporary("chunks/{base}.variants.called.SNP.filtered.vcf")
@@ -876,7 +876,7 @@ rule filter_called_snps:
         " -O {output.vcf} 2> {log}"
 
 
-rule filter_called_indels:
+rule apply_filter_indels:
     """Hard filtering of INDELs"""
     output:
         vcf = temporary("chunks/{base}.variants.called.INDEL.filtered.vcf")
@@ -893,12 +893,22 @@ rule filter_called_indels:
         " -O {output.vcf} 2> {log}"
 
 
+rule filter_vcfs:
+    """Remove VCF entries that don't pass filters."""
+    output:
+        vcf = temporary("chunks/{base}.variants.called.{type}.filtered.pass.vcf")
+    input:
+        vcf = "chunks/{base}.variants.called.{type}.filtered.vcf"
+    shell:
+        "bcftools view -f 'PASS' {input.vcf} > {output.vcf}"
+
+
 rule merge_filtered_snps_indels:
     output:
         vcf = temporary("chunks/{base}.variants.called.filtered.vcf")
     input:
-        vcf_snps = "chunks/{base}.variants.called.SNP.filtered.vcf",
-        vcf_indels = "chunks/{base}.variants.called.INDEL.filtered.vcf"
+        vcf_snps = "chunks/{base}.variants.called.SNP.filtered.pass.vcf",
+        vcf_indels = "chunks/{base}.variants.called.INDEL.filtered.pass.vcf"
     log: "chunks/{base}.variants.called.filtered.vcf.log"
     shell:
         "picard MergeVcfs"
