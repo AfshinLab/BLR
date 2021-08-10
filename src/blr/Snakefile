@@ -8,7 +8,6 @@ from snakemake.logging import Logger
 
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters
 from blr.cli.find_clusterdups import UnionFind
-from blr.cli.config import load_yaml
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
