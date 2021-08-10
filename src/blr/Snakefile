@@ -1040,22 +1040,6 @@ rule whatshap_stats:
          " {input.phased_vcf} > {log}"
 
 
-rule collect_insert_size_metrics:
-    """Collect insert size metrics for BAM file."""
-    output:
-        metrics = "final.insert_size_metrics.txt",
-        hist = "final.insert_size_histogram.pdf",
-    input:
-        bam = "final.bam"
-    log: "final.insert_size_metrics.txt.log"
-    shell:
-        "picard -Xmx{config[heap_space]}g CollectInsertSizeMetrics"
-        " I={input.bam}"
-        " O={output.metrics}"
-        " H={output.hist}"
-        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
-
-
 rule collect_duplicate_metrics:
     output:
         metrics = "final.duplicate_metrics.txt"
@@ -1070,19 +1054,30 @@ rule collect_duplicate_metrics:
         " VALIDATION_STRINGENCY=LENIENT 2> {log}"
 
 
-rule collect_alignment_summary_metrics:
+rule collect_picard_metrics:
+    """Collect insert size and alignment metrics from BAM file."""
     output:
-        metrics = "final.alignment_summary_metrics.txt"
+        "final.alignment_summary_metrics.txt",
+        "final.read_length_histogram.pdf",
+        "final.insert_size_metrics.txt",
+        "final.insert_size_histogram.pdf",
     input:
         bam = "final.bam"
-    log: "final.alignment_summary_metrics.txt.log"
+    log: "final.collect_picard_metrics.log"
+    params:
+        output_prefix = "final"
     shell:
-        "picard -Xmx{config[heap_space]}g CollectAlignmentSummaryMetrics"
+        "picard CollectMultipleMetrics"
         " I={input.bam}"
-        " O={output.metrics}"
-        " MAX_INSERT_SIZE=2000"
-        " ASSUME_SORTED=true"
-        " VALIDATION_STRINGENCY=LENIENT 2> {log}"
+        " O={params.output_prefix}"
+        " PROGRAM=null"
+        " PROGRAM=CollectAlignmentSummaryMetrics"
+        " PROGRAM=CollectInsertSizeMetrics"
+        " VALIDATION_STRINGENCY=LENIENT"
+        " FILE_EXTENSION=.txt"
+        " EXTRA_ARGUMENT=CollectAlignmentSummaryMetrics::MAX_INSERT_SIZE=2000"
+        " REFERENCE_SEQUENCE={config[genome_reference]}"
+        " 2> {log}"
 
 
 rule samtools_stats:
