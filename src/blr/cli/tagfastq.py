@@ -134,7 +134,8 @@ def run_tagfastq(
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
         for read1, read2, corrected_barcode_seq in parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader,
-                                                               barcode_tag, sequence_tag, mapper, summary):
+                                                               barcode_tag, sequence_tag, mapper):
+            summary["Read pairs read"] += 1
             if corrected_barcode_seq is None:
                 summary["Reads missing barcode"] += 1
 
@@ -210,10 +211,9 @@ def write_lariat_output(chunks, writer, summary):
         summary["Read pairs written"] += 1
 
 
-def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_tag, sequence_tag, mapper, summary):
+def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_tag, sequence_tag, mapper):
     for read1, read2 in tqdm(reader, desc="Read pairs processed"):
         # Header parsing
-        summary["Read pairs read"] += 1
         # TODO Handle reads with single header
         name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
 
