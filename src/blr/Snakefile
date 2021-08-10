@@ -313,8 +313,10 @@ rule merge_mapped_ema_bins:
         sorting_log = "initialmapping.bam.sorting.log",
     input:
         bams = expand(config['_ema_bins_dir'] / "ema-bin-{nr}.bam", nr=config["_fastq_bin_nrs"]),
+        bais = expand(config['_ema_bins_dir'] / "ema-bin-{nr}.bam.bai", nr=config["_fastq_bin_nrs"]),
         # If we are goning to mark duplicates after merging there is no need to do if before for the nobc reads.
-        bam_nobc = "initialmapping_nobc.bam" if mkdup else "initialmapping_nobc.mkdup.bam"
+        bam_nobc = "initialmapping_nobc.bam" if mkdup else "initialmapping_nobc.mkdup.bam",
+        bais_nobc = "initialmapping_nobc.bam.bai" if mkdup else "initialmapping_nobc.mkdup.bam.bai"
     threads: 20
     shell:
         "samtools merge -cp -@ {threads} {output.bam} {input.bams} {input.bam_nobc}"
