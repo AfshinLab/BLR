@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
-KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"}  # For blr and tellseq libs
+KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"}  # For dbs (blr) and tellseq libs
 KEY_FILES2 = {"final.bam", "final.molecule_stats.filtered.tsv"}  # For 10x and stLFR libs
 
 
@@ -44,8 +44,8 @@ def add_arguments(parser):
         metavar="DIR",
         action="append",
         help=f"Initailize new analysis directory based on previous analysis instead of FASTQ reads. Will identify key "
-             f"files (currently: {', '.join(KEY_FILES)}) from previous run(s) and use the for the basis of new "
-             f"analysis. If multiple DIRs are provided the files will be merged appropriately."
+             f"files from previous run(s) and use the for the basis of new analysis. If multiple DIRs are provided "
+             f"the files will be merged appropriately."
     )
     parser.add_argument("directory", type=Path, help="New analysis directory to create")
 
@@ -136,7 +136,14 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
         logger.error(f"The workdir paths must lead to directories and contain the file '{CONFIGURATION_FILE_NAME}'")
         sys.exit(1)
 
-    required_files = KEY_FILES if library_type in {"blr", "tellseq"} else KEY_FILES2
+    required_files = {
+        "blr": KEY_FILES,
+        "dbs": KEY_FILES,
+        "tellseq": KEY_FILES,
+        "stlfr": KEY_FILES2,
+        "10x": KEY_FILES2
+        }[library_type]
+
     for file in required_files:
         if not all((w / file).exists() for w in workdirs):
             logger.error(f"The workdirs must contain the file '{file}'")
