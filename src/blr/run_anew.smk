@@ -29,6 +29,8 @@ rule final:
         "final.bam"
 
 
+input_names = glob_wildcards("inputs/{name}.final.bam").name
+
 rule index_bam:
     output:
         bai = "{base}.bam.bai"
@@ -84,29 +86,28 @@ rule merge_or_link_input_bams:
     output:
         bam = "final.bam"
     input:
-        dir = "inputs"
+        bams = expand("inputs/{name}.final.bam", name=input_names),
+        bais = expand("inputs/{name}.final.bam.bai", name=input_names)
     threads: 20
     priority: 50
     run:
-        input_bams = glob.glob(input.dir + "/*." + output.bam)
-        if len(input_bams) == 1:
-            symlink_relpath(input_bams[0], output.bam)
+        if len(input.bams) == 1:
+            symlink_relpath(input.bams[0], output.bam)
         else:
-            shell("samtools merge -p -@ {threads} {output.bam} {input_bams}")
+            shell("samtools merge -p -@ {threads} {output.bam} {input.bams}")
 
 
 rule concat_or_link_input_molecule_stats:
     output:
         tsv = "final.molecule_stats.filtered.tsv"
     input:
-        dir = "inputs"
+        tsvs = expand("inputs/{name}.final.molecule_stats.filtered.tsv", name=input_names),
     run:
-        input_files = glob.glob(input.dir + "/*." + output.tsv)
-        if len(input_files) == 1:
-            symlink_relpath(input_files[0], output.tsv)
+        if len(input.tsvs) == 1:
+            symlink_relpath(input.tsvs[0], output.tsv)
         else:
             dfs = list()
-            for file in input_files:
+            for file in input.tsvs:
                 try:
                     df = pd.read_csv(file, sep="\t")
                 except pd.errors.EmptyDataError:
@@ -122,11 +123,10 @@ rule concat_barcode_clstrs:
     output:
         clstr = "barcodes.clstr.gz"
     input:
-        dir = "inputs"
+        clstrs =  expand("inputs/{name}.barcodes.clstr.gz", name=input_names)
     run:
-        input_clstrs = glob.glob(input.dir + "/*." + output.clstr)
-        if len(input_clstrs) == 1:
-            symlink_relpath(input_clstrs[0], output.clstr)
+        if len(input.clstrs) == 1:
+            symlink_relpath(input.clstrs[0], output.clstr)
         else:
             # TODO Tag barcodes based on input before concat
-            shell("cat {input_clstrs} > {output.clstr}")
+            shell("cat {input.clstrs} > {output.clstr}")
