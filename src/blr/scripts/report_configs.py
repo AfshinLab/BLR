@@ -15,20 +15,21 @@ def parse_nested(d, root=None):
             yield new_root, value
 
 
-with open(snakemake.output.yaml, "w") as out:
+with open(snakemake.output.yaml, "w") as out:  # noqa: F821
     unique_id = "".join(sample(ascii_lowercase, 10))
-    workdir = os.path.dirname(os.path.abspath(snakemake.input.yaml))
+    workdir = os.path.dirname(os.path.abspath(snakemake.input.yaml))  # noqa: F821
     text = "parent_id: 'configs'\n"
     text += "parent_name: 'Configurations'\n"
     text += f"id: 'run-configs-{unique_id}'\n"
-    text += f"section_name: 'Run configs'\n"
+    text += "section_name: 'Run configs'\n"
     text += "plot_type: 'html'\n"
     text += f"description: 'Configuration parameters used for run found in `{workdir}`.'\n"
     text += "data: |\n"
-    text += f"\t<button class='btn btn-default' data-toggle='collapse' data-target='#{unique_id}'>Show configs</button>".expandtabs(4)
+    text += f"\t<button class='btn btn-default' data-toggle='collapse' data-target='#{unique_id}'>" \
+            f"Show configs</button>".expandtabs(4)
     text += f"\t<div id='{unique_id}' class='collapse'>".expandtabs(4)
     text += "\t<dl class=\"dl-horizontal\">\n".expandtabs(4)
-    for param, value in parse_nested(snakemake.params.configs):
+    for param, value in parse_nested(snakemake.params.configs):  # noqa: F821
         if param.startswith("_"):
             continue
         text += f"\t\t<dt>{param}</dt><dd><samp>{value}</samp></dd>\n".expandtabs(4)
