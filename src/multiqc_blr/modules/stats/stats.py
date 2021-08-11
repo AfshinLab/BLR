@@ -84,6 +84,10 @@ class MultiqcModule(BaseMultiqcModule):
                     'title': parameter
                 }
 
+            # Remove sample if no data
+            if not data[tool_name][sample_name]:
+                data[tool_name].pop(sample_name)
+
         # Filter out samples to ignore for each tool
         data = {tool: self.ignore_samples(data) for tool, data in data.items() if self.ignore_samples(data)}
 
