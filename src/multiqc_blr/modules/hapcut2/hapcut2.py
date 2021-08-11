@@ -196,7 +196,7 @@ class MultiqcModule(BaseMultiqcModule):
         general_stats_data = {
             sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
         }
-        max_n50 = max(v.get("N50", 0) for v in general_stats_data.values())
+        max_n50 = max(v.get("N50_phaseblock", 0) for v in general_stats_data.values())
         multiplier = 0.000001 if max_n50 > 1_000_000 else 0.001
         suffix = " Mbp" if max_n50 > 1_000_000 else " kbp"
         general_stats_header = OrderedDict({
