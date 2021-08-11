@@ -12,6 +12,7 @@ from itertools import cycle
 from pysam import VariantFile
 import random
 import sys
+import os
 
 
 def parse_vcf_phase(vcf_file):
@@ -106,17 +107,20 @@ def main(phased_vcf, out_html, assembly):
     #
     letters = "abcdefghijklmnopqrstuvwxyz"
     unique_id = "".join(random.sample(letters, 10))
-
+    workdir = os.path.dirname(os.path.abspath(phased_vcf))  # noqa: F821
     with open(out_html, "w") as out:
         # Based on https://eweitz.github.io/ideogram/annotations-overlaid
         html = f"""
 <!--
+parent_id: 'phasedblocks'
+parent_name: 'Phaseblocks'
+parent_description: "Ideograms of chromsomes with phaseblocks overlayed in alternating green and blue. \
+Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
+chromsome to enlarge it. Click again to return to the overview. Hover over block \
+to get the phaseblock location along with size. The longest phaseblock is highlighted in red."
 id: 'phaseblock-overview-{unique_id}'
 section_name: 'Phaseblock overview'
-description: "Ideogram of chromsomes with phaseblocks overlayed in alternating green and blue. \
-Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
-chromsome to enlarge it. Click on the chromosome once again to return to the overview. Hover over block \
-to get the phaseblock location along with it size. The longest phaseblock is highlighted in red."
+description: "Phaseblocks generated from phased VCF found at `{workdir}`."
 -->
 
 <div class="ideogram-{unique_id}">
@@ -130,7 +134,7 @@ var config = {{
     organism: 'human',
     assembly: '{assembly}',
     chrHeight: 500,
-    chrMargin: 1,
+    chrMargin: 0.1,
     annotations: {{
         "keys":["chr","name","start","length","color"],
         "annots":[

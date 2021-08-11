@@ -171,7 +171,7 @@ rule report_configs:
 rule generate_ideogram:
     """Generate phaseblock ideogram over all phased chromomsomes"""
     output:
-        html = temp("ideogram_mqc.html")
+        html = "ideogram_mqc.html"
     input:
         phased_vcf = "final.phased.vcf.gz"
     params:
