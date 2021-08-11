@@ -43,9 +43,9 @@ def add_arguments(parser):
         type=Path,
         metavar="DIR",
         action="append",
-        help=f"Initailize new analysis directory based on previous analysis instead of FASTQ reads. Will identify key "
-             f"files from previous run(s) and use the for the basis of new analysis. If multiple DIRs are provided "
-             f"the files will be merged appropriately."
+        help="Initailize new analysis directory based on previous analysis instead of FASTQ reads. Will identify key "
+             "files from previous run(s) and use the for the basis of new analysis. If multiple DIRs are provided "
+             "the files will be merged appropriately."
     )
     parser.add_argument("directory", type=Path, help="New analysis directory to create")
 
