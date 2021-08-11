@@ -112,7 +112,7 @@ def main(phased_vcf, out_html, assembly):
         # Based on https://eweitz.github.io/ideogram/annotations-overlaid
         html = f"""
 <!--
-parent_id: 'phasedblocks'
+parent_id: 'phaseblocks'
 parent_name: 'Phaseblocks'
 parent_description: "Ideograms of chromsomes with phaseblocks overlayed in alternating green and blue. \
 Plot was generated using <a href='https://eweitz.github.io/ideogram/'>Ideogram.js</a>. Click on a \
