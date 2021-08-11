@@ -54,6 +54,7 @@ setup(
             "disable_plugin = multiqc_blr.cli:disable_plugin"
         ],
         "multiqc.hooks.v1": [
+            "before_config = multiqc_blr.multiqc_blr:before_config",
             "execution_start = multiqc_blr.multiqc_blr:execution_start"
         ],
         "multiqc.templates.v1": [

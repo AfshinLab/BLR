@@ -17,7 +17,12 @@ log = logging.getLogger('multiqc')
 config.multiqc_blr_version = __version__
 
 
-# Add default config options for the things that are used in MultiQC_NGI
+# Add default config options for the things that are used in multiqc_blr
+def before_config():
+    # Use blr template by default
+    config.template = "blr"
+
+
 def execution_start():
     """ Code to execute after the config files and
     command line flags have been parsedself.

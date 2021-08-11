@@ -153,7 +153,7 @@ rule multiqc:
     log:
         "multiqc_report.html.log"
     shell:
-        "multiqc . --template blr 2> {log}"
+        "multiqc . 2> {log}"
 
 
 rule report_configs:
