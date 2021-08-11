@@ -184,7 +184,7 @@ class MultiqcModule(BaseMultiqcModule):
                         'format': '{:.1f}'
                     },
                     "nr_barcodes_final": {
-                        'title': '# Bc',
+                        'title': '# Bc ',
                         'description': 'Number of barcodes in final data.',
                         'modify': lambda x: x * barcode_multiplier,
                         'suffix': barcode_suffix,
