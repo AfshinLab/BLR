@@ -139,7 +139,11 @@ def test_init(tmp_path):
 def test_config(tmp_path):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_DBS_READ1, "dbs")
-    change_config(workdir / "blr.yaml", [("read_mapper", "bwa")])
+    change_config(
+        workdir / "blr.yaml",
+        [("read_mapper", "bwa"),
+         ("hard_filters.snps", "\"'QUAL < 15','lowQual'\"")]  # Nested parameter
+    )
 
 
 def test_default_read_mapper(workdir):
