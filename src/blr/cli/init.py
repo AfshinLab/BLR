@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
-KEY_FILES = {"final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"}  # For dbs (blr) and tellseq libs
-KEY_FILES2 = {"final.bam", "final.molecule_stats.filtered.tsv"}  # For 10x and stLFR libs
+KEY_FILES = ["final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"]  # For dbs (blr) and tellseq libs
+KEY_FILES2 = ["final.bam", "final.molecule_stats.filtered.tsv"]  # For 10x and stLFR libs
 
 
 def add_arguments(parser):
