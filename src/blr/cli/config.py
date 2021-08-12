@@ -21,13 +21,14 @@ SCHEMA_FILE = "config.schema.yaml"
 # Link https://github.com/NBISweden/IgDiscover/blob/master/src/igdiscover/cli/config.py
 
 def main(args):
-    run(yaml_file=args.file, changes_set=args.set, update_from=args.update_from)
+    run(yaml_file=args.file, changes_set=args.set, update_from=args.update_from, prompt=args.i)
 
 
 def run(
     yaml_file: Optional[Path] = DEFAULT_PATH,
     changes_set: Optional[List[Tuple[str, str]]] = None,
-    update_from: Optional[Path] = None
+    update_from: Optional[Path] = None,
+    prompt: bool = False,
 ):
     changes_set = [] if changes_set is None else changes_set
     if update_from is not None:
@@ -35,7 +36,7 @@ def run(
         changes_set = update_changes_set(changes_set, configs)
 
     if changes_set:
-        change_config(yaml_file, changes_set)
+        change_config(yaml_file, changes_set, prompt)
     else:
         print_config(yaml_file)
 
@@ -55,11 +56,12 @@ def print_config(filename: Union[Path, str]):
     print(f"{'=' * width}")
 
 
-def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]]):
+def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]], prompt: bool = False):
     """
     Change config YAML file at filename using the changes_set key-value pairs.
     :param filename: Path to YAML config file to change.
     :param changes_set: changes to incorporate.
+    :param prompt: prompt before changing configs parameter
     """
     # Get configs from file.
     configs, yaml = load_yaml(filename)
@@ -78,8 +80,11 @@ def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]]
 
         prev_value = item[keys[-1]] if keys[-1] in item else "NOT SET"
         if prev_value != value:
+            if prompt and input(f"Change value of '{key}': {repr(prev_value)} --> {repr(value)} (y/n)?") != "y":
+                continue
             item[keys[-1]] = value
-            logger.info(f"Changing value of '{key}': {repr(prev_value)} --> {repr(value)}")
+            if not prompt:
+                logger.info(f"Changing value of '{key}': {repr(prev_value)} --> {repr(value)}")
 
     # Confirm that configs is valid.
     with resource_path('blr', SCHEMA_FILE) as schema_path:
@@ -155,4 +160,7 @@ def add_arguments(parser):
     parser.add_argument(
         "-u", "--update-from", type=Path, metavar="YAML",
         help="Update configuration using other configuration file."
+    )
+    parser.add_argument(
+        "-i", action="store_true", default=False, help="Prompt before every change"
     )
