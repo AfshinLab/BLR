@@ -156,6 +156,11 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
 
     # TODO Enable re-tagging files is share same 'sample_nr'?
 
+    library_types = [c["library_type"].replace("blr", "dbs") for c in configs]  # TODO remove replace
+    if any(lib == library_type for lib in library_types):
+        sys.exit(f"Trying to merge libraries of different types or not matching requested type '{library_type}':"
+                 f" {', '.join([f'{dir} = {lib}' for dir, lib in zip(workdirs, library_types)])}")
+
     if " " in str(directory):
         logger.error("The name of the analysis directory must not contain spaces")
         sys.exit(1)
