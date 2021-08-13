@@ -415,7 +415,7 @@ class MultiqcModule(BaseMultiqcModule):
             data["MB"][sample_name] = {
                 mol_per_bc: 100*count/total_count for mol_per_bc, count in sample_data["MB"]
             }
-            xmax["MB"] = max(get_tail_x(data["MB"][sample_name]), xmax["MB"])
+            xmax["MB"] = max(max(get_tail_x(data["MB"][s], threshold=0.99) for s in data["MB"]), xmax["MB"])
 
             total_count = sum(s[1] for s in sample_data["MC"])
             data["MC"][sample_name] = {
@@ -426,7 +426,7 @@ class MultiqcModule(BaseMultiqcModule):
             data["RB"][sample_name] = {
                 reads_bin: 100 * count / total_count for reads_bin, count in sample_data["RB"]
             }
-            xmax["RB"] = max(get_tail_x(data["RB"][sample_name], threshold=0.99), xmax["RB"])
+            xmax["RB"] = max(max(get_tail_x(data["RB"][s], threshold=0.99) for s in data["RB"]), xmax["RB"])
 
         # Filter out samples to ignore
         data = {name: self.ignore_samples(d) for name, d in data.items()}
