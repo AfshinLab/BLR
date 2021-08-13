@@ -1087,8 +1087,9 @@ rule samtools_stats:
     input:
         "final.bam"
     log: "final.samtools_stats.txt.log"
+    threads: 4
     shell:
-        "samtools stats {input} > {output} 2> {log}"
+        "samtools stats -@ {threads} {input} > {output} 2> {log}"
 
 
 rule concat_lsv_calls:
