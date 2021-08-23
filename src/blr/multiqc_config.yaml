@@ -61,6 +61,8 @@ sp:
     skip: true
   picard/crosscheckfingerprints:
     skip: true
+  picard/extractilluminabarcodes:
+    skip: true
   picard/gcbias:
     skip: true
   picard/hsmetrics:
