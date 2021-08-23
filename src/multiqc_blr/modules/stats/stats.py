@@ -486,6 +486,14 @@ class MultiqcModule(BaseMultiqcModule):
                 })
         )
 
+        for name, d in data.items():
+            d_writable = {}
+            for sample, sample_data in d.items():
+                d_writable[sample] = {str(k): v for k, v in sample_data.items()}
+
+            print(name, d_writable)
+            self.write_data_file(d_writable, f"multiqc_stats_{name}")
+
         return len(data.popitem()[1])
 
     @staticmethod

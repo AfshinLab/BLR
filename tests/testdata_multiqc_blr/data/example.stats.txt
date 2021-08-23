@@ -1,0 +1,47 @@
+# Stats compiled from blr.cli.plot (0.3.dev273+g744dfab.d20210811)
+# Molecule coverage. Use `grep ^MC | cut -f 2-` to extrat this part. Columns are: Molecule coverage bin (numbers refer to lower threshold), Count.
+MC	0.0	1
+MC	0.01	5
+MC	0.02	9
+MC	0.03	7
+MC	0.04	11
+MC	0.05	6
+MC	0.06	4
+MC	0.07	9
+MC	0.08	2
+MC	0.09	4
+MC	0.1	3
+MC	0.12	1
+MC	0.13	2
+MC	0.16	1
+MC	0.18	1
+MC	0.19	2
+MC	0.21	1
+MC	0.25	1
+MC	0.26	2
+MC	0.27	2
+MC	0.31	1
+MC	0.32	1
+MC	0.33	1
+MC	0.34	1
+MC	0.36	1
+MC	0.39	1
+MC	0.41	1
+MC	0.67	1
+MC	0.7	1
+MC	0.71	1
+MC	0.78	1
+MC	0.82	1
+MC	0.96	1
+# Molecules per barcode. Use `grep ^MB | cut -f 2-` to extrat this part. Columns are: Molecules per barcode, Count.
+MB	1	87
+MB	2	10
+MB	3	3
+# Reads per barcode. Use `grep ^RB | cut -f 2-` to extract this part. Columns are: Reads bin (numbers relate to the lower threshold for the bin), Nr of barcodes
+RB	4	53
+RB	6	14
+RB	8	12
+RB	10	3
+RB	12	2
+RB	14	2
+RB	20	1

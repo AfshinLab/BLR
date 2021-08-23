@@ -5,17 +5,12 @@ import subprocess
 TESTDATA_STATS = Path("tests/testdata_multiqc_blr/data/example_stats.log")
 TESTDATA_STATS_PHASEBLOCK_DATA = Path("tests/testdata_multiqc_blr/data/example_stats_phaseblock_data.tsv")
 TESTDATA_STATS_MOLECULES = Path("tests/testdata_multiqc_blr/data/example_stats_molecule_lengths.tsv")
+TESTDATA_STATS_GENERAL = Path("tests/testdata_multiqc_blr/data/example.stats.txt")
 TESTDATA_HAPCUT2_PHASING_STATS = Path("tests/testdata_multiqc_blr/data/example_hapcut2_phasing_stats.txt")
 TESTDATA_WHATSHAP_STATS = Path("tests/testdata_multiqc_blr/data/example_whatshap_stats.tsv")
 TESTDATA_WHATSHAP_HAPLOTAG = Path("tests/testdata_multiqc_blr/data/example.haplotag.log")
 
-REF_STATS = Path("tests/testdata_multiqc_blr/reference/example_stats.txt")
-REF_STATS_PHASEBLOCK_DATA = Path("tests/testdata_multiqc_blr/reference/stats_phaseblock_lengths.txt")
-REF_STATS_MOLECULES = Path("tests/testdata_multiqc_blr/reference/stats_molecule_lengths.txt")
-REF_HAPCUT2_PHASING_STATS = Path("tests/testdata_multiqc_blr/reference/hapcut2_phasing_stats.txt")
-REF_WHATSHAP_STATS = Path("tests/testdata_multiqc_blr/reference/whatshap_stats.txt")
-REF_WHATSHAP_STATS_SNVS_PHASED = Path("tests/testdata_multiqc_blr/reference/whatshap_stats_snvs_phased.txt")
-REF_WHATSHAP_HAPLOTAG = Path("tests/testdata_multiqc_blr/reference/whatshap_haplotag.txt")
+REF_BASE = Path("tests/testdata_multiqc_blr/reference")
 
 
 def comp_files_linewise(file1: Path, file2: Path):
@@ -30,10 +25,10 @@ def test_stats(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "example_stats.txt").exists()
+    file = "example_stats.txt"
+    assert Path(tmpdir / "multiqc_data" / file).exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "example_stats.txt"),
-                        REF_STATS)
+    comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
 def test_stats_phaseblock_data(tmpdir):
@@ -42,10 +37,10 @@ def test_stats_phaseblock_data(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "stats_phaseblock_lengths.txt").exists()
+    file = "stats_phaseblock_lengths.txt"
+    assert Path(tmpdir / "multiqc_data" / file).exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "stats_phaseblock_lengths.txt"),
-                        REF_STATS_PHASEBLOCK_DATA)
+    comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
 def test_stats_molecule_lengths(tmpdir):
@@ -54,10 +49,22 @@ def test_stats_molecule_lengths(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "stats_molecule_lengths.txt").exists()
+    file = "stats_molecule_lengths.txt"
+    assert Path(tmpdir / "multiqc_data" / file).exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "stats_molecule_lengths.txt"),
-                        REF_STATS_MOLECULES)
+    comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
+
+
+def test_stats_general_stats(tmpdir):
+    copyfile(TESTDATA_STATS_GENERAL, tmpdir / "example.stats.txt")
+
+    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
+
+    assert Path(tmpdir / "multiqc_report.html").exists()
+    for file in ["multiqc_stats_RB.txt", "multiqc_stats_MB.txt", "multiqc_stats_MC.txt"]:
+        assert Path(tmpdir / "multiqc_data" / file).exists()
+
+        comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
 def test_hapcut2(tmpdir):
@@ -66,10 +73,10 @@ def test_hapcut2(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "hapcut2"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "hapcut2_phasing_stats.txt").exists()
+    file = "hapcut2_phasing_stats.txt"
+    assert Path(tmpdir / "multiqc_data" / file).exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "hapcut2_phasing_stats.txt"),
-                        REF_HAPCUT2_PHASING_STATS)
+    comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
 def test_whatshap_stats(tmpdir):
@@ -78,13 +85,10 @@ def test_whatshap_stats(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "whatshap"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "whatshap_stats.txt").exists()
-    assert Path(tmpdir / "multiqc_data" / "whatshap_stats_snvs_phased.txt").exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "whatshap_stats.txt"),
-                        REF_WHATSHAP_STATS)
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "whatshap_stats_snvs_phased.txt"),
-                        REF_WHATSHAP_STATS_SNVS_PHASED)
+    for file in ["whatshap_stats.txt", "whatshap_stats_snvs_phased.txt"]:
+        assert Path(tmpdir / "multiqc_data" / file).exists()
+        comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
 def test_whatshap_haplotag(tmpdir):
@@ -93,7 +97,7 @@ def test_whatshap_haplotag(tmpdir):
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "whatshap"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    assert Path(tmpdir / "multiqc_data" / "whatshap_haplotag.txt").exists()
+    file = "whatshap_haplotag.txt"
+    assert Path(tmpdir / "multiqc_data" / file).exists()
 
-    comp_files_linewise(Path(tmpdir / "multiqc_data" / "whatshap_haplotag.txt"),
-                        REF_WHATSHAP_HAPLOTAG)
+    comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
