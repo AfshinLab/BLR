@@ -113,3 +113,5 @@ sp:
     fn: "final.phasing_stats.txt"
   stats/sv_sizes:
     fn: "final.sv_sizes.tsv"
+  stats/general_stats:
+    fn: "final.stats.tsv"
