@@ -47,7 +47,7 @@ def execution_start():
         # Current looking for file ending with ".log" and having the content "SETTINGS FOR:" on the first line
         config.update_dict(config.sp,
                            {'stats': {'fn': '*.log',
-                                      'contents_re': '^SETTINGS FOR:*',
+                                      'contents': 'SETTINGS FOR:',
                                       'num_lines': 1,
                                       'max_filesize': 16384}})
 
@@ -68,14 +68,14 @@ def execution_start():
     if 'stats/general_stats' not in config.sp:
         config.update_dict(config.sp,
                            {'stats/general_stats': {'fn': '*.stats.txt',
-                                                    'contents_re': '^# Stats compiled from blr.cli.plot*',
+                                                    'contents': '# Stats compiled from blr.cli.plot',
                                                     'num_lines': 1}})
 
     if 'hapcut2/phasing_stats' not in config.sp:
         # Current looking for file containing the string "switch rate:" on the first line.
         config.update_dict(config.sp,
                            {'hapcut2/phasing_stats': {'fn': '*.txt',
-                                                      'contents_re': '^switch rate:*',
+                                                      'contents': 'switch rate:',
                                                       'num_lines': 2}})
 
     if "whatshap/stats" not in config.sp:
@@ -87,4 +87,4 @@ def execution_start():
     if "whatshap/haplotag" not in config.sp:
         config.update_dict(config.sp,
                            {'whatshap/haplotag': {'fn': '*haplotag.log',
-                                                  'contents_re': '^haplotag - total processing time:*'}})
+                                                  'contents': 'haplotag - total processing time:'}})
