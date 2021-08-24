@@ -105,7 +105,7 @@ To run the pipeline you need to provide a path to a FASTA with your reference
 Additionally you need to index your FASTA using `samtools faidx` to get the
  `genome.fasta.fai` file
 
-    samtools faidx genome.fasta`
+    samtools faidx genome.fasta
     
 If using `gatk` for variant calling or doing base recalibrartion you will
  need to generate a sequence dictionary (`genome.dict` file) which can be done
