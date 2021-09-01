@@ -8,7 +8,7 @@ on:
 jobs:
   run:
     name: Run pipeline
-    timeout-minutes: 10
+    timeout-minutes: 12
     runs-on: ubuntu-latest
     defaults:
       run:
