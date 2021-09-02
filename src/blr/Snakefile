@@ -358,7 +358,6 @@ rule map_sort:
                 " --rg {readgroup.SM}"
                 " --rg {readgroup.PU}"
                 " --rg {readgroup.PL}"
-                " --reorder"
                 " --maxins 2000"
                 " -x {config[genome_reference]}"
                 " -1 {input.r1_fastq}"
