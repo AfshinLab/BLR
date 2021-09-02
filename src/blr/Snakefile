@@ -17,8 +17,6 @@ if config["library_type"] == "blr":
     Logger().warning("DEPRECIATION: The 'blr' option for library type will soon be replaced with 'dbs'. "
                      "Replace 'blr' with 'dbs' for library_type in the future.")
 
-# TODO include handling of reads from `longranger basic` that already have barcodes extracted and trimmed? See issue
-#  in ema when discussed https://github.com/arshajii/ema/issues/15
 
 # Hidden config options, starts with '_'
 config["_ema_bins_dir"] = Path("fastq_bins")
