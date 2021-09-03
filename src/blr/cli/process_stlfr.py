@@ -68,31 +68,11 @@ def run_process_stlfr(
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
             heaps = BarcodeHeap()
 
-        for read1, read2 in tqdm(reader, desc="Read pairs processed"):
-            summary["Read pairs read"] += 1
-
-            name = read1.name.split("\t")[0]
-
-            # Remove '/1' from read name and split to get barcode_indices
-            name, barcode_indices = name.strip("/1").split("#")
-
-            barcode = translate_indeces(barcode_indices, barcodes, summary)
-
-            if barcode:
-                barcode_id = f"{barcode_tag}:Z:{barcode}"
-                if mapper == "ema":
-                    # The EMA aligner requires reads in 10x format e.g.
-                    # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
-                    name = f"{name}:{barcode} {barcode_id}"
-                elif mapper != "lariat":
-                    name = f"{name}_{barcode_id}"
-            else:
+        for read1, read2, barcode in parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
+            if barcode is None:
                 summary["Read pairs missing barcode"] += 1
                 if mapper in ["ema", "lariat"]:
                     continue
-
-            read1.name = name
-            read2.name = name
 
             # Write to out
             if mapper == "ema":
@@ -108,15 +88,15 @@ def run_process_stlfr(
                 corrected_barcode_qual = "K" * len(barcode)
                 chunks.build_chunk(
                     f"{heaps.get_heap(barcode)}\t"
-                    f"@{name}\t"
+                    f"@{read1.name}\t"
                     f"{read1.sequence}\t"
                     f"{read1.qualities}\t"
                     f"{read2.sequence}\t"
                     f"{read2.qualities}\t"
                     f"{barcode}-{sample_number}\t"
                     f"{corrected_barcode_qual}\t"
-                    "AAAAAA}\t"
-                    "KKKKKK}\n"
+                    "AAAAAA\t"
+                    "KKKKKK\n"
                 )
             else:
                 summary["Read pairs written"] += 1
@@ -133,6 +113,31 @@ def run_process_stlfr(
 
     summary.print_stats(__name__)
     logger.info("Finished")
+
+
+def parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
+    for read1, read2 in tqdm(reader, desc="Read pairs processed"):
+        summary["Read pairs read"] += 1
+
+        name = read1.name.split("\t")[0]
+
+        # Remove '/1' from read name and split to get barcode_indices
+        name, barcode_indices = name.strip("/1").split("#")
+
+        barcode = translate_indeces(barcode_indices, barcodes, summary)
+
+        if barcode is not None:
+            barcode_id = f"{barcode_tag}:Z:{barcode}"
+            if mapper == "ema":
+                # The EMA aligner requires reads in 10x format e.g.
+                # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
+                name = f"{name}:{barcode} {barcode_id}"
+            elif mapper != "lariat":
+                name = f"{name}_{barcode_id}"
+
+        read1.name = name
+        read2.name = name
+        yield read1, read2, barcode
 
 
 def translate_indeces(index_string, barcodes, summary):
@@ -156,8 +161,7 @@ class BarcodeGenerator:
         self._index_to_string = None
         if self._barcodes_file is not None:
             # TODO This translation might not acctually be true since its unsure how the barcode file relates to the
-            #  tagged indeces on the FASTQs. Instead one could generate unique barcodes in for each index combo.
-            #  This would aslo solve https://github.com/FrickTobias/BLR/issues/219 for stLFR reads
+            #  tagged indeces on the FASTQs.
             self._index_to_string = {index: barcode for barcode, index in self._parse_barcodes()}
 
         self.translate_barcode = {}
