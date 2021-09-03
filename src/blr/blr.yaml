@@ -42,7 +42,7 @@ fastq_bins: 100 # integer - Number of bins to split FASTQ over for ema mapping. 
 genome_reference: # string - Path to indexed genomic reference
 dbSNP: # string - Path to dbSNP file (common SNP sites) if doing base recallibration
 BQSR: false # boolean - Perform base recallibration. Recommended if variant_caller is gatk
-read_mapper: bowtie2  # string - Mapper, choose between bwa, bowtie2, minimap2, ema or lariat
+read_mapper: ema  # string - Mapper, choose between bwa, bowtie2, minimap2, ema or lariat
 
 ###################
 # Post processing #
@@ -52,7 +52,7 @@ contigs_skipped: .*_random|chrM|chrUn_.*|hs37d5|chrEBV # string - Regex pattern 
 skip_bcmerge: false # boolean - Skip merging of overlapping barcodes.
 max_molecules_per_bc: 260 # integer - Max number of molecules per barcode. Set to 0 if not filtering
 window_size: 30000 # integer - Window size used for linking reads by barcodes.
-min_mapq: 0 # integer - Minimum MAPQ to include reads in certain analysis steps.
+min_mapq: 20 # integer - Minimum MAPQ to include reads in certain analysis steps.
 
 ########################
 # Phasing + SV calling #
@@ -62,8 +62,8 @@ phasing_contigs: chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,
 
 reference_variants: # string - Path to reference variants (preferably indexed) used for phasing, skip to call variants
 phasing_ground_truth: # string - Path to Phased VCF (preferably indexed) used as ground truth for additional phasing statistics.
-variant_caller: freebayes # string - Call varinats using freebayes, gatk or bcftools (or deepvariant if installed)
-filter_variants: false # boolean - Filter called variants (SNPs and INDELs) before phasing
+variant_caller: gatk # string - Call varinats using freebayes, gatk or bcftools (or deepvariant if installed)
+filter_variants: true # boolean - Filter called variants (SNPs and INDELs) before phasing
 hard_filters: # Strings describing hard filters used if filter_variants=true. Should follow same format as defaults.
   # Default thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)
   snps: "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.15','snpLowAF'"

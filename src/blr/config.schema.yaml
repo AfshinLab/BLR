@@ -48,7 +48,7 @@ properties:
     description: Number of bins to split FASTQ over for ema mapping
   filter_variants:
     type: boolean
-    default: false
+    default: true
     description: Filter called variants (SNPs and INDELs) before phasing
   genome_reference:
     type: [ "string", "null" ]
@@ -104,7 +104,7 @@ properties:
     description: Minimum number of reads per barcode to tag reads with barcode
   min_mapq:
     type: integer
-    default: 0
+    default: 20
     description: Minimum MAPQ to include reads in certain analysis steps.
   molecule_tag:
     type: string
@@ -138,7 +138,7 @@ properties:
     type: string
     pattern: "(bwa)|(bowtie2)|(minimap2)|(ema)|(lariat)"
     description: Which read mapper to use
-    default: bowtie2
+    default: ema
   reference_variants:
     type: [ "string", "null" ]
     description: Path to reference variants, if not provided then variant will be called by freebayes
@@ -182,7 +182,7 @@ properties:
     type: string
     description: Which variant caller to use.
     pattern: "(gatk)|(bcftools)|(freebayes)|(deepvariant)"
-    default: freebayes
+    default: gatk
   window_size:
     type: integer
     default: 30000
