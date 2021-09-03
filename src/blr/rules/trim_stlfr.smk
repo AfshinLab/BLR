@@ -29,10 +29,12 @@ rule trim_stlfr:
         r2_fastq = "reads.2.fastq.gz",
     log: "trimmed.fastq.log",
     threads: workflow.cores - 1
+    params:
+        adapter = config["stlfr_adapter"],
     shell:
         "cutadapt "
-        " -a {config[stlfr_adapter]}"
-        " -A {config[stlfr_adapter]}"
+        " -a {params.adapter}"
+        " -A {params.adapter}"
         " -e 0.2"
         " -j {threads}"
         " --pair-filter 'both'"
@@ -52,15 +54,18 @@ rule tag_stlfr:
     input:
         interleaved_fastq = "trimmed.fastq",
     params:
-        barcodes = "" if config["stlfr_barcodes"] is None else f"--barcodes {config['stlfr_barcodes']}"
+        barcodes = "" if config["stlfr_barcodes"] is None else f"--barcodes {config['stlfr_barcodes']}",
+        barcode_tag = config["cluster_tag"],
+        mapper = config["read_mapper"],
+        sample_nr = config["sample_nr"],
     log: "process_stlfr.log"
     shell:
         "blr process_stlfr"
         " --o1 {output.r1_fastq}"
         " --o2 {output.r2_fastq}"
-        " -b {config[cluster_tag]}"
-        " --mapper {config[read_mapper]}"
-        " --sample-nr {config[sample_nr]}"
+        " -b {params.barcode_tag}"
+        " --mapper {params.mapper}"
+        " --sample-nr {params.sample_nr}"
         " {params.barcodes}"
         " {input.interleaved_fastq}"
         " 2> {log}"

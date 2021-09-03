@@ -3,8 +3,12 @@ Rules for trimming and demultiplexing of raw TELL-seq fastq files.
 """
 
 rule tellseq_link_barcodes:
-    output: "barcodes.fastq.gz"
-    shell: "ln -s {config[tellseq_index]} {output}"
+    output:
+        "barcodes.fastq.gz"
+    params:
+        index = config["tellseq_index"]
+    shell:
+        "ln -s {params.index} {output}"
 
 
 rule tellseq_barcodes_correction:
@@ -16,7 +20,7 @@ rule tellseq_barcodes_correction:
     threads: 20 if config["tellseq_correction"] == "cluster" else 1
     log: "barcodes.clstr.log"
     run:
-        commands = {
+        command = {
             "cluster":
                 "pigz -cd {input} |"
                 " starcode"
@@ -29,8 +33,8 @@ rule tellseq_barcodes_correction:
                 "blr correctbc"
                 " {input}"
                 " -o {output}"
-        }
-        shell(commands[config["tellseq_correction"]] + " 2> {log}")
+        }[config["tellseq_correction"]]
+        shell(f"{command} 2> {log}")
 
 
 if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
@@ -59,15 +63,22 @@ rule tag_tellseq_reads:
         corrected_barcodes="barcodes.clstr.gz"
     log: "tagfastq.log"
     threads: 1
+    params:
+        output = output_cmd,
+        barcode_tag = config["cluster_tag"],
+        sequence_tag = config["sequence_tag"],
+        mapper = config["read_mapper"],
+        pattern = config["tellseq_barcode"],
+        sample_nr = config["sample_nr"],
     shell:
         "blr tagfastq"
-        " {output_cmd}"
-        " -b {config[cluster_tag]}"
-        " -s {config[sequence_tag]}"
-        " --mapper {config[read_mapper]}"
-        " --pattern-match {config[tellseq_barcode]}"
+        " {params.output}"
+        " -b {params.barcode_tag}"
+        " -s {params.sequence_tag}"
+        " --mapper {params.mapper}"
+        " --pattern-match {params.pattern}"
         " --min-count 2"
-        " --sample-nr {config[sample_nr]}"
+        " --sample-nr {params.sample_nr}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.r1_fastq}"
@@ -82,15 +93,14 @@ rule merge_bins:
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
         bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
-    run:
+    params:
         modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
-        shell(
-            "cat {input.bins}" +
-            modify_header +
-            " |"
-            " paste - - - - - - - -"
-            " |"
-            " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
-            " |"
-            " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
-        )
+    shell:
+        "cat {input.bins}"
+        "{params.modify_header}"
+        " |"
+        " paste - - - - - - - -"
+        " |"
+        " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
+        " |"
+        " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"

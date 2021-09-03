@@ -213,21 +213,25 @@ rule map_sort_ema_bins:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else "",
         # Binned FASTQs from 10x are processed using `ema preproc` and have a different format than DBS and Tellseq
         # See: https://github.com/arshajii/ema#input-formats
-        input_mode = "-s" if config["library_type"] == "10x" else "-1"
+        input_mode = "-s" if config["library_type"] == "10x" else "-1",
+        readgroup = readgroup,
+        sample_nr = config["sample_nr"],
+        reference = config["genome_reference"],
+        heap_space = str(config['heap_space']) + "G"
     shell:
         "ema align"
         " -t {threads}"
         " -d"
         " -p 10x"
-        " -R {readgroup}"
-        " -i {config[sample_nr]}"
-        " -r {config[genome_reference]}"
+        " -R {params.readgroup}"
+        " -i {params.sample_nr}"
+        " -r {params.reference}"
         " {params.input_mode} {input.interleaved_fastq}"
         " 2>> {log.map}"
         " |"
         " samtools sort "
         " -@ {threads}"
-        " -m {config[heap_space]}G"
+        " -m {params.heap_space}"
         " -O bam"
         " -l 0"
         "{params.tmpdir}"
@@ -248,19 +252,22 @@ rule map_sort_nobc:
         map = "initialmapping_nobc.bam.mapping.log",
         sort = "initialmapping_nobc.bam.sorting.log"
     params:
-        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else "",
+        readgroup = readgroup,
+        reference = config["genome_reference"],
+        heap_space = str(config['heap_space']) + "G"
     shell:
         "bwa mem"
         " -t {threads}"
-        " -R {readgroup}"
-        " {config[genome_reference]}"
+        " -R {params.readgroup}"
+        " {params.reference}"
         " {input.r1_fastq}"
         " {input.r2_fastq}"
         " 2> {log.map}"
         " |"
         " samtools sort "
         " -@ {threads}"
-        " -m {config[heap_space]}G"
+        " -m {params.heap_space}"
         " -O bam"
         " -l 0"
         "{params.tmpdir}"
@@ -278,9 +285,10 @@ rule mark_duplicates_nobc:
     log: "initialmapping_nobc.mkdup.bam.log"
     params:
         # 250_000 per Gb is recommended according to https://sourceforge.net/p/picard/wiki/Main_Page/
-        max_records_in_ram = int(250_000 * config['heap_space'])
+        max_records_in_ram = int(250_000 * config['heap_space']),
+        java_args = f"-Xmx{config['heap_space']}g"
     shell:
-        "picard -Xmx{config[heap_space]}g MarkDuplicates"
+        "picard {params.java_args} MarkDuplicates"
         " INPUT={input.bam}"
         " OUTPUT={output.bam}"
         " METRICS_FILE={output.metrics}"
@@ -316,12 +324,14 @@ rule merge_mapped_ema_bins:
         bam_nobc = "initialmapping_nobc.bam" if mkdup else "initialmapping_nobc.mkdup.bam",
         bais_nobc = "initialmapping_nobc.bam.bai" if mkdup else "initialmapping_nobc.mkdup.bam.bai"
     threads: 20
+    params:
+        logs_dir = config["_ema_bins_dir"]
     shell:
         "samtools merge -cp -@ {threads} {output.bam} {input.bams} {input.bam_nobc}"
         " &&"
-        " cat {config[_ema_bins_dir]}/*.mapping.log > {output.mapping_log}" 
+        " cat {params.logs_dir}/*.mapping.log > {output.mapping_log}" 
         " &&"
-        " cat {config[_ema_bins_dir]}/*.sorting.log > {output.sorting_log}"
+        " cat {params.logs_dir}/*.sorting.log > {output.sorting_log}"
 
 
 rule map_sort:
@@ -340,44 +350,49 @@ rule map_sort:
         map = "initialmapping.bam.mapping.log",
         sort = "initialmapping.bam.sorting.log"
     params:
-        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else "",
+        reference = config["genome_reference"],
+        readgroup = readgroup,
+        sample_nr = config["sample_nr"],
+        mapper = config["read_mapper"],
+        heap_space = str(config['heap_space']) + "G"
     run:
-        commands = {
+        command = {
             "bwa":
                 "bwa mem"
                 " -t {threads}"
-                " -R {readgroup}"
-                " {config[genome_reference]}"
+                " -R {params.readgroup}"
+                " {params.reference}"
                 " {input.r1_fastq}"
                 " {input.r2_fastq}",
             "bowtie2":
                 "bowtie2"
                 " -p {threads}"
-                " --rg-id {readgroup.identifier}"
-                " --rg {readgroup.LB}"
-                " --rg {readgroup.SM}"
-                " --rg {readgroup.PU}"
-                " --rg {readgroup.PL}"
+                " --rg-id {params.readgroup.identifier}"
+                " --rg {params.readgroup.LB}"
+                " --rg {params.readgroup.SM}"
+                " --rg {params.readgroup.PU}"
+                " --rg {params.readgroup.PL}"
                 " --maxins 2000"
-                " -x {config[genome_reference]}"
+                " -x {params.reference}"
                 " -1 {input.r1_fastq}"
                 " -2 {input.r2_fastq}",
             "minimap2":
                 "minimap2"
                 " -ax sr"
-                " -R {readgroup}"
+                " -R {params.readgroup}"
                 " -t {threads}"
-                " {config[genome_reference]}"
+                " {params.reference}"
                 " {input.r1_fastq}"
                 " {input.r2_fastq}",
             "ema":
                 "ema align"
                 " -1 <(pigz -cd {input.r1_fastq})"
                 " -2 <(pigz -cd {input.r2_fastq})"
-                " -R {readgroup}"
-                " -r {config[genome_reference]}"
+                " -R {params.readgroup}"
+                " -r {params.reference}"
                 " -t {threads}"
-                " -i {config[sample_nr]}"
+                " -i {params.sample_nr}"
                 " -p 10x",
             "lariat":
                 # Experimental addition!
@@ -394,28 +409,27 @@ rule map_sort:
                 " && "
                 "lariat"
                 " -reads={input.r1_fastq}"
-                " -genome={config[genome_reference]}"
+                " -genome={params.reference}"
                 " -threads={threads}"
                 " -trim_length=0"
                 " -first_chunk=True"
                 " -output=lariat_tmp"
-                " -sample_id={readgroup.sample} &> {log.map}"
+                " -sample_id={params.readgroup.sample} &> {log.map}"
                 " && "  
                 "samtools addreplacerg"  
-                " -r {readgroup.ID}"
-                " -r {readgroup.LB}"
-                " -r {readgroup.SM}"
-                " -r {readgroup.PL}"
-                " -r {readgroup.PU}"
+                " -r {params.readgroup.ID}"
+                " -r {params.readgroup.LB}"
+                " -r {params.readgroup.SM}"
+                " -r {params.readgroup.PL}"
+                " -r {params.readgroup.PU}"
                 " lariat_tmp/bc_sorted_bam.bam"
-        }
-        command = commands[config["read_mapper"]]
+        }[params.mapper]
 
         shell(
             f"{command} 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
-            " -m {config[heap_space]}G"
+            " -m {params.heap_space}"
             " -o {output.bam}"
             "{params.tmpdir}"
             " 2> {log.sort}"
@@ -465,12 +479,16 @@ rule tagbam:
         bam = "chunks/{base}.bam"
     log:
         "chunks/{base}.tag.bam.log"
+    params:
+        mapper = config["read_mapper"],
+        sample_nr = config["sample_nr"],
+        barcode_tag = config["cluster_tag"],
     shell:
         "blr tagbam "
         " -o {output.bam}"
-        " --mapper {config[read_mapper]}"
-        " --sample-nr {config[sample_nr]}"
-        " --barcode-tag {config[cluster_tag]}"
+        " --mapper {params.mapper}"
+        " --sample-nr {params.sample_nr}"
+        " --barcode-tag {params.barcode_tag}"
         " {input.bam} 2> {log}"
 
 
@@ -481,15 +499,20 @@ rule find_clusterdups:
     input:
         bam = "chunks/{base}.bam"
     log: "chunks/{base}.clusterdups.pickle.log"
+    params:
+        min_mapq = config["min_mapq"],
+        library_type = config["library_type"],
+        window = config["window_size"],
+        barcode_tag = config["cluster_tag"],
     shell:
         "blr find_clusterdups"
         " {input.bam}"
         " --output-pickle {output.pickle}"
-        " --min-mapq {config[min_mapq]}"
-        " --library-type {config[library_type]}"
-        " --window {config[window_size]}"
+        " --min-mapq {params.min_mapq}"
+        " --library-type {params.library_type}"
+        " --window {params.window}"
         " --quantile-threshold 0.99"
-        " -b {config[cluster_tag]} 2> {log}"
+        " -b {params.barcode_tag} 2> {log}"
 
 
 rule get_barcode_merges:
@@ -519,12 +542,14 @@ rule merge_clusterdups:
         bam = "chunks/{base}.bam",
         merges = "final.barcode-merges.csv"
     log: "chunks/{base}.bcmerge.bam.log"
+    params:
+        barcode_tag = config["cluster_tag"],
     shell:
         "blr merge_clusterdups"
         " {input.bam}"
         " {input.merges}"
         " -o {output.bam}"
-        " -b {config[cluster_tag]} 2> {log}"
+        " -b {params.barcode_tag} 2> {log}"
 
 
 rule mark_duplicates:
@@ -537,14 +562,16 @@ rule mark_duplicates:
     log: "chunks/{base}.mkdup.bam.log"
     params:
         # 250_000 per Gb is recommended according to https://sourceforge.net/p/picard/wiki/Main_Page/
-        max_records_in_ram = int(250_000 * config['heap_space'])
+        max_records_in_ram = int(250_000 * config['heap_space']),
+        java_args = f"-Xmx{config['heap_space']}g",
+        barcode_tag = config["cluster_tag"],
     shell:
-        "picard -Xmx{config[heap_space]}g MarkDuplicates"
+        "picard {params.java_args} MarkDuplicates"
         " INPUT={input.bam}"
         " OUTPUT={output.bam}"
         " METRICS_FILE={output.metrics}"
-        " READ_ONE_BARCODE_TAG={config[cluster_tag]}"
-        " READ_TWO_BARCODE_TAG={config[cluster_tag]}"
+        " READ_ONE_BARCODE_TAG={params.barcode_tag}"
+        " READ_TWO_BARCODE_TAG={params.barcode_tag}"
         # Running without `USE_JDK_DEFLATER=true` & `USE_JDK_INFLATER=true` causes fatal error. See issue: 
         # https://github.com/broadinstitute/picard/issues/1329
         " USE_JDK_DEFLATER=true"
@@ -570,16 +597,22 @@ rule buildmolecules:
     input:
         bam = "chunks/{base}.bam"
     log: "chunks/{base}.mol.bam.log"
+    params:
+        barcode_tag = config["cluster_tag"],
+        molecule_tag = config["molecule_tag"],
+        min_mapq = config["min_mapq"],
+        library_type = config["library_type"],
+        window = config["window_size"],
     shell:
         "blr buildmolecules"
         " {input.bam}"
         " -o {output.bam}"
         " --stats-tsv {output.stats}"
-        " -m {config[molecule_tag]}"
-        " -b {config[cluster_tag]}"
-        " --window {config[window_size]}"
-        " --min-mapq {config[min_mapq]}"
-        " --library-type {config[library_type]}"
+        " -m {params.molecule_tag}"
+        " -b {params.barcode_tag}"
+        " --window {params.window}"
+        " --min-mapq {params.min_mapq}"
+        " --library-type {params.library_type}"
         " 2> {log}"
 
 
@@ -590,14 +623,19 @@ rule readmolecules:
     input:
         bam = "chunks/{base}.bam"
     log: "chunks/{base}.molecule_stats.tsv.log"
+    params:
+        barcode_tag = config["cluster_tag"],
+        molecule_tag = config["molecule_tag"],
+        min_mapq = config["min_mapq"],
+        library_type = config["library_type"],
     shell:
         "blr readmolecules"
         " {input.bam}"
         " --output-tsv {output.stats}"
-        " -m {config[molecule_tag]}"
-        " -b {config[cluster_tag]}"
-        " --min-mapq {config[min_mapq]}"
-        " --library-type {config[library_type]}"
+        " -m {params.molecule_tag}"
+        " -b {params.barcode_tag}"
+        " --min-mapq {params.min_mapq}"
+        " --library-type {params.library_type}"
         " 2> {log}"
 
 
@@ -626,11 +664,13 @@ rule get_barcodes_to_filter:
          tsv = "final.barcodes_filtered_out.tsv"
     input:
          tsv = "final.molecule_stats.tsv"
+    params:
+        threshold = config["max_molecules_per_bc"]
     run:
-        if config["max_molecules_per_bc"] > 0:
+        if params.threshold > 0:
             molecules = pd.read_csv(input.tsv, sep="\t")
             molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
-            barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > config["max_molecules_per_bc"]].index.to_list()
+            barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > params.threshold].index.to_list()
             with open(output.tsv, "w") as file:
                 print("\n".join(barcodes_to_filter), file=file)
         else:
@@ -666,12 +706,15 @@ rule filterclusters:
         bam = "chunks/{base}.bam",
         barcodes = "final.barcodes_filtered_out.tsv"
     log: "chunks/{base}.filt.bam.log"
+    params:
+        barcode_tag = config["cluster_tag"],
+        molecule_tag = config["molecule_tag"],
     shell:
         "blr filterclusters"
         " {input.bam}"
         " {input.barcodes}"
-        " -m {config[molecule_tag]}"
-        " -b {config[cluster_tag]}"
+        " -m {params.molecule_tag}"
+        " -b {params.barcode_tag}"
         " 2> {log} |"
         " tee {output.bam}"
         " |"
@@ -687,10 +730,12 @@ rule bam_to_fastq:
         bam = "final.bam"
     log: "reads.1.final.fastq.gz.log"
     threads: 20
+    params:
+        tags = ",".join([config["cluster_tag"], config["sequence_tag"]])
     shell:
         "samtools fastq"
         " -@ {threads}"
-        " -T {config[cluster_tag]},{config[sequence_tag]}"
+        " -T {params.tags}"
         " {input.bam}"
         " -1 {output.r1_fastq}"
         " -2 {output.r2_fastq} 2> {log}"
@@ -703,10 +748,14 @@ rule recal_base_qual_scores:
     input:
         bam = "chunks/{base}.bam"
     log: "chunks/{base}.bsqr_table.txt.log"
+    params:
+        java_args = f"-Xmx{config['heap_space']}g",
+        reference = config["genome_reference"],
+        dbsnp = config["dbSNP"],
     shell:
-        "gatk --java-options -Xmx{config[heap_space]}g BaseRecalibrator"
-        " -R {config[genome_reference]}"
-        " --known-sites {config[dbSNP]}"
+        "gatk --java-options {params.java_args} BaseRecalibrator"
+        " -R {params.reference}"
+        " --known-sites {params.dbsnp}"
         " -I {input.bam}"
         " -O {output.recal_table}"
         " 2> {log}"
@@ -720,10 +769,13 @@ rule apply_recal:
         bam = "chunks/{base}.bam",
         recal_table = "chunks/{base}.bsqr_table.txt"
     log: "chunks/{base}.BQSR.bam.log"
+    params:
+        java_args = f"-Xmx{config['heap_space']}g",
+        reference = config["genome_reference"],
     shell:
-        "gatk --java-options -Xmx{config[heap_space]}g ApplyBQSR"
+        "gatk --java-options {params.java_args} ApplyBQSR"
         " --bqsr-recal-file {input.recal_table}"
-        " -R {config[genome_reference]}"
+        " -R {params.reference}"
         " -I {input.bam}"
         " -O {output.recal_bam}"
         " 2> {log}"
@@ -784,12 +836,15 @@ rule call_variants:
         bai = "chunks/{base}.calling.bam.bai",
     log: "chunks/{base}.variants.called.vcf.log"
     threads: 2 if config["variant_caller"] in {"gatk", "bcftools"} else 1
+    params:
+        heap_space = config["heap_space"],
+        reference = config["genome_reference"],
     run:
-        heap_space = config["heap_space"] * threads
+        heap_space = params.heap_space * threads
         commands = {
             "freebayes":
                  "freebayes"
-                 " -f {config[genome_reference]}"
+                 " -f {params.reference}"
                  " {input.bam}"
                  " 2> {log}"
                  " | "
@@ -800,7 +855,7 @@ rule call_variants:
                  " 1> {output.vcf} 2>> {log}",
             "bcftools":
                 "bcftools mpileup"
-                " -f {config[genome_reference]}"
+                " -f {params.reference}"
                 " {input.bam}"
                 " --threads {threads}"
                 " 2> {log}"
@@ -814,7 +869,7 @@ rule call_variants:
                 " -o {output.vcf} 2>> {log}",
             "gatk":
                 "gatk --java-options '-Xmx{heap_space}g -XX:ParallelGCThreads={threads}' HaplotypeCaller"
-                " -R {config[genome_reference]}"
+                " -R {params.reference}"
                 " -I {input.bam}"
                 " -O {output.vcf}"
                 " --create-output-variant-index false 2> {log}",
@@ -827,7 +882,7 @@ rule call_variants:
                 " --model_type=WGS"
                 " --output_vcf={output.vcf}"
                 " --reads={input.bam}"
-                " --ref={config[genome_reference]}"
+                " --ref={params.reference}"
                 }
         shell(commands[config["variant_caller"]])
 
@@ -1044,8 +1099,10 @@ rule collect_duplicate_metrics:
     input:
         bam = "final.bam"
     log: "final.duplicate_metrics.txt.log"
+    params:
+        java_args = f"-Xmx{config['heap_space']}g"
     shell:
-        "picard -Xmx{config[heap_space]}g CollectDuplicateMetrics"
+        "picard {params.java_args} CollectDuplicateMetrics"
         " I={input.bam}"
         " M={output.metrics}"
         " ASSUME_SORTED=true"
@@ -1063,7 +1120,8 @@ rule collect_picard_metrics:
         bam = "final.bam"
     log: "final.collect_picard_metrics.log"
     params:
-        output_prefix = "final"
+        output_prefix = "final",
+        reference = config["genome_reference"],
     shell:
         "picard CollectMultipleMetrics"
         " I={input.bam}"
@@ -1074,7 +1132,7 @@ rule collect_picard_metrics:
         " VALIDATION_STRINGENCY=LENIENT"
         " FILE_EXTENSION=.txt"
         " EXTRA_ARGUMENT=CollectAlignmentSummaryMetrics::MAX_INSERT_SIZE=2000"
-        " REFERENCE_SEQUENCE={config[genome_reference]}"
+        " REFERENCE_SEQUENCE={params.reference}"
         " 2> {log}"
 
 

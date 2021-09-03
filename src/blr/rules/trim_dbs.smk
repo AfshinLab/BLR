@@ -31,10 +31,13 @@ rule trim:
         r2_fastq="reads.2.fastq.gz",
     log: "trimmed.fastq.log"
     threads: workflow.cores - 1  # rule tag needs one thread
+    params:
+        read1_adapter = f"XNNN{config['h1']}{barcode_placeholder}{config['h2']};min_overlap={trim_len}...{config['h3']};optional",
+        read2_adapter = config["h3"],
     shell:
         "cutadapt"
-        " -g 'XNNN{config[h1]}{barcode_placeholder}{config[h2]};min_overlap={trim_len}...{config[h3]};optional'"
-        " -A {config[h3]}"
+        " -g '{params.read1_adapter}'"
+        " -A {params.read2_adapter}"
         " --pair-filter 'any'"
         " -e 0.2"
         " -j {threads}"
@@ -71,15 +74,23 @@ rule tag:
         corrected_barcodes="barcodes.clstr.gz"
     log: "tagfastq.log"
     threads: 1
+    params:
+        output = output_cmd,
+        barcode_tag = config["cluster_tag"],
+        sequence_tag = config["sequence_tag"],
+        mapper = config["read_mapper"],
+        pattern = config["barcode"],
+        sample_nr = config["sample_nr"],
+        min_count = config["min_count"]
     shell:
         "blr tagfastq"
-        " {output_cmd}"
-        " -b {config[cluster_tag]}"
-        " -s {config[sequence_tag]}"
-        " --mapper {config[read_mapper]}"
-        " --pattern-match {config[barcode]}"
-        " --sample-nr {config[sample_nr]}"
-        " --min-count {config[min_count]}"
+        " {params.output}"
+        " -b {params.barcode_tag}"
+        " -s {params.sequence_tag}"
+        " --mapper {params.mapper}"
+        " --pattern-match {params.pattern}"
+        " --sample-nr {params.sample_nr}"
+        " --min-count {params.min_count}"
         " {input.uncorrected_barcodes}"
         " {input.corrected_barcodes}"
         " {input.interleaved_fastq}"
@@ -94,9 +105,11 @@ rule extract_barcode:
         fastq="reads.1.fastq.gz"
     log: "barcodes.fasta.gz.log"
     threads: 20
+    params:
+        adapter = f"XNNN{config['h1']};min_overlap={extract_len}...{config['h2']}"
     shell:
         "cutadapt"
-        " -g 'XNNN{config[h1]};min_overlap={extract_len}...{config[h2]}'"
+        " -g '{params.adapter}'"
         " -e 0.2"
         " --discard-untrimmed"
         " -j {threads}"
@@ -116,13 +129,16 @@ rule starcode_clustering:
         "barcodes.fasta.gz"
     threads: 20
     log: "barcodes.clstr.log"
+    params:
+        dist = config["barcode_max_dist"],
+        ratio = config["barcode_ratio"]
     shell:
         "pigz -cd {input} |"
         " starcode"
         " -o {output}"
         " -t {threads}"
-        " -d {config[barcode_max_dist]}"
-        " -r {config[barcode_ratio]}"
+        " -d {params.dist}"
+        " -r {params.ratio}"
         " --print-clusters"
         " 2> {log}"
 
@@ -134,15 +150,14 @@ rule merge_bins:
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
         bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
-    run:
+    params:
         modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
-        shell(
-            "cat {input.bins}" +
-            modify_header +
-            " |"
-            " paste - - - - - - - -"
-            " |"
-            " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
-            " |"
-            " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"
-        )
+    shell:
+        "cat {input.bins}"
+        "{params.modify_header}"
+        " |"
+        " paste - - - - - - - -"
+        " |"
+        " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
+        " |"
+        " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"

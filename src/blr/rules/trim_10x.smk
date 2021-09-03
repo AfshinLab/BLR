@@ -59,15 +59,17 @@ rule preproc_10x:
     threads: 20
     params:
         hamming_correction = "" if not config["apply_hamming_correction"] else " -h",
+        bins = config["fastq_bins"],
+        bins_dir = config["_ema_bins_dir"]
     shell:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
         " ema preproc"
         " -w {input.whitelist}"
-        " -n {config[fastq_bins]}"
+        " -n {params.bins}"
         "{params.hamming_correction}"
         " -t {threads}"
-        " -o {config[_ema_bins_dir]} {input.counts_ncnt} 2>&1 | tee {log}"
+        " -o {params.bins_dir} {input.counts_ncnt} 2>&1 | tee {log}"
 
 
 rule merge_bins:
@@ -77,9 +79,11 @@ rule merge_bins:
     input:
         bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
         nobc = config['_ema_bins_dir'] / "ema-nobc"
+    params:
+        mapper = config["read_mapper"],
     run:
         # Format of rows is <barcode> <r1_name> <r1_seq> <r1_qual> <r2_seq> <r2_qual>
-        if config["read_mapper"]  == "ema":
+        if params.mapper == "ema":
             # Header is <name>:<barcode> BX:Z:<barcode>-1
             shell(
                 "cat {input.bins} |"

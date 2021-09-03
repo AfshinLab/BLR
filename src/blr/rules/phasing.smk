@@ -25,13 +25,14 @@ rule hapcut2_extracthairs:
         vcf_link = get_linked_vcf
     log: "{base}.calling.unlinked.txt.log"
     params:
-        indels = "1" if config["phase_indels"] else "0"
+        indels = "1" if config["phase_indels"] else "0",
+        reference = config["genome_reference"],
     shell:
         "extractHAIRS"
         " --10X 1"
         " --indels {params.indels}"
         " --realign_variants 1"  # Improves overall error-rate
-        " --ref {config[genome_reference]}"
+        " --ref {params.reference}"
         " --bam {input.bam}"
         " --VCF {input.vcf}"
         " --out {output.unlinked} 2> {log}"
@@ -48,13 +49,15 @@ rule hapcut2_linkfragments:
         vcf_link = get_linked_vcf,
         unlinked = "{base}.calling.unlinked.txt"
     log: "{base}.calling.linked.txt.log"
+    params:
+        window = config["window_size"],
     shell:
         "LinkFragments.py"
         " --bam {input.bam}"
         " -v {input.vcf}"
         " --fragments {input.unlinked}"
         " --out {output.linked}"
-        " --distance {config[window_size]} &> {log}"
+        " --distance {params.window} &> {log}"
 
 
 rule hapcut2_phasing:
@@ -115,13 +118,15 @@ rule haplotag:
         vcf_index = "{base}.calling.phased.vcf.gz.tbi"
     log: "{base}.calling.phased.bam.log"
     params:
-        ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else ""
+        ignore_readgroups = "--ignore-read-groups" if config["reference_variants"] else "",
+        window = config["window_size"],
+        reference = config["genome_reference"],
     shell:
         "whatshap haplotag"
         " {input.vcf}"
         " {input.bam}"
-        " --linked-read-distance-cutoff {config[window_size]}"
-        " --reference {config[genome_reference]}"
+        " --linked-read-distance-cutoff {params.window}"
+        " --reference {params.reference}"
         " -o {output.bam}"
         " {params.ignore_readgroups}"
         " 2> {log}"
@@ -146,13 +151,14 @@ rule build_config:
     log: "chunks/{chunk}.naibr.config.log"
     params:
         cwd = os.getcwd(),
-        blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else ""
+        blacklist = f"--blacklist {config['naibr_blacklist']}" if config['naibr_blacklist'] else "",
+        min_mapq = config["naibr_min_mapq"],
     shell:
         "blr naibrconfig"
         " --bam-file {input.bam}"
         " --outdir {params.cwd}/chunks/{wildcards.chunk}_naibr"
         " --distance 10000"
-        " --min-mapq {config[naibr_min_mapq]}"
+        " --min-mapq {params.min_mapq}"
         " --min-sv 1000"
         " --threads 1"
         " --min-overlaps 3"
