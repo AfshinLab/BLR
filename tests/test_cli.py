@@ -413,7 +413,10 @@ def test_BQSR(workdir):
         assert bqsr_header_entries
 
 
-@pytest.mark.parametrize("variant_caller", ["freebayes", "bcftools", "gatk"])
+variant_callers = ["freebayes", "bcftools", "gatk"].extend(["deepvariant"] if shutil.which("deepvariant") else [])
+
+
+@pytest.mark.parametrize("variant_caller", variant_callers)
 def test_call_variants(workdir, variant_caller):
     change_config(
         workdir / DEFAULT_CONFIG,
