@@ -160,7 +160,7 @@ class MultiqcModule(BaseMultiqcModule):
                 snvs += row.heterozygous_snvs
 
             # Calculate SNVs phased for general stats separately to only include phased chromosomes
-            general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs
+            general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs if snvs > 0 else 0
             general_stats_data[s_name]["million_SNVs"] = snvs / 1_000_000
             general_stats_data[s_name]["million_phased_SNVs"] = phased_snvs / 1_000_000
 
