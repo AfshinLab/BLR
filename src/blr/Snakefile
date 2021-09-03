@@ -952,8 +952,9 @@ rule merge_bams:
 
 def vcfs_to_merge(wildcards):
     input = [f"chunks/{chunk[0].name}.calling.phased.vcf" for chunk in chunks["phased"]]
-    filt = "filtered." if config["filter_variants"] else ""
-    input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["primary_not_phased"]])
+    if config["reference_variants"] is None:
+        filt = "filtered." if config["filter_variants"] else ""
+        input.extend([f"chunks/{chunk[0].name}.variants.called.{filt}vcf" for chunk in chunks["primary_not_phased"]])
     return input
 
 

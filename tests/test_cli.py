@@ -445,7 +445,7 @@ def test_plot_figures(workdir):
 def test_haplotag(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("reference_variants", "null")]
+        [("reference_variants", REFERENCE_VARIANTS)]
     )
     target = "chunks/chrA.calling.phased.bam"
     run(workdir=workdir, targets=[target])
@@ -518,7 +518,8 @@ def test_lsv_calling(workdir):
 def test_phasing_contigs(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("phasing_contigs", "chrA")]
+        [("phasing_contigs", "chrA"),
+         ("reference_variants", REFERENCE_VARIANTS)]
     )
     targets = ["final.phased.vcf.gz", "final.phased.vcf.gz.tbi"]
     run(workdir=workdir, targets=targets)
