@@ -205,9 +205,8 @@ class ReadGroup:
         self.PU = f"PU:{self.platform_unit}"
         self.PL = f"PL:{self.platform}"
 
-    def __str__(self):
-        # Repr for '\t' not to be translated
-        return repr("\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL]))
+    def __repr__(self):
+        return r"\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL])
 
 
 @dataclass
