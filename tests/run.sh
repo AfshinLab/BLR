@@ -2,6 +2,7 @@
 set -xeuo pipefail
 
 uname
+python --version
 samtools --version
 bowtie2 --version
 minimap2 --version
@@ -11,7 +12,15 @@ snakemake --version
 blr --version
 picard MarkDuplicates --version || true
 ema
+bwa 2>&1 | head -5 || true
 mosdepth --version
+freebayes --version
+vcffilter 2>&1 | head -1
+fastqc --version
+multiqc --version
+bcftools --version
+gatk --version
+whatshap --version
 
 pushd blr-testdata
 bwa index ref.fasta
