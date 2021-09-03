@@ -339,6 +339,8 @@ rule map_sort:
     log:
         map = "initialmapping.bam.mapping.log",
         sort = "initialmapping.bam.sorting.log"
+    params:
+        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
     run:
         commands = {
             "bwa":
@@ -409,16 +411,13 @@ rule map_sort:
         }
         command = commands[config["read_mapper"]]
 
-        # Use temporary directory for intermediate file if TMPDIR set in environment.
-        tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else ""
-
         shell(
-            command + " 2>> {log.map} | "
+            f"{command} 2>> {log.map} | "
             "samtools sort -"
             " -@ {threads}"
             " -m {config[heap_space]}G"
-            " -o {output.bam}" +
-            tmpdir +
+            " -o {output.bam}"
+            "{params.tmpdir}"
             " 2> {log.sort}"
         )
 
