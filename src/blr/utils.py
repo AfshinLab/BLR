@@ -206,7 +206,7 @@ class ReadGroup:
         self.PL = f"PL:{self.platform}"
 
     def __repr__(self):
-        return r"\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL])
+        return repr("\t".join(["@RG", self.ID, self.LB, self.SM, self.PU, self.PL]))
 
 
 @dataclass
