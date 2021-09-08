@@ -986,13 +986,14 @@ rule split_or_symlink_phase_input_vcf:
             symlink_relpath(input.vcf, output.vcf)
 
 
-def bams_to_merge(wildcards):
-    if wildcards.phased == "":
-        input = [f"chunks/{chunk[0].name}.calling.{{phased}}bam" for chunk in chunks["all"]]
+def bams_to_merge(phased, bai=False):
+    ext = "bam.bai" if bai else "bam"
+    if phased == "":
+        input = [f"chunks/{chunk[0].name}.calling.{{phased}}{ext}" for chunk in chunks["all"]]
     else:
-        input = [f"chunks/{chunk[0].name}.calling.{{phased}}bam" for chunk in chunks["phased"]]
-        input.extend([f"chunks/{chunk[0].name}.calling.bam" for chunk in chunks["not_phased"]])
-    input.append("unmapped.bam")
+        input = [f"chunks/{chunk[0].name}.calling.{{phased}}{ext}" for chunk in chunks["phased"]]
+        input.extend([f"chunks/{chunk[0].name}.calling.{ext}" for chunk in chunks["not_phased"]])
+    input.append(f"unmapped.{ext}")
     return input
 
 
@@ -1000,7 +1001,8 @@ rule merge_bams:
     output:
         bam = "final.{phased,(phased.|)}bam"
     input:
-        bams = ancient(bams_to_merge)
+        bams = lambda wildcards: ancient(bams_to_merge(wildcards.phased)),
+        bais = lambda wildcards: bams_to_merge(wildcards.phased, bai=True)
     shell:
         "samtools cat -o {output.bam} {input.bams}"
 
