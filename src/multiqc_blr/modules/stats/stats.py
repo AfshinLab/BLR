@@ -4,6 +4,7 @@
 from collections import OrderedDict, defaultdict
 import logging
 import pandas as pd
+import numpy as np
 
 from multiqc import config
 from multiqc.plots import table, linegraph
@@ -221,6 +222,7 @@ class MultiqcModule(BaseMultiqcModule):
             log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
             return 0
 
+        # Generate data for binned phaseblock lengths plot
         data_lengths_binned = dict()
         binsize = 50000
         max_length = max([max(v) for v in data_lengths.values()])
@@ -230,6 +232,20 @@ class MultiqcModule(BaseMultiqcModule):
             data_lengths_binned[sample] = {
                 int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
             }
+
+        # Generate data for Nx curve plot
+        data_nx = dict()
+        for sample, values in data_lengths.items():
+            lengths = np.array(values)
+            lengths[::-1].sort()
+            csum = np.cumsum(lengths)
+            total = sum(lengths)
+            data_nx[sample] = {}
+            for x in range(1, 101):
+                x_of_total = int(total * x / 100)
+                csumn2 = min(csum[csum >= x_of_total])
+                ind = np.where(csum == csumn2)
+                data_nx[sample][x] = lengths[ind[0][0]] / 1000  # to kbp
 
         # Add longest phaseblock to general stats table
         general_stats_data = {
@@ -265,6 +281,24 @@ class MultiqcModule(BaseMultiqcModule):
             name="Phaseblock lengths",
             description="Phaseblock lengths",
             plot=plot_html
+        )
+
+        pconfig_nx = {
+            'id': 'phasingblock_nx',
+            'title': "Nx",
+            'ylab': "Phaseblock length (kbp)",
+            'xlab': 'x',
+            'tt_label': 'N{point.x} = {point.y:.1f} (kbp)',
+        }
+        plot_nx_html = linegraph.plot(data_nx, pconfig_nx)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Phaseblock contiguity",
+            description="Phaseblock contiguity as Nx curve. Each point y corresponds to the length of the phaseblock "
+                        "for which the collection of all contigs of that length or longer contains at least x% of the "
+                        "sum of the lengths of all contigs.",
+            plot=plot_nx_html
         )
 
         # Make new dict with keys as strings for writable output.
