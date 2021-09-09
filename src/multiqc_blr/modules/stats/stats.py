@@ -296,8 +296,8 @@ class MultiqcModule(BaseMultiqcModule):
         self.add_section(
             name="Phaseblock contiguity",
             description="Phaseblock contiguity as Nx curve. Each point y corresponds to the length of the phaseblock "
-                        "for which the collection of all contigs of that length or longer contains at least x% of the "
-                        "sum of the lengths of all contigs.",
+                        "for which the collection of all phaseblocks of that length or longer contains at least x% of the "
+                        "sum of the lengths of all phaseblocks.",
             plot=plot_nx_html
         )
 
