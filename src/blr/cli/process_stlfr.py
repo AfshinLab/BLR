@@ -25,6 +25,7 @@ def main(args):
         output1=args.output1,
         output2=args.output2,
         barcode_file=args.barcodes,
+        output_translations=args.output_translations,
         barcode_tag=args.barcode_tag,
         mapper=args.mapper,
         sample_number=args.sample_nr,
@@ -37,6 +38,7 @@ def run_process_stlfr(
         output1: str,
         output2: str,
         barcode_file: str,
+        output_translations: str,
         barcode_tag: str,
         mapper: str,
         sample_number: int,
@@ -110,6 +112,11 @@ def run_process_stlfr(
             write_ema_output(chunks, writer, summary)
         elif mapper == "lariat":
             write_lariat_output(chunks, writer, summary)
+
+    if output_translations is not None:
+        with open(output_translations, "w") as f:
+            for index, barcode in barcodes.translate_barcode.items():
+                print(f"{index},{barcode}", file=f)
 
     summary.print_stats(__name__)
     logger.info("Finished")
@@ -233,6 +240,10 @@ def add_arguments(parser):
         "--barcodes",
         help="stLFR barocode list for tab separated barcode sequences and indexes. If not provided a IUPAC barcode "
              "of length 16 nt will be generated for each stLFR barcode."
+    )
+    parser.add_argument(
+        "-t", "--output-translations",
+        help="Output CSV with combinatorial barcode index to translated barcode sequence."
     )
     parser.add_argument(
         "-b", "--barcode-tag", default="BX",

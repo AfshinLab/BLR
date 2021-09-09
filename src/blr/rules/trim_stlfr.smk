@@ -50,7 +50,8 @@ rule tag_stlfr:
     """Modify header for downstream analysis."""
     output:
         r1_fastq = "trimmed.barcoded.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz"
+        r2_fastq = "trimmed.barcoded.2.fastq.gz",
+        tranlations = "process_stlfr.barcode_translations.csv",
     input:
         interleaved_fastq = "trimmed.fastq",
     params:
@@ -66,6 +67,7 @@ rule tag_stlfr:
         " -b {params.barcode_tag}"
         " --mapper {params.mapper}"
         " --sample-nr {params.sample_nr}"
+        " --output-translations {output.tranlations}"
         " {params.barcodes}"
         " {input.interleaved_fastq}"
         " 2> {log}"
