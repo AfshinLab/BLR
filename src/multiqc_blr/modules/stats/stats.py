@@ -287,7 +287,7 @@ class MultiqcModule(BaseMultiqcModule):
             'id': 'phasingblock_nx',
             'title': "Nx",
             'ylab': "Phaseblock length (kbp)",
-            'xlab': 'x',
+            'xlab': 'x (%)',
             'tt_label': 'N{point.x} = {point.y:.1f} (kbp)',
         }
         plot_nx_html = linegraph.plot(data_nx, pconfig_nx)
