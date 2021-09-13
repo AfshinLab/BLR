@@ -659,7 +659,7 @@ def parse_assembled_blocks(a_blocklist):
 
 def add_arguments(parser):
     parser.add_argument(
-        '-v1', '--vcf1',
+        '-v1', '--vcf1', required=True,
         help="A phased, single sample VCF (uncompressed or bgzip) file to compute haplotype statistics on."
     )
     parser.add_argument(
