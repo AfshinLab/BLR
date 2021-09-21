@@ -140,7 +140,7 @@ rule merge_barcode_counts:
     params:
         awk = """ awk -v OFS='\\t' '{ dbs[$1]+=$2 } END {for (i in dbs) print(i,dbs[i]) }' """
     shell: 
-        "cat {input} | {params.awk} > counting.all.set.txt "
+        "cat {input} | {params.awk} > barcodes.counts.txt "
 
 
 rule starcode_clustering:
@@ -148,7 +148,7 @@ rule starcode_clustering:
     output:
         temp("barcodes.clstr")
     input:
-        "counting.all.set.txt"
+        "barcodes.counts.txt"
     threads: 20
     log: "barcodes.clstr.log"
     params:
