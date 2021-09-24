@@ -303,7 +303,7 @@ rule mark_duplicates_nobc:
         " &> {log}"
 
 
-if config["library_type"] in {"10x", "blr", "tellseq"} \
+if config["library_type"] in {"10x", "dbs", "blr", "tellseq"} \
         and config["read_mapper"] == "ema" \
         and config["fastq_bins"] > 1:
     ruleorder: merge_mapped_ema_bins > map_sort
