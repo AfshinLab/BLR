@@ -125,22 +125,22 @@ rule count_barcodes_in_chunks:
     input: 
         "barcodes.fasta.gz"
     output:
-        "temp(barcodes.count_groups.txt)"
+        temp("barcodes.count_groups.txt")
     params:
         awk = """ awk -v OFS='\\t' '{{ if ( NR%2==0 ) {{ dbs[\$1]++i }} }} END {{for (i in dbs) print(i,dbs[i]) }}' """
     shell:
-        " pigz -cd {input} | parallel --pipe -N20000000 \"{params.awk}\" >> counting.groups.set.txt "
+        " pigz -cd {input} | parallel --pipe -N20000000 \"{params.awk}\" >> {output}"
 
 
 rule merge_barcode_counts:
     input:
         "barcodes.count_groups.txt"
     output:
-        "temp(barcodes.counts.txt)"
+        temp("barcodes.counts.txt")
     params:
         awk = """ awk -v OFS='\\t' '{ dbs[$1]+=$2 } END {for (i in dbs) print(i,dbs[i]) }' """
     shell: 
-        "cat {input} | {params.awk} > barcodes.counts.txt "
+        "cat {input} | {params.awk} > {output} "
 
 
 rule starcode_clustering:
