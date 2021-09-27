@@ -123,7 +123,10 @@ def _workdir(tmp_path_factory):
         ]
     )
     # chromosomes B, C and D end up in the same chunk
-    run(workdir=path, targets=[f"chunks/chr{c}.calling.bam.bai" for c in "AB"], snake_kws={"notemp": True})
+    targets = [f"chunks/chr{c}.calling.bam.bai" for c in "AB"]
+    targets.extend([f"trimmed.barcoded.{nr}.fastq.gz" for nr in [1, 2]])
+    targets.extend([f"trimmed.non_barcoded.{nr}.fastq.gz" for nr in [1, 2]])
+    run(workdir=path, targets=targets, snake_kws={"notemp": True})
     return path
 
 
@@ -151,6 +154,7 @@ def test_config(tmp_path):
 
 def test_default_read_mapper(workdir):
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
+    n_input_fastq_reads += 2 * count_fastq_reads(workdir / "trimmed.non_barcoded.1.fastq.gz")
     assert 0 < count_bam_alignments(workdir / "initialmapping.bam") <= n_input_fastq_reads
 
 
