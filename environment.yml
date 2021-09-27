@@ -1,6 +1,9 @@
-# Whenever this file is updated, you need to run: `conda-lock -f environment.yml -p linux-64 -p osx-64
-# --filename-template "environment.{platform}.lock"` to generate the environment.{platform}.lock files.
-# conda-lock is avialable from pip (`pip install conda-lock`) or conda (`conda install conda-lock -c conda-forge`).
+# Whenever this file is updated, you need to run:
+#
+#   conda-lock -f environment.yml -p linux-64 -p osx-64 --filename-template "environment.{platform}.lock"
+#
+# This updates the environment.{platform}.lock files. conda-lock is avialable from
+# pip (`pip install conda-lock`) or conda (`conda install conda-lock -c conda-forge`).
 channels:
   - conda-forge
   - bioconda
@@ -16,7 +19,7 @@ dependencies:
   - cutadapt=2.5
   - hapcut2=1.3.2
   - samtools
-  - snakemake-minimal>=5.32.0
+  - snakemake-minimal>=5.32.0,<6.5  # >=6.5 does not utilize all available cores.
   - starcode
   - tqdm
   - importlib_resources  # remove when minimum Python version is raised to 3.7
