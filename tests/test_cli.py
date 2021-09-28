@@ -384,7 +384,8 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
          ("heap_space", "1"),
          ("fastq_bins", "5")]
     )
-    run(workdir=workdir, snakemake_args=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
+    targets = ["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
+    run(workdir=workdir, snakemake_args=targets)
     if read_mapper == "lariat":
         n_input_fastq_reads = 2 * count_lariat_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
     else:
@@ -393,7 +394,7 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
 
 
 def test_final_compressed_reads_exist(workdir):
-    targets = ("reads.1.final.fastq.gz", "reads.2.final.fastq.gz")
+    targets = ["reads.1.final.fastq.gz", "reads.2.final.fastq.gz"]
     run(workdir=workdir, snakemake_args=targets)
     for filename in targets:
         assert workdir.joinpath(filename).exists()
