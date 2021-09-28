@@ -43,6 +43,7 @@ genome_reference: # string - Path to indexed genomic reference
 dbSNP: # string - Path to dbSNP file (common SNP sites) if doing base recallibration
 BQSR: false # boolean - Perform base recallibration. Recommended if variant_caller is gatk
 read_mapper: ema  # string - Mapper, choose between bwa, bowtie2, minimap2, ema or lariat
+ema_optimization: true # boolean - Use read density optimization when mapping with ema.
 
 ###################
 # Post processing #

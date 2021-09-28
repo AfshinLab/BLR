@@ -42,6 +42,10 @@ properties:
     type: ["string", "null" ]
     description: dbSNP, common SNP positions
     default: null
+  ema_optimization:
+    type: boolean
+    description: Use read density optimization when mapping reads using ema.
+    default: true
   fastq_bins:
     type: integer
     default: 500
