@@ -50,6 +50,7 @@ properties:
     type: integer
     default: 500
     description: Number of bins to split FASTQ over for ema mapping
+    maximum: 1000
   filter_variants:
     type: boolean
     default: true
