@@ -2,6 +2,9 @@
 Rules for trimming and demultiplexing of raw TELL-seq fastq files.
 """
 
+localrules: tellseq_link_barcodes, tellseq_barcodes_correction, tag_tellseq_reads, merge_bins
+
+
 rule tellseq_link_barcodes:
     output:
         "barcodes.fastq.gz"

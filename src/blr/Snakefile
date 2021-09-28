@@ -9,6 +9,16 @@ from snakemake.logging import Logger
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters
 from blr.cli.find_clusterdups import UnionFind
 
+localrules: final, fastqc, multiqc, report_configs, generate_ideogram, plot_figures, map_sort, map_sort_nobc,
+            mark_duplicates_nobc, merge_mapped_ema_bins, make_chunk_beds, split_into_chunks, get_unmapped_reads,
+            tagbam, find_clusterdups, get_barcode_merges, merge_clusterdups, mark_duplicates, buildmolecules,
+            readmolecules, concat_molecule_stats, get_barcodes_to_filter, filter_molecule_stats, filterclusters,
+            bam_to_fastq, recal_base_qual_scores, apply_recal, symlink_calling_bam, index_bam, compress_vcf,
+            index_vcf, call_variants, extract_called, apply_filter_indels, apply_filter_snps, filter_vcfs,
+            merge_filtered_snps_indels, split_or_symlink_phase_input_vcf, merge_bams, concat_phased_vcfs,
+            concat_called_vcfs, mosdepth, aggregate_molecule_lengths, aggregate_phaseblock_data, whatshap_stats,
+            collect_duplicate_metrics, collect_picard_metrics, samtools_stats, concat_lsv_calls, gzip
+
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
 

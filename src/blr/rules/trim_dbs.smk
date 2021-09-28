@@ -17,6 +17,8 @@ READ 2 LAYOUT
                insert length
 """
 
+localrules: trim, tag, extract_barcode, starcode_clustering, merge_bins
+
 barcode_placeholder = "N"*len(config["barcode"])
 trim_len = sum(map(len, [config["h1"], barcode_placeholder, config["h2"]]))
 extract_len = len(config["h1"])
