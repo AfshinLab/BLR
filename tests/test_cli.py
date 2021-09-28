@@ -126,7 +126,7 @@ def _workdir(tmp_path_factory):
     targets = [f"chunks/chr{c}.calling.bam.bai" for c in "AB"]
     targets.extend([f"trimmed.barcoded.{nr}.fastq.gz" for nr in [1, 2]])
     targets.extend([f"trimmed.non_barcoded.{nr}.fastq.gz" for nr in [1, 2]])
-    run(workdir=path, targets=targets, snake_kws={"notemp": True})
+    run(workdir=path, snakemake_args=targets + ["--notemp"])
     return path
 
 
@@ -166,7 +166,7 @@ def test_trim_dbs_bowtie2(workdir):
         [("read_mapper", "bowtie2")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    run(workdir=workdir, snakemake_args=trimmed + ["--forcerun", "trim"])
 
     assert 0 < count_fastq_reads(workdir / trimmed[0]) <= count_fastq_reads(TESTDATA_DBS_READ1)
     assert 0 < count_fastq_reads(workdir / trimmed[1]) <= count_fastq_reads(TESTDATA_DBS_READ2)
@@ -190,7 +190,7 @@ def test_trim_dbs_lariat(workdir):
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, force_run=["trim"])
+    run(workdir=workdir, snakemake_args=trimmed + ["--forcerun", "trim"])
     assert 0 < count_lariat_fastq_reads(workdir / trimmed[0]) <= count_fastq_reads(TESTDATA_DBS_READ1)
     assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
@@ -232,7 +232,7 @@ def test_trim_tenx(workdir_tenx, read_mapper):
          ("fastq_bins", str(nr_bins))]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed, snake_kws={"notemp": True})
+    run(workdir=workdir, snakemake_args=trimmed + ["--notemp"])
 
     for raw, trimmed in zip((TESTDATA_TENX_READ1, TESTDATA_TENX_READ2), trimmed):
         assert 0 < count_fastq_reads(workdir / trimmed) <= count_fastq_reads(raw)
@@ -273,7 +273,7 @@ def test_trim_stlfr(workdir_stlfr, read_mapper):
         [("read_mapper", read_mapper)]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
+    run(workdir=workdir, snakemake_args=trimmed)
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
         assert 0 < count_fastq_reads(workdir / trimmed) <= count_fastq_reads(raw)
         if read_mapper == "ema":
@@ -288,7 +288,7 @@ def test_trim_stlfr_lariat(workdir_stlfr):
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
+    run(workdir=workdir, snakemake_args=trimmed)
     assert 0 < count_lariat_fastq_reads(workdir / trimmed[0]) <= count_fastq_reads(TESTDATA_STLFR_READ1)
     assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
@@ -328,7 +328,7 @@ def test_trim_tellseq_bowtie2(workdir_tellseq):
         [("read_mapper", "bowtie2")]
     )
     targets = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=targets)
+    run(workdir=workdir, snakemake_args=targets)
     for raw, trimmed in zip((TESTDATA_TELLSEQ_READ1, TESTDATA_TELLSEQ_READ2), targets):
         assert 0 < count_fastq_reads(workdir / trimmed) <= count_fastq_reads(raw)
 
@@ -343,7 +343,7 @@ def test_trim_tellseq_ema(workdir_tellseq):
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     trimmed_nobc = ["trimmed.non_barcoded.1.fastq.gz", "trimmed.non_barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed + trimmed_nobc, snake_kws={"notemp": True})
+    run(workdir=workdir, snakemake_args=trimmed + trimmed_nobc + ["--notemp"])
 
     # Check that all bins exist and have barcodes in groups.
     for nr in range(nr_bins):
@@ -364,7 +364,7 @@ def test_trim_tellseq_lariat(workdir_tellseq):
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
-    run(workdir=workdir, targets=trimmed)
+    run(workdir=workdir, snakemake_args=trimmed)
     assert 0 < count_lariat_fastq_reads(workdir / trimmed[0]) <= count_fastq_reads(TESTDATA_TELLSEQ_READ1)
     assert fastq_lariat_has_barcodes_grouped(workdir / trimmed[0])
 
@@ -384,7 +384,7 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
          ("heap_space", "1"),
          ("fastq_bins", "5")]
     )
-    run(workdir=workdir, targets=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
+    run(workdir=workdir, snakemake_args=["initialmapping.bam", "trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"])
     if read_mapper == "lariat":
         n_input_fastq_reads = 2 * count_lariat_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
     else:
@@ -394,7 +394,7 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
 
 def test_final_compressed_reads_exist(workdir):
     targets = ("reads.1.final.fastq.gz", "reads.2.final.fastq.gz")
-    run(workdir=workdir, targets=targets)
+    run(workdir=workdir, snakemake_args=targets)
     for filename in targets:
         assert workdir.joinpath(filename).exists()
 
@@ -410,7 +410,7 @@ def test_BQSR(workdir):
     for calling_bam in workdir.joinpath("chunks").glob("*.calling.bam"):
         calling_bam.unlink()
     target = "chunks/chrA.calling.bam"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     with pysam.AlignmentFile(workdir / target) as af:
         # Ensure that ApplyBQSR was run on the file by inspecting the @PG lines in the header
         bqsr_header_entries = [entry for entry in af.header["PG"] if entry["ID"] == "GATK ApplyBQSR"]
@@ -427,7 +427,7 @@ def test_call_variants(workdir, variant_caller):
         [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
     target = "chunks/chrA.variants.called.vcf"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     assert workdir.joinpath(target).is_file()
 
 
@@ -437,13 +437,13 @@ def test_filter_variants(workdir):
         [("reference_variants", "null"), ("filter_variants", "true")]
     )
     target = "chunks/chrA.variants.called.filtered.vcf"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     assert workdir.joinpath(target).is_file()
 
 
 def test_plot_figures(workdir):
     target = "figures"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     assert workdir.joinpath(target).is_dir()
     # Check that folder contains 4 PNG images for multiqc.
     assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 4
@@ -455,7 +455,7 @@ def test_haplotag(workdir):
         [("reference_variants", REFERENCE_VARIANTS)]
     )
     target = "chunks/chrA.calling.phased.bam"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     assert bam_has_tag(workdir / target, "HP")
     assert bam_has_tag(workdir / target, "PS")
     assert count_bam_tags(workdir / target, "PS") == count_bam_tags(workdir / target, "HP")
@@ -472,7 +472,7 @@ def test_init_from_workdir(tmp_path, workdir):
     new_workdir = tmp_path / "from_old"
 
     # Generate all require files is old workdir
-    run(workdir=old_workdir, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
+    run(workdir=old_workdir, snakemake_args=["final.bam", "final.molecule_stats.filtered.tsv"])
 
     # Initialize new dir based on old and run setup.
     init_from_dir(new_workdir, [old_workdir], "dbs")
@@ -491,7 +491,7 @@ def test_merge_workdirs(tmp_path, workdir):
     merge_workdir = tmp_path / "merge"
 
     # Generate all require files in workdir
-    run(workdir=workdir, targets=["final.bam", "final.molecule_stats.filtered.tsv"])
+    run(workdir=workdir, snakemake_args=["final.bam", "final.molecule_stats.filtered.tsv"])
 
     # Copy and change sample_nr to simulate other library
     shutil.copytree(workdir, other_workdir)
@@ -518,7 +518,7 @@ def test_lsv_calling(workdir):
         [("reference_variants", "null")]
     )
     target = "chunks/chrA.naibr_sv_calls.tsv"
-    run(workdir=workdir, targets=[target])
+    run(workdir=workdir, snakemake_args=[target])
     assert workdir.joinpath(target).is_file()
 
 
@@ -529,7 +529,7 @@ def test_phasing_contigs(workdir):
          ("reference_variants", REFERENCE_VARIANTS)]
     )
     targets = ["final.phased.vcf.gz", "final.phased.vcf.gz.tbi"]
-    run(workdir=workdir, targets=targets)
+    run(workdir=workdir, snakemake_args=targets)
     assert chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrA")
     assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrB")
     assert not chromsome_phased_in_vcf(workdir.joinpath(targets[0]), chromosome="chrC")
@@ -548,7 +548,7 @@ def test_multiqc_report_complete(workdir):
         "Samtools"
     }
     targets = ["multiqc_report.html", "multiqc_data"]
-    run(workdir=workdir, targets=targets)
+    run(workdir=workdir, snakemake_args=targets)
     assert all((workdir / t).exists() for t in targets)
 
     sections = set()

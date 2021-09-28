@@ -184,7 +184,7 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
 
     logger.info(f"Directory {directory} initialized.")
     logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
-    logger.info(f"Run 'cd {directory} && blr run anew' to start the analysis.")
+    logger.info(f"Run 'cd {directory} && blr run --anew' to start the analysis.")
 
 
 def get_configs(workdirs: List[Path]):

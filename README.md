@@ -125,7 +125,7 @@ Configs can then be updated as usual using `blr config`.
 
 In order to merge the files and run analysis on the merged files a special subscript need to be run. This is done by running:
 
-    blr run anew
+    blr run --anew
 
 Using this the files will be merged and the workflow run from varinat calling and on.
 
