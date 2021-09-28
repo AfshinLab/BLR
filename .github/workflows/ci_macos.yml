@@ -5,7 +5,26 @@ on:
     - cron: 0 8 7 * *
 
 jobs:
-  run:
+  Linting:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+          architecture: x64
+      - name: Install flake8
+        run:
+          pip install flake8
+      - name: Run flake8
+        run:
+          flake8 src/ tests/
+          flake8 --select=W292 --filename '*.yaml,*.yml'
+
+  Testing:
+    needs:
+      - Linting
     name: Run pipeline
     timeout-minutes: 15
     runs-on: macos-latest
@@ -22,13 +41,9 @@ jobs:
           environment-file: environment.osx-64.lock
           use-only-tar-bz2: true
       - name: Install test deps
-        run: mamba install flake8 pytest pip
+        run: mamba install pytest pip
       - name: Install BLR
         run: pip install .
-      - name: Run flake8
-        run: |
-          flake8 src/ tests/
-          flake8 --select=W292 --filename '*.yaml,*.yml'
       - name: Download test dataset
         env:
           testdata_version: "0.6"
