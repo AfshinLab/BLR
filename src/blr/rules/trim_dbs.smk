@@ -146,7 +146,7 @@ rule merge_barcode_counts:
 rule starcode_clustering:
     """Cluster barcodes using starcode"""
     output:
-        temp("barcodes.clstr")
+        "barcodes.clstr.gz"
     input:
         "barcodes.counts.txt"
     threads: 20
@@ -157,12 +157,13 @@ rule starcode_clustering:
     shell:
         "starcode"
         " -i {input}"
-        " -o {output}"
         " -t {threads}"
         " -d {params.dist}"
         " -r {params.ratio}"
         " --print-clusters"
         " 2> {log}"
+        " |"
+        " pigz - > {output}"
 
 
 rule merge_bins:

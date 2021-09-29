@@ -217,11 +217,12 @@ rule map_sort_ema_bins:
         readgroup = readgroup,
         sample_nr = config["sample_nr"],
         reference = config["genome_reference"],
-        heap_space = str(config['heap_space']) + "G"
+        heap_space = str(config['heap_space']) + "G",
+        density_optimization = " -d" if config["ema_optimization"] else "",
     shell:
         "ema align"
         " -t {threads}"
-        " -d"
+        "{params.density_optimization}"
         " -p 10x"
         " -R {params.readgroup}"
         " -i {params.sample_nr}"
@@ -355,7 +356,8 @@ rule map_sort:
         readgroup = readgroup,
         sample_nr = config["sample_nr"],
         mapper = config["read_mapper"],
-        heap_space = str(config['heap_space']) + "G"
+        heap_space = str(config['heap_space']) + "G",
+        density_optimization = " -d" if config["ema_optimization"] else "",
     run:
         command = {
             "bwa":
@@ -393,7 +395,8 @@ rule map_sort:
                 " -r {params.reference}"
                 " -t {threads}"
                 " -i {params.sample_nr}"
-                " -p 10x",
+                " -p 10x"
+                "{params.density_optimization}",
             "lariat":
                 # Experimental addition!
                 # Lariat creates a output directory with three files:
@@ -1164,16 +1167,3 @@ rule concat_lsv_calls:
 
         concat = pd.concat(dfs, ignore_index=True)
         concat.to_csv(output.tsv, sep="\t", index=False)
-
-
-ruleorder: compress_vcf > gzip
-
-
-rule gzip:
-    """Compress file using pigz"""
-    output:
-        "{file}.gz"
-    input:
-        "{file}"
-    shell:
-        "pigz --stdout {input} > {output}"
