@@ -14,7 +14,7 @@ rule tellseq_link_barcodes:
 rule tellseq_barcodes_correction:
     """Correct barcodes"""
     output:
-        temp("barcodes.clstr")
+        "barcodes.clstr.gz"
     input:
         "barcodes.fastq.gz"
     threads: 20 if config["tellseq_correction"] == "cluster" else 1
@@ -24,7 +24,6 @@ rule tellseq_barcodes_correction:
             "cluster":
                 "pigz -cd {input} |"
                 " starcode"
-                " -o {output}"
                 " -t {threads}"
                 " -d 1"
                 " -r 2"
@@ -32,9 +31,9 @@ rule tellseq_barcodes_correction:
             "correct_singles":
                 "blr correctbc"
                 " {input}"
-                " -o {output}"
+                " -o -"
         }[config["tellseq_correction"]]
-        shell(f"{command} 2> {log}")
+        shell(f"{command} 2> {log} | pigz - > {output}")
 
 
 if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:

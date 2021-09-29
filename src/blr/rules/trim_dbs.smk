@@ -124,7 +124,7 @@ rule extract_barcode:
 rule starcode_clustering:
     """Cluster barcodes using starcode"""
     output:
-        temp("barcodes.clstr")
+        "barcodes.clstr.gz"
     input:
         "barcodes.fasta.gz"
     threads: 20
@@ -135,12 +135,13 @@ rule starcode_clustering:
     shell:
         "pigz -cd {input} |"
         " starcode"
-        " -o {output}"
         " -t {threads}"
         " -d {params.dist}"
         " -r {params.ratio}"
         " --print-clusters"
         " 2> {log}"
+        " |"
+        " pigz - > {output}"
 
 
 rule merge_bins:
