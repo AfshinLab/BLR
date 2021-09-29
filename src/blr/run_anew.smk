@@ -1,8 +1,6 @@
 """
 Prepare input for running pipeline starting from previously generated run(s).
 """
-import sys
-import glob
 import pandas as pd
 from snakemake.utils import validate
 
@@ -29,7 +27,10 @@ rule final:
         "final.bam"
 
 
-input_names = glob_wildcards("inputs/{name}.final.bam").name
+input_bams = glob_wildcards("inputs/{name}.bam").name
+input_tsvs = glob_wildcards("inputs/{name}.tsv").name
+input_clstrs = glob_wildcards("inputs/{name}.clstr.gz").name
+
 
 rule index_bam:
     output:
@@ -86,22 +87,27 @@ rule merge_or_link_input_bams:
     output:
         bam = "final.bam"
     input:
-        bams = expand("inputs/{name}.final.bam", name=input_names),
-        bais = expand("inputs/{name}.final.bam.bai", name=input_names)
+        bams = expand("inputs/{name}.bam", name=input_bams),
+        bais = expand("inputs/{name}.bam.bai", name=input_bams)
     threads: 20
     priority: 50
-    run:
-        if len(input.bams) == 1:
-            symlink_relpath(input.bams[0], output.bam)
-        else:
-            shell("samtools merge -p -@ {threads} {output.bam} {input.bams}")
+    shell:
+        "samtools merge"
+        " -p"
+        " -@ {threads}"
+        " - {input.bams}"
+        " |"
+        " samtools view"
+        " -x PC -x HP -x PS"  # Strip phasing tags 
+        " -o {output.bam}"
+        " -"
 
 
 rule concat_or_link_input_molecule_stats:
     output:
         tsv = "final.molecule_stats.filtered.tsv"
     input:
-        tsvs = expand("inputs/{name}.final.molecule_stats.filtered.tsv", name=input_names),
+        tsvs = expand("inputs/{name}.tsv", name=input_tsvs),
     run:
         if len(input.tsvs) == 1:
             symlink_relpath(input.tsvs[0], output.tsv)
@@ -123,7 +129,7 @@ rule concat_barcode_clstrs:
     output:
         clstr = "barcodes.clstr.gz"
     input:
-        clstrs =  expand("inputs/{name}.barcodes.clstr.gz", name=input_names)
+        clstrs =  expand("inputs/{name}.clstr.gz", name=input_clstrs)
     run:
         if len(input.clstrs) == 1:
             symlink_relpath(input.clstrs[0], output.clstr)
