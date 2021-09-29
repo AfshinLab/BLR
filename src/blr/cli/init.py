@@ -8,6 +8,7 @@ import os.path
 from pathlib import Path
 import sys
 from typing import List
+from collections import defaultdict
 
 from blr.utils import guess_paired_path, ACCEPTED_LIBRARY_TYPES
 from blr.cli.config import change_config, load_yaml
@@ -17,8 +18,16 @@ logger = logging.getLogger(__name__)
 
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
-KEY_FILES = ["final.bam", "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"]  # For dbs (blr) and tellseq libs
-KEY_FILES2 = ["final.bam", "final.molecule_stats.filtered.tsv"]  # For 10x and stLFR libs
+
+KEY_FILES = [  # For dbs (blr) and tellseq libs
+    ("final.phased.bam", "final.bam",),
+    ("final.molecule_stats.filtered.tsv",),
+    ("barcodes.clstr.gz",)
+]
+KEY_FILES2 = [  # For 10x and stLFR libs
+    ("final.phased.bam", "final.bam",),
+    ("final.molecule_stats.filtered.tsv",)
+]
 
 
 def add_arguments(parser):
@@ -144,10 +153,19 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
         "10x": KEY_FILES2
         }[library_type]
 
-    for file in required_files:
-        if not all((w / file).exists() for w in workdirs):
-            logger.error(f"The workdirs must contain the file '{file}'")
-            sys.exit(1)
+    workdir_files = defaultdict(list)
+    for workdir in workdirs:
+        for files in required_files:
+            exists_in_workdir = False
+            for file in files:
+                if (workdir / file).exists():
+                    exists_in_workdir = True
+                    workdir_files[workdir].append(workdir / file)
+                    break
+
+            if not exists_in_workdir:
+                logger.error(f"The workdirs must contain the file '{' alt. '.join(files)}'")
+                sys.exit(1)
 
     configs = list(get_configs(workdirs))
     if len({c["sample_nr"] for c in configs}) != len(workdirs):
@@ -177,10 +195,10 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
     input_dir = directory / "inputs"
     input_dir.mkdir()
 
-    for nr, workdir in enumerate(workdirs, start=1):
-        for file in required_files:
-            target_name = f"dir{nr}.{file}"
-            create_symlink(workdir / file, input_dir, target_name)
+    for nr, (workdir, files) in enumerate(workdir_files.items(), start=1):
+        for file in files:
+            target_name = f"dir{nr}.{file.name}"
+            create_symlink(file, input_dir, target_name)
 
     logger.info(f"Directory {directory} initialized.")
     logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
