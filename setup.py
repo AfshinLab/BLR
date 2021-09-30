@@ -5,9 +5,9 @@ with open("README.md") as f:
 
 setup(
     name="blr",
-    author="Tobias Frick",
+    author="Tobias Frick, Pontus Höjer",
     url="https://github.com/TobiasFrick/BLR/",
-    description="Barcoded long reads pipeline",
+    description="Pipeline for analysis of linked reads",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
