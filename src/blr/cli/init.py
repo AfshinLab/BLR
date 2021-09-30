@@ -19,13 +19,14 @@ logger = logging.getLogger(__name__)
 CONFIGURATION_FILE_NAME = "blr.yaml"
 MULTIQC_CONFIG_FILE_NAME = "multiqc_config.yaml"
 
+# List of tuples were tuple contain alternative files that are also allowed.
 KEY_FILES = [  # For dbs (blr) and tellseq libs
-    ("final.phased.bam", "final.bam",),
+    ("final.phased.cram", "final.phased.bam", "final.bam",),
     ("final.molecule_stats.filtered.tsv",),
     ("barcodes.clstr.gz",)
 ]
 KEY_FILES2 = [  # For 10x and stLFR libs
-    ("final.phased.bam", "final.bam",),
+    ("final.phased.cram", "final.phased.bam", "final.bam",),
     ("final.molecule_stats.filtered.tsv",)
 ]
 
