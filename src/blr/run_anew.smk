@@ -28,6 +28,7 @@ rule final:
 
 
 input_bams = glob_wildcards("inputs/{name}.bam").name
+input_crams = glob_wildcards("inputs/{name}.cram").name
 input_tsvs = glob_wildcards("inputs/{name}.tsv").name
 input_clstrs = glob_wildcards("inputs/{name}.clstr.gz").name
 
@@ -44,6 +45,16 @@ rule index_bam:
         " -@ {threads}"
         " {input.bam}"
         " {output.bai}"
+
+
+rule index_cram:
+    output:
+        crai = "{base}.cram.crai"
+    input:
+        cram = "{base}.cram"
+    threads: workflow.cores
+    shell:
+        "samtools index -@ {threads} {input.cram} {output.crai}"
 
 
 rule make_chunk_beds:
@@ -88,14 +99,16 @@ rule merge_or_link_input_bams:
         bam = "final.bam"
     input:
         bams = expand("inputs/{name}.bam", name=input_bams),
-        bais = expand("inputs/{name}.bam.bai", name=input_bams)
+        bais = expand("inputs/{name}.bam.bai", name=input_bams),
+        crams = expand("inputs/{name}.cram", name=input_crams),
+        crais = expand("inputs/{name}.cram.crai", name=input_crams),
     threads: 20
     priority: 50
     shell:
         "samtools merge"
         " -p"
         " -@ {threads}"
-        " - {input.bams}"
+        " - {input.bams} {input.crams}"
         " |"
         " samtools view"
         " -x PC -x HP -x PS"  # Strip phasing tags 

@@ -77,8 +77,8 @@ def final_input(wildcards):
         "multiqc_report.html",
         "final.bam",
         "final.bam.bai",
-        "final.phased.bam",
-        "final.phased.bam.bai",
+        "final.phased.cram",
+        "final.phased.cram.crai",
         "final.phased.vcf.gz",
         "final.phased.vcf.gz.tbi",
         "final.naibr_sv_calls.bedpe",
@@ -807,9 +807,16 @@ rule index_bam:
     input:
         bam = "{base}.bam"
     shell:
-        "samtools index"
-        " {input.bam}"
-        " {output.bai}"
+        "samtools index {input.bam} {output.bai}"
+
+
+rule index_cram:
+    output:
+        crai = "{base}.cram.crai"
+    input:
+        cram = "{base}.cram"
+    shell:
+        "samtools index {input.cram} {output.crai}"
 
 
 rule compress_vcf:
@@ -989,25 +996,32 @@ rule split_or_symlink_phase_input_vcf:
             symlink_relpath(input.vcf, output.vcf)
 
 
-def bams_to_merge(phased, bai=False):
-    ext = "bam.bai" if bai else "bam"
-    if phased == "":
-        input = [f"chunks/{chunk[0].name}.calling.{{phased}}{ext}" for chunk in chunks["all"]]
-    else:
-        input = [f"chunks/{chunk[0].name}.calling.{{phased}}{ext}" for chunk in chunks["phased"]]
-        input.extend([f"chunks/{chunk[0].name}.calling.{ext}" for chunk in chunks["not_phased"]])
-    input.append(f"unmapped.{ext}")
-    return input
-
-
 rule merge_bams:
     output:
-        bam = "final.{phased,(phased.|)}bam"
+        bam = "final.bam"
     input:
-        bams = lambda wildcards: ancient(bams_to_merge(wildcards.phased)),
-        bais = lambda wildcards: bams_to_merge(wildcards.phased, bai=True)
+        bams = expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["all"]) +
+               ["unmapped.bam"],
+        bais = expand("chunks/{chunk[0].name}.calling.bam.bai", chunk=chunks["all"]) +
+               ["unmapped.bam.bai"],
     shell:
         "samtools cat -o {output.bam} {input.bams}"
+
+
+rule merge_bams_phased:
+    output:
+        cram = "final.phased.cram"
+    input:
+        bams = expand("chunks/{chunk[0].name}.calling.phased.bam", chunk=chunks["phased"]) +
+               expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["not_phased"]) +
+               ["unmapped.bam"],
+        bais = expand("chunks/{chunk[0].name}.calling.phased.bam.bai", chunk=chunks["phased"]) +
+               expand("chunks/{chunk[0].name}.calling.bam.bai", chunk=chunks["not_phased"]) +
+               ["unmapped.bam.bai"]
+    params:
+        reference = config["genome_reference"],
+    shell:
+        "samtools cat {input.bams} | samtools view -T {params.reference} -C - > {output.cram}"
 
 
 def vcfs_to_merge(wildcards):
