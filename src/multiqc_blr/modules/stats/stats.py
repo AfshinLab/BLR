@@ -224,13 +224,16 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Generate data for binned phaseblock lengths plot
         data_lengths_binned = dict()
-        binsize = 50000
         max_length = max([max(v) for v in data_lengths.values()])
-        bins = range(0, max_length + binsize, binsize)
+        # Geometrically spaced bins rounded to nearest kb.
+        bins = np.geomspace(1, (max_length + 1) // 1000, num=100) * 1000
         for sample, values in data_lengths.items():
-            _, weights = bin_sum(values, binsize=binsize, normalize=True)
+            # Length-weighed binning of lengths that is then normalized
+            hist, _ = np.histogram(values, bins=bins, weights=values)
+            norm_hist = hist / sum(hist)
+
             data_lengths_binned[sample] = {
-                int(b / 1000): w for b, w in zip(bins, weights)  # bin per kbp
+                int(b / 1000): w for b, w in zip(bins, norm_hist)  # bin per kbp
             }
 
         # Generate data for Nx curve plot
@@ -272,6 +275,7 @@ class MultiqcModule(BaseMultiqcModule):
             'xlab': "Phaseblock length (kbp)",
             'ylab': 'Total DNA density',
             'yCeiling': 1,
+            'xLog': True,
             'tt_label': '{point.x} kbp: {point.y:.4f}',
         }
         plot_html = linegraph.plot(data_lengths_binned, pconfig)
@@ -279,13 +283,13 @@ class MultiqcModule(BaseMultiqcModule):
         # Add a report section with plot
         self.add_section(
             name="Phaseblock lengths",
-            description="Phaseblock lengths",
+            description="Plot showing length-weigthed and normalized bins of phaseblock lengths. Binning is done over a geometric scale.",
             plot=plot_html
         )
 
         pconfig_nx = {
             'id': 'phasingblock_nx',
-            'title': "Nx",
+            'title': "N(x)",
             'ylab': "Phaseblock length (kbp)",
             'xlab': 'x (%)',
             'tt_label': 'N{point.x} = {point.y:.1f} (kbp)',
@@ -297,7 +301,7 @@ class MultiqcModule(BaseMultiqcModule):
             name="Phaseblock contiguity",
             description="Phaseblock contiguity as Nx curve. Each point y corresponds to the length of the phaseblock "
                         "for which the collection of all phaseblocks of that length or longer contains at least x% of "
-                        "the sum of the lengths of all phaseblocks.",
+                        "the sum of the total length of all phaseblocks.",
             plot=plot_nx_html
         )
 
