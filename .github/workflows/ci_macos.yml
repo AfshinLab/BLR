@@ -26,7 +26,7 @@ jobs:
     needs:
       - Linting
     name: Run pipeline
-    timeout-minutes: 15
+    timeout-minutes: 20
     runs-on: macos-latest
     defaults:
       run:
