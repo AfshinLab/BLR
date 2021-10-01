@@ -222,34 +222,6 @@ class MultiqcModule(BaseMultiqcModule):
             log.debug("Could not find any phaseblock data in {}".format(config.analysis_dir))
             return 0
 
-        # Generate data for binned phaseblock lengths plot
-        data_lengths_binned = dict()
-        max_length = max([max(v) for v in data_lengths.values()])
-        # Geometrically spaced bins rounded to nearest kb.
-        bins = np.geomspace(1, (max_length + 1) // 1000, num=100) * 1000
-        for sample, values in data_lengths.items():
-            # Length-weighed binning of lengths that is then normalized
-            hist, _ = np.histogram(values, bins=bins, weights=values)
-            norm_hist = hist / sum(hist)
-
-            data_lengths_binned[sample] = {
-                int(b / 1000): w for b, w in zip(bins, norm_hist)  # bin per kbp
-            }
-
-        # Generate data for Nx curve plot
-        data_nx = dict()
-        for sample, values in data_lengths.items():
-            lengths = np.array(values)
-            lengths[::-1].sort()
-            csum = np.cumsum(lengths)
-            total = sum(lengths)
-            data_nx[sample] = {}
-            for x in range(1, 101):
-                x_of_total = int(total * x / 100)
-                csumn2 = min(csum[csum >= x_of_total])
-                ind = np.where(csum == csumn2)
-                data_nx[sample][x] = lengths[ind[0][0]] / 1000  # to kbp
-
         # Add longest phaseblock to general stats table
         general_stats_data = {
             name: {"longest_phaseblock": max(data)} for name, data in data_lengths.items()
@@ -268,6 +240,40 @@ class MultiqcModule(BaseMultiqcModule):
             }})
 
         self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        # Only generate plots if more that one phaseblock in any sample
+        if sum(map(len, data_lengths.values())) == 1:
+            log.debug("Not enougth datapoints to plot phaseblock lengths.")
+            return len(data_lengths)
+
+        # Generate data for binned phaseblock lengths plot
+        data_lengths_binned = dict()
+        max_length = max([max(v) for v in data_lengths.values()])
+        # Geometrically spaced bins for 1000 -> max_length rounded to nearest 10kbp.
+        buf = 10_000
+        bins = (np.geomspace(1000, max_length + buf, num=100) // buf) * buf
+        for sample, values in data_lengths.items():
+            # Length-weighed binning of lengths that is then normalized
+            hist, _ = np.histogram(values, bins=bins, weights=values)
+            norm_hist = hist / sum(hist)
+
+            data_lengths_binned[sample] = {
+                int(b / 1000): round(w, 6) for b, w in zip(bins, norm_hist)  # bin per kbp
+            }
+
+        # Generate data for Nx curve plot
+        data_nx = dict()
+        for sample, values in data_lengths.items():
+            lengths = np.array(values)
+            lengths[::-1].sort()
+            csum = np.cumsum(lengths)
+            total = sum(lengths)
+            data_nx[sample] = {}
+            for x in range(1, 101):
+                x_of_total = int(total * x / 100)
+                csumn2 = min(csum[csum >= x_of_total])
+                ind = np.where(csum == csumn2)
+                data_nx[sample][x] = lengths[ind[0][0]] / 1000  # to kbp
 
         pconfig = {
             'id': 'phasingblock_lengths',
