@@ -251,7 +251,7 @@ class MultiqcModule(BaseMultiqcModule):
         max_length = max([max(v) for v in data_lengths.values()])
         # Geometrically spaced bins for 1000 -> max_length rounded to nearest 10kbp.
         buf = 10_000
-        bins = (np.geomspace(1000, max_length + buf, num=100) // buf) * buf
+        bins = (np.geomspace(buf, max_length + buf, num=100) // buf) * buf
         for sample, values in data_lengths.items():
             # Length-weighed binning of lengths that is then normalized
             hist, _ = np.histogram(values, bins=bins, weights=values)
@@ -289,7 +289,8 @@ class MultiqcModule(BaseMultiqcModule):
         # Add a report section with plot
         self.add_section(
             name="Phaseblock lengths",
-            description="Plot showing length-weigthed and normalized bins of phaseblock lengths. Binning is done over a geometric scale.",
+            description="Plot showing length-weigthed and normalized bins of phaseblock lengths. Binning is done "
+                        "over a geometric scale.",
             plot=plot_html
         )
 
