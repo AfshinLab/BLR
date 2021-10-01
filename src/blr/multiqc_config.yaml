@@ -64,7 +64,7 @@ sp:
   picard/extractilluminabarcodes:
     skip: true
   picard/gcbias:
-    skip: true
+    fn_re: "final.gc_bias.*.txt"
   picard/hsmetrics:
     skip: true
   picard/insertsize:
