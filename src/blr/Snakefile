@@ -130,6 +130,8 @@ def get_multiqc_input(wildcards):
         "final.duplicate_metrics.txt",
         "final.molecule_lengths.tsv",
         "final.alignment_summary_metrics.txt",
+        "final.gc_bias.detail_metrics.txt",
+        "final.gc_bias.summary_metrics.txt",
         "final.samtools_stats.txt",
         "final.sv_sizes.tsv",
         "blr_mqc.yaml",
@@ -1135,6 +1137,9 @@ rule collect_picard_metrics:
         "final.read_length_histogram.pdf",
         "final.insert_size_metrics.txt",
         "final.insert_size_histogram.pdf",
+        "final.gc_bias.detail_metrics.txt",
+        "final.gc_bias.summary_metrics.txt",
+        "final.gc_bias.pdf"
     input:
         bam = "final.bam"
     log: "final.collect_picard_metrics.log"
@@ -1148,6 +1153,7 @@ rule collect_picard_metrics:
         " PROGRAM=null"
         " PROGRAM=CollectAlignmentSummaryMetrics"
         " PROGRAM=CollectInsertSizeMetrics"
+        " PROGRAM=CollectGcBiasMetrics"
         " VALIDATION_STRINGENCY=LENIENT"
         " FILE_EXTENSION=.txt"
         " EXTRA_ARGUMENT=CollectAlignmentSummaryMetrics::MAX_INSERT_SIZE=2000"
