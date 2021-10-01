@@ -6,7 +6,7 @@ import pandas as pd
 from snakemake.utils import validate
 from snakemake.logging import Logger
 
-from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters
+from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters, tempif
 from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
@@ -63,13 +63,6 @@ filt = ".filt" if config["max_molecules_per_bc"] > 0 else ""
 # Extension from indexed genome references
 BWA_INDEX_EXT = [".amb", ".ann", ".bwt", ".pac", ".sa"]
 BOWTIE2_INDEX_EXT = [".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.1.bt2"]
-
-
-def tempif(files, condition):
-    """Mark files as temporary if condition is met"""
-    if condition:
-        return temp(files)
-    return files
 
 
 def final_input(wildcards):

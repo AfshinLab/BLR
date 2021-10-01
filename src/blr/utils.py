@@ -9,6 +9,7 @@ from collections import namedtuple, Counter, defaultdict, OrderedDict
 import contextlib
 
 from blr import __version__
+from snakemake.io import temp
 
 if sys.stderr.isatty():
     from tqdm import tqdm
@@ -366,3 +367,10 @@ def parse_filters(string: str):
         filter_expression, filter_name = pair.split(",")
         filters += f" -filter {filter_expression} --filter-name {filter_name}"
     return filters
+
+
+def tempif(files, condition):
+    """Mark files as temporary if condition is met"""
+    if condition:
+        return temp(files)
+    return files
