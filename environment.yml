@@ -38,4 +38,5 @@ dependencies:
   - dnaio
   - whatshap
   - mosdepth>=0.2.9
+  - parallel 
   - pip
