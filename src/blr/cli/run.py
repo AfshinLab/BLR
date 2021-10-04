@@ -2,6 +2,13 @@
 Run the BLR pipeline.
 
 This is a small wrapper around Snakemake that sets some default parameters.
+
+To run full pipeline use:
+
+   $ blr run
+
+For arguments related to Snakemake run '$ snakmake -h' or look at the official
+documentation at https://snakemake.readthedocs.io/en/stable/executing/cli.html.
 """
 
 # Snakemake wrapping parially based on:
@@ -21,20 +28,28 @@ logger = logging.getLogger(__name__)
 
 
 def add_arguments(parser):
-    arg = parser.add_argument
-    arg('-c', '--cores', metavar='N', type=int, default=available_cpu_count(),
+    parser.add_argument(
+        '-c', '--cores', metavar='N', type=int, default=available_cpu_count(),
         help='Run on at most N CPU cores in parallel. '
-        'Default: %(default)s (all available cores).')
-    arg('--no-use-conda', action="store_true", default=False,
-        help="Skip passing argument '--use-conda' to snakemake.")
-    arg('--anew', action="store_true", default=False,
-        help="Use if initializing from previous analysis run(s).")
+        'Default: %(default)s (all available cores).'
+    )
+    parser.add_argument(
+        '--anew', action="store_true", default=False,
+        help="Use if initializing from previous analysis run(s)."
+    )
+    parser.add_argument(
+        '--no-use-conda', action="store_true", default=False,
+        help="Skip passing argument '--use-conda' to snakemake."
+    )
 
     # This argument will not capture **all** additional arguments. Instead parse_known_args()
     # is used in __main__.py to add any arguments not captured here to snakemake_args.
-    arg('snakemake_args', nargs="*",
-        help="Arguments passed snakemake. For info about snakemake options run "
-             "'snakemake --help'.")
+    smk_args = parser.add_argument_group("snakemake arguments")
+    smk_args.add_argument(
+        'snakemake_args', nargs="*",
+        help="Arguments passed to snakemake. For info about snakemake options run "
+             "'snakemake --help'."
+    )
 
 
 def main(args):
