@@ -5,9 +5,13 @@ This is a small wrapper around Snakemake that sets some default parameters.
 
 To run full pipeline use:
 
-   $ blr run
+    $ blr run
 
-For arguments related to Snakemake run '$ snakemake -h' or look at the official
+To do a dry-run (not executing anything, only showing what would be done) use:
+
+    $ blr run -n
+
+For additional arguments related to Snakemake run '$ snakemake -h' or look at the official
 documentation at https://snakemake.readthedocs.io/en/stable/executing/cli.html.
 """
 
