@@ -7,7 +7,7 @@ To run full pipeline use:
 
    $ blr run
 
-For arguments related to Snakemake run '$ snakmake -h' or look at the official
+For arguments related to Snakemake run '$ snakemake -h' or look at the official
 documentation at https://snakemake.readthedocs.io/en/stable/executing/cli.html.
 """
 
