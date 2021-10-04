@@ -34,7 +34,12 @@ def main(commandline_arguments=None) -> int:
         subparser.set_defaults(module=module)
         module.add_arguments(subparser)
 
-    args = parser.parse_args(commandline_arguments)
+    # Module 'run' needs to accept addition arguments
+    args, extra_args = parser.parse_known_args(commandline_arguments)
+
+    # For module 'run' extra_args are added to existing snakemake_args in namespace
+    if hasattr(args, "snakemake_args"):
+        args.snakemake_args += extra_args
 
     if args.debug:
         root = logging.getLogger()
@@ -50,8 +55,13 @@ def main(commandline_arguments=None) -> int:
         profile = args.profile
         del args.profile
 
-        # Print settings for module
         module_name = module.__name__.split('.')[-1]
+
+        # Re-parse extra arguments if module is not "run" to raise the expected error
+        if module_name != "run" and extra_args:
+            parser.parse_args(extra_args)
+
+        # Print settings for module
         sys.stderr.write(f"SETTINGS FOR: {module_name} (version: {__version__})\n")
         for object_variable, value in vars(args).items():
             sys.stderr.write(f" {object_variable}: {value}\n")
