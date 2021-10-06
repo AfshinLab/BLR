@@ -5,6 +5,7 @@ from collections import OrderedDict, defaultdict
 import logging
 import pandas as pd
 import numpy as np
+from ast import literal_eval
 
 from multiqc import config
 from multiqc.plots import table, linegraph
@@ -47,9 +48,13 @@ class MultiqcModule(BaseMultiqcModule):
         if n_sv_size_reports > 0:
             log.info("Found {} SV size reports".format(n_sv_size_reports))
 
-        n_stats = self.gather_stats()
-        if n_stats > 0:
-            log.info("Found {} stats reports".format(n_stats))
+        n_mol_stats = self.gather_molecule_stats()
+        if n_mol_stats > 0:
+            log.info("Found {} molecule stats reports".format(n_mol_stats))
+
+        n_bar_stats = self.gather_barcode_stats()
+        if n_bar_stats > 0:
+            log.info("Found {} barcode stats reports".format(n_bar_stats))
 
     def gather_stats_logs(self):
         # Find and load any input files for this module
@@ -129,78 +134,6 @@ class MultiqcModule(BaseMultiqcModule):
                 ''',
                 plot=table_html
             )
-
-            # Include select stats from "plot" tool in general stats table.
-            if tool_name == "plot":
-                general_stats_data = dict()
-                for name, data in tool_data.items():
-                    general_stats_data[name] = {
-                        "n50_lpm": data["n50_reads_per_molecule"],
-                        "mean_molecule_length_kbp": data["mean_molecule_length"] / 1000,
-                        "median_molecule_length_kbp": data["median_molecule_length"] / 1000,
-                        "dna_in_molecules_20_kbp_percent": data["dna_in_molecules_>20_kbp_(%)"],
-                        "dna_in_molecules_100_kbp_percent": data["dna_in_molecules_>100_kbp_(%)"],
-                        "nr_barcodes_final": data["barcodes_final"],
-                        "median_molecule_count": data["median_molecule_count"]
-                    }
-
-                # Scale number of barcodes
-                nr_barcodes_max = max(v.get("nr_barcodes_final", 0) for v in general_stats_data.values())
-                barcode_multiplier = 0.000001 if nr_barcodes_max > 1_000_000 else 0.001
-                barcode_suffix = " M" if nr_barcodes_max > 1_000_000 else " K"
-
-                general_stats_header = OrderedDict({
-                    "n50_lpm": {
-                        'title': 'N50 LPM',
-                        'description': 'N50 linked-reads per molecule',
-                        'scale': 'OrRd',
-                        'format': '{:,.0f}'
-                    },
-                    "mean_molecule_length_kbp": {
-                        'title': 'Mean len',
-                        'description': 'Mean molecule length in kbp',
-                        'scale': 'PuBu',
-                        'suffix': ' kbp',
-                        'format': '{:,.1f}'
-                    },
-                    "median_molecule_length_kbp": {
-                        'title': 'Median len',
-                        'description': 'Median molecule length in kbp',
-                        'scale': 'BuPu',
-                        'suffix': ' kbp',
-                        'format': '{:,.1f}'
-                    },
-                    "dna_in_molecules_20_kbp_percent": {
-                        'title': '>20kbp',
-                        'description': 'Percent of DNA in molecules longer than 20 kbp',
-                        'scale': 'Oranges',
-                        'suffix': '%',
-                        'format': '{:.1f}'
-                    },
-                    "dna_in_molecules_100_kbp_percent": {
-                        'title': '>100kbp',
-                        'description': 'Percent of DNA in molecules longer than 100 kbp',
-                        'scale': 'YlOrBr',
-                        'suffix': '%',
-                        'format': '{:.1f}'
-                    },
-                    "nr_barcodes_final": {
-                        'title': '# Bc ',
-                        'description': 'Number of barcodes in final data.',
-                        'modify': lambda x: x * barcode_multiplier,
-                        'suffix': barcode_suffix,
-                        'scale': 'BuGn',
-                        'format': '{:,.1f}'
-                    },
-                    "median_molecule_count": {
-                        'title': ' # Mol',
-                        'description': 'Median number of molecules per barcode',
-                        'scale': 'OrRd',
-                        'format': '{:,.0f}'
-                    },
-                })
-
-                self.general_stats_addcols(general_stats_data, general_stats_header)
 
     def gather_phaseblock_data(self):
         data_lengths = dict()
@@ -430,12 +363,13 @@ class MultiqcModule(BaseMultiqcModule):
 
         return len(data[0])
 
-    def gather_stats(self):
+    def gather_molecule_stats(self):
         names = ["MB", "MC", "RB"]
         xmax = {"MB": 10, "RB": 20}
         data = {name: dict() for name in names}
-        for f in self.find_log_files('stats/general_stats', filehandles=True):
-            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".stats", "")
+        summary = {}
+        for f in self.find_log_files('stats/molecule_stats', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".molecule_stats", "")
 
             if sample_name in data:
                 log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
@@ -443,7 +377,13 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_data_source(f)
 
             sample_data = defaultdict(list)
+            sample_summary = {}
             for line in f["f"]:
+                if line.startswith("SN"):
+                    _, stat, value = line.split("\t")
+                    stat_name = "_".join(stat.lower().split(" "))
+                    sample_summary[stat_name] = literal_eval(value)
+
                 if line.startswith("MB"):
                     _, mol_per_bc, count = line.split("\t")
                     sample_data["MB"].append((int(mol_per_bc), int(count)))
@@ -455,6 +395,8 @@ class MultiqcModule(BaseMultiqcModule):
                 if line.startswith("RB"):
                     _, reads_bin, count = line.split("\t")
                     sample_data["RB"].append((int(reads_bin), int(count)))
+
+            summary[sample_name] = sample_summary
 
             total_count = sum(s[1] for s in sample_data["MB"])
             data["MB"][sample_name] = {
@@ -475,10 +417,102 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Filter out samples to ignore
         data = {name: self.ignore_samples(d) for name, d in data.items()}
+        summary = self.ignore_samples(summary)
+
         if any(len(d) == 0 for d in data.values()):
-            log.debug("Could not find any stats reports in {}".format(config.analysis_dir))
+            log.debug("Could not find any summary reports in {}".format(config.analysis_dir))
             return 0
 
+        # General stats
+        general_stats_data = dict()
+        for name, sample_data in summary.items():
+            general_stats_data[name] = {
+                "n50_lpm": sample_data["n50_reads_per_molecule"],
+                "mean_molecule_length_kbp": sample_data["mean_molecule_length"] / 1000,
+                "median_molecule_length_kbp": sample_data["median_molecule_length"] / 1000,
+                "dna_in_molecules_20_kbp_percent": sample_data["dna_in_molecules_>20_kbp_(%)"],
+                "dna_in_molecules_100_kbp_percent": sample_data["dna_in_molecules_>100_kbp_(%)"],
+                "nr_barcodes_final": sample_data["barcodes_final"],
+                "median_molecule_count": sample_data["median_molecule_count"],
+                "mean_dna_per_barcode_kbp": sample_data["mean_dna_per_barcode"] / 1000,
+                "median_dna_per_barcode_kbp": sample_data["median_dna_per_barcode"] / 1000,
+            }
+
+        # Scale number of barcodes
+        nr_barcodes_max = max(v.get("nr_barcodes_final", 0) for v in general_stats_data.values())
+        barcode_multiplier = 0.000001 if nr_barcodes_max > 1_000_000 else 0.001
+        barcode_suffix = " M" if nr_barcodes_max > 1_000_000 else " K"
+
+        general_stats_header = OrderedDict({
+            "n50_lpm": {
+                'title': 'N50 LPM',
+                'description': 'N50 linked-reads per molecule',
+                'scale': 'OrRd',
+                'format': '{:,.0f}'
+            },
+            "mean_molecule_length_kbp": {
+                'title': 'Mean len',
+                'description': 'Mean molecule length in kbp',
+                'scale': 'PuBu',
+                'suffix': ' kbp',
+                'format': '{:,.1f}'
+            },
+            "median_molecule_length_kbp": {
+                'title': 'Median len',
+                'description': 'Median molecule length in kbp',
+                'scale': 'BuPu',
+                'suffix': ' kbp',
+                'format': '{:,.1f}'
+            },
+            "dna_in_molecules_20_kbp_percent": {
+                'title': '>20kbp',
+                'description': 'Percent of DNA in molecules longer than 20 kbp',
+                'scale': 'Oranges',
+                'suffix': '%',
+                'format': '{:.1f}'
+            },
+            "dna_in_molecules_100_kbp_percent": {
+                'title': '>100kbp',
+                'description': 'Percent of DNA in molecules longer than 100 kbp',
+                'scale': 'YlOrBr',
+                'suffix': '%',
+                'format': '{:.1f}'
+            },
+            "nr_barcodes_final": {
+                'title': '# Bc ',
+                'description': 'Number of barcodes in final data.',
+                'modify': lambda x: x * barcode_multiplier,
+                'suffix': barcode_suffix,
+                'scale': 'BuGn',
+                'format': '{:,.1f}'
+            },
+            "median_molecule_count": {
+                'title': ' # Mol',
+                'description': 'Median number of molecules per barcode',
+                'scale': 'OrRd',
+                'format': '{:,.0f}'
+            },
+            "mean_dna_per_barcode_kbp": {
+                'title': 'Mean DNA',
+                'description': 'Mean DNA per barcode',
+                'scale': 'YlOrBr',
+                'format': '{:,.1f}',
+                'suffix': 'kbp',
+                'hidden': True,
+            },
+            "median_dna_per_barcode_kbp": {
+                'title': 'Median DNA',
+                'description': 'Median DNA per barcode',
+                'scale': 'Oranges',
+                'format': '{:,.1f}',
+                'suffix': 'kbp',
+                'hidden': True,
+            },
+        })
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        # Plots
         self.add_section(
             name="Molecules per barcode",
             description="Molecule per barcode",
@@ -531,12 +565,164 @@ class MultiqcModule(BaseMultiqcModule):
                 })
         )
 
+        self.write_data_file(summary, "multiqc_molecule_stats_summary")
         for name, d in data.items():
             d_writable = {}
             for sample, sample_data in d.items():
                 d_writable[sample] = {str(k): v for k, v in sample_data.items()}
 
-            self.write_data_file(d_writable, f"multiqc_stats_{name}")
+            self.write_data_file(d_writable, f"multiqc_molecule_stats_{name}")
+
+        return len(data.popitem()[1])
+
+    def gather_barcode_stats(self):
+        names = ["RB", "CB", "BL"]
+        xmax = {"RB": 20}
+        data = {name: dict() for name in names}
+        summary = {}
+        for f in self.find_log_files('stats/barcode_stats', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".barcode_stats", "")
+
+            if sample_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+
+            sample_data = defaultdict(list)
+            sample_summary = {}
+            for line in f["f"]:
+                if line.startswith("SN"):
+                    _, stat, value = line.split("\t")
+                    stat_name = "_".join(stat.lower().split(" "))
+                    sample_summary[stat_name] = literal_eval(value)
+
+                if line.startswith("RB"):
+                    _, reads_per_barcode, count, total, density = line.split("\t")
+                    sample_data["RB"].append((int(reads_per_barcode), 100*float(density)))
+
+                if line.startswith("CB"):
+                    _, comps_per_barcode, count = line.split("\t")
+                    sample_data["CB"].append((float(comps_per_barcode), int(count)))
+
+                if line.startswith("BL"):
+                    _, barcode_length, count = line.split("\t")
+                    sample_data["BL"].append((int(barcode_length), int(count)))
+
+            summary[sample_name] = sample_summary
+            data["RB"][sample_name] = dict(sample_data["RB"])
+            xmax["RB"] = max(max(get_tail_x(data["RB"][s], threshold=0.99) for s in data["RB"]), xmax["RB"])
+
+            total_count = sum(s[1] for s in sample_data["CB"])
+            data["CB"][sample_name] = {
+                comps_per_barcode: 100 * count / total_count for comps_per_barcode, count in sample_data["CB"]
+            }
+
+            total_count = sum(s[1] for s in sample_data["BL"])
+            data["BL"][sample_name] = {
+                barcode_length: 100 * count / total_count for barcode_length, count in sample_data["BL"]
+            }
+
+        # Filter out samples to ignore
+        data = {name: self.ignore_samples(d) for name, d in data.items()}
+        summary = self.ignore_samples(summary)
+
+        if any(len(d) == 0 for d in data.values()):
+            log.debug("Could not find any stats reports in {}".format(config.analysis_dir))
+            return 0
+
+        # General stats
+        general_stats_data = dict()
+        for name, sample_data in summary.items():
+            general_stats_data[name] = sample_data
+
+        general_stats_header = OrderedDict({
+            "barcodes_raw": {
+                'title': '# Bc raw',
+                'description': 'Nr of uncorrected barcodes',
+                'scale': 'OrRd',
+                'format': '{:,.0f}',
+                'hidden': True,
+            },
+            "barcodes_corrected": {
+                'title': '# Bc corr',
+                'description': 'Nr of corrected barcodes',
+                'scale': 'PuBu',
+                'format': '{:,.0f}',
+                'hidden': True,
+            },
+            "barcodes_corrected_with_>_3_read-pairs": {
+                'title': '# Bc corr >3',
+                'description': 'Nr of corrected barcodes with more than three reads',
+                'scale': 'BuPu',
+                'format': '{:,.0f}',
+                'hidden': True,
+            },
+            "maximum_reads_per_barcode": {
+                'title': 'Max RPB',
+                'description': 'Maximum reads per barcode',
+                'scale': 'Oranges',
+                'format': '{:.0f}',
+                'hidden': True,
+            },
+            "mean_reads_per_barcode": {
+                'title': 'Mean RPB',
+                'description': 'Mean reads per barcode',
+                'scale': 'BuPu',
+                'format': '{:.0f}',
+                'hidden': True,
+            },
+            "median_reads_per_barcode": {
+                'title': 'Median RPB',
+                'description': 'Median reads per barcode',
+                'format': '{:.0f}',
+                'scale': 'BuGn',
+                'hidden': True,
+            },
+        })
+
+        self.general_stats_addcols(general_stats_data, general_stats_header)
+
+        # Plots
+        self.add_section(
+            name="Reads per corrected barcode",
+            description="Read density plotted as value of the number of reads per corrected barcode.",
+            plot=linegraph.plot(
+                data["RB"],
+                {
+                    'id': 'reads_per_corr_barcode',
+                    'title': "Stats: Reads per corrected Barcode",
+                    'xlab': "Reads per barcode",
+                    'ylab': 'Read density',
+                    'xmax': xmax["RB"],
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': '{point.x} reads: {point.y:.1f}%',
+                })
+        )
+
+        self.add_section(
+            name="Components per barcode",
+            description="Number of components (sequences corrected to barcode) per corrected barcode",
+            plot=linegraph.plot(
+                data["CB"],
+                {
+                    'id': 'components_per_barcode',
+                    'title': "Stats: Components per barcode",
+                    'xlab': "Components",
+                    'ylab': 'Fraction of barcodes',
+                    'yCeiling': 100,
+                    'yLabelFormat': '{value}%',
+                    'tt_label': '{point.x} components: {point.y:.1f}%',
+                })
+        )
+
+        self.write_data_file(summary, "multiqc_barcode_stats_summary")
+        for name, d in data.items():
+            d_writable = {}
+            for sample, sample_data in d.items():
+                d_writable[sample] = {str(k): v for k, v in sample_data.items()}
+
+            self.write_data_file(d_writable, f"multiqc_barcode_stats_{name}")
 
         return len(data.popitem()[1])
 

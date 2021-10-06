@@ -112,7 +112,6 @@ rule fastqc:
 
 def get_multiqc_input(wildcards):
     inputs = [
-        "figures",
         "final.mosdepth.global.dist.txt",
         "final.mosdepth.summary.txt",
         "final.phaseblock_data.tsv",
@@ -127,12 +126,16 @@ def get_multiqc_input(wildcards):
         "final.gc_bias.summary_metrics.txt",
         "final.samtools_stats.txt",
         "final.sv_sizes.tsv",
+        "final.molecule_stats.txt",
         "blr_mqc.yaml",
         "ideogram_mqc.html",
     ]
     # Lariat uses interleaved FASTQs with a special format that cannot be handled by FastQC
     if config["read_mapper"] != "lariat":
         inputs.extend(["trimmed.barcoded.1_fastqc.html", "trimmed.barcoded.2_fastqc.html"])
+
+    if config["library_type"] in {"dbs", "blr", "tellseq"}:
+        inputs.append("final.barcode_stats.txt")
     return inputs
 
 
@@ -173,24 +176,24 @@ rule generate_ideogram:
         "scripts/ideogram_html.py"
 
 
-def plot_figures_input(wildcards):
-    if config["library_type"] in {"dbs", "blr", "tellseq"}:
-        return "final.molecule_stats.filtered.tsv", "barcodes.clstr.gz"
-    else:
-        return "final.molecule_stats.filtered.tsv"
-
-
-rule plot_figures:
-    """Generate plots and stats for MultiQC report."""
+rule molecule_stats:
+    """Generate molecule stats for MultiQC report."""
     output:
-        images = directory("figures"),
-        stats = "final.stats.txt"
-    input: plot_figures_input
-    log: "final.stats.txt.log"
-    shell:
-        "blr plot"
-        " {input}"
-        " -o {output.images} 2> {log} > {output.stats}"
+        txt = "final.molecule_stats.txt"
+    input:
+        tsv = "final.molecule_stats.filtered.tsv"
+    script:
+        "scripts/molecule_stats.py"
+
+
+rule barcode_stats:
+    """Generate barcode stats for MultiQC report."""
+    output:
+        txt = "final.barcode_stats.txt"
+    input:
+        clstr = ancient("barcodes.clstr.gz")
+    script:
+        "scripts/barcode_stats.py"
 
 
 rule map_sort_ema_bins:

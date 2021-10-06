@@ -1,0 +1,29 @@
+# Stats compiled from barcode_stats.py (0.3.dev315+g2e6a3ab)
+# Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.
+SN	Barcodes raw	548
+SN	Barcodes corrected	545
+SN	Barcodes corrected with > 3 read-pairs	49
+SN	Maximum reads per barcode	21
+SN	Mean reads per barcode	1.7321100917431194
+SN	Median reads per barcode	1.0
+# Reads per Barcode. Use `grep ^RB | cut -f 2-` to extract this part.
+# Columns are: Reads, Nr of Barcodes, Total reads, Density.
+RB	1	401	401	0.4247881355932203
+RB	2	75	150	0.15889830508474576
+RB	3	20	60	0.0635593220338983
+RB	4	17	68	0.07203389830508475
+RB	5	7	35	0.037076271186440676
+RB	6	7	42	0.04449152542372881
+RB	7	5	35	0.037076271186440676
+RB	8	1	8	0.00847457627118644
+RB	9	3	27	0.028601694915254237
+RB	10	3	30	0.03177966101694915
+RB	11	2	22	0.023305084745762712
+RB	13	1	13	0.013771186440677966
+RB	14	1	14	0.014830508474576272
+RB	18	1	18	0.019067796610169493
+RB	21	1	21	0.022245762711864406
+# Components per barcode. Use `grep ^CB | cut -f 2-` to extract this part.
+# Columns are: Nr of components, Count.
+CB	1	542
+CB	2	3

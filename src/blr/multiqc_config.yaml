@@ -114,5 +114,7 @@ sp:
     fn: "final.phasing_stats.txt"
   stats/sv_sizes:
     fn: "final.sv_sizes.tsv"
-  stats/general_stats:
-    fn: "final.stats.tsv"
+  stats/molecule_stats:
+    fn: "final.molecule_stats.txt"
+  stats/barcode_stats:
+    fn: "final.barcode_stats.txt"

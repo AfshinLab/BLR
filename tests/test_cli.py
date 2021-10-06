@@ -444,14 +444,6 @@ def test_filter_variants(workdir):
     assert workdir.joinpath(target).is_file()
 
 
-def test_plot_figures(workdir):
-    target = "figures"
-    run(workdir=workdir, snakemake_args=[target] + DEFAULT_SMK_ARGS)
-    assert workdir.joinpath(target).is_dir()
-    # Check that folder contains 4 PNG images for multiqc.
-    assert sum(file.name.endswith("_mqc.png") for file in workdir.joinpath(target).iterdir()) == 4
-
-
 def test_haplotag(workdir):
     change_config(
         workdir / DEFAULT_CONFIG,

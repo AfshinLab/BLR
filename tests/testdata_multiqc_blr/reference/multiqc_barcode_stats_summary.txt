@@ -1,0 +1,2 @@
+Sample	barcodes_raw	barcodes_corrected	barcodes_corrected_with_>_3_read-pairs	maximum_reads_per_barcode	mean_reads_per_barcode	median_reads_per_barcode
+example	548	545	49	21	1.7321100917431194	1.0

@@ -5,7 +5,8 @@ import subprocess
 TESTDATA_STATS = Path("tests/testdata_multiqc_blr/data/example_stats.log")
 TESTDATA_STATS_PHASEBLOCK_DATA = Path("tests/testdata_multiqc_blr/data/example_stats_phaseblock_data.tsv")
 TESTDATA_STATS_MOLECULES = Path("tests/testdata_multiqc_blr/data/example_stats_molecule_lengths.tsv")
-TESTDATA_STATS_GENERAL = Path("tests/testdata_multiqc_blr/data/example.stats.txt")
+TESTDATA_STATS_MOLECULE_STATS = Path("tests/testdata_multiqc_blr/data/example.molecule_stats.txt")
+TESTDATA_STATS_BARCODE_STATS = Path("tests/testdata_multiqc_blr/data/example.barcode_stats.txt")
 TESTDATA_HAPCUT2_PHASING_STATS = Path("tests/testdata_multiqc_blr/data/example_hapcut2_phasing_stats.txt")
 TESTDATA_WHATSHAP_STATS = Path("tests/testdata_multiqc_blr/data/example_whatshap_stats.tsv")
 TESTDATA_WHATSHAP_HAPLOTAG = Path("tests/testdata_multiqc_blr/data/example.haplotag.log")
@@ -55,13 +56,36 @@ def test_stats_molecule_lengths(tmpdir):
     comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
 
 
-def test_stats_general_stats(tmpdir):
-    copyfile(TESTDATA_STATS_GENERAL, tmpdir / "example.stats.txt")
+def test_stats_molecule_stats(tmpdir):
+    copyfile(TESTDATA_STATS_MOLECULE_STATS, tmpdir / "example.molecule_stats.txt")
 
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
 
     assert Path(tmpdir / "multiqc_report.html").exists()
-    for file in ["multiqc_stats_RB.txt", "multiqc_stats_MB.txt", "multiqc_stats_MC.txt"]:
+    output_files = [
+        "multiqc_molecule_stats_RB.txt",
+        "multiqc_molecule_stats_MB.txt",
+        "multiqc_molecule_stats_MC.txt",
+        "multiqc_molecule_stats_summary.txt",
+    ]
+    for file in output_files:
+        assert Path(tmpdir / "multiqc_data" / file).exists()
+
+        comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)
+
+
+def test_stats_barcode_stats(tmpdir):
+    copyfile(TESTDATA_STATS_BARCODE_STATS, tmpdir / "example.barcode_stats.txt")
+
+    subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "stats"])
+
+    assert Path(tmpdir / "multiqc_report.html").exists()
+    output_files = [
+        "multiqc_barcode_stats_RB.txt",
+        "multiqc_barcode_stats_CB.txt",
+        "multiqc_barcode_stats_summary.txt",
+    ]
+    for file in output_files:
         assert Path(tmpdir / "multiqc_data" / file).exists()
 
         comp_files_linewise(Path(tmpdir / "multiqc_data" / file), REF_BASE / file)

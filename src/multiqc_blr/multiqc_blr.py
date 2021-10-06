@@ -65,10 +65,16 @@ def execution_start():
                                                'contents': 'Size	DEL	INV	DUP',
                                                'num_lines': 1}})
 
-    if 'stats/general_stats' not in config.sp:
+    if 'stats/molecule_stats' not in config.sp:
         config.update_dict(config.sp,
-                           {'stats/general_stats': {'fn': '*.stats.txt',
-                                                    'contents': '# Stats compiled from blr.cli.plot',
+                           {'stats/molecule_stats': {'fn': '*.molecule_stats.txt',
+                                                     'contents': '# Stats compiled from molecule_stats.py',
+                                                     'num_lines': 1}})
+
+    if 'stats/barcode_stats' not in config.sp:
+        config.update_dict(config.sp,
+                           {'stats/barcode_stats': {'fn': '*.barcode_stats.txt',
+                                                    'contents': '# Stats compiled from barcode_stats.py',
                                                     'num_lines': 1}})
 
     if 'hapcut2/phasing_stats' not in config.sp:
