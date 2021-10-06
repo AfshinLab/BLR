@@ -7,11 +7,15 @@ To run full pipeline use:
 
     $ blr run
 
-To do a dry-run (not executing anything, only showing what would be done) use:
+Arguments for snakemake are passed as:
+
+    $ blr run [snakemake_args [snakemake_args ...]]]
+
+For example, to do a dry-run (not executing anything, only showing what would be done) use:
 
     $ blr run -n
 
-For additional arguments related to Snakemake run '$ snakemake -h' or look at the official
+For info about arguments related to Snakemake run '$ snakemake -h' or look at the official
 documentation at https://snakemake.readthedocs.io/en/stable/executing/cli.html.
 """
 
@@ -46,11 +50,11 @@ def add_arguments(parser):
         help="Skip passing argument '--use-conda' to snakemake."
     )
 
-    # This argument will not capture **all** additional arguments. Instead parse_known_args()
+    # This argument will not capture any arguments due to nargs=-1. Instead parse_known_args()
     # is used in __main__.py to add any arguments not captured here to snakemake_args.
     smk_args = parser.add_argument_group("snakemake arguments")
     smk_args.add_argument(
-        'snakemake_args', nargs="*",
+        'snakemake_args', nargs=-1,
         help="Arguments passed to snakemake. For info about snakemake options run "
              "'snakemake --help'."
     )
