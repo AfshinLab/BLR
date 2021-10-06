@@ -3,6 +3,10 @@ Rules related to phasing of variants (called or reference set)
 """
 import os
 
+localrules: hapcut2_extracthairs, hapcut2_linkfragments, hapcut2_phasing, hapcut2_stats,
+            haplotag, build_config, get_naibr_path, lsv_calling, format_naibr_bedpe,
+            aggregate_sv_sizes
+
 
 def get_linked_vcf(wildcards):
     """Include linked file in input until symlink is no longer used"""

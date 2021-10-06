@@ -19,6 +19,7 @@ READ 2 LAYOUT
 
 """
 
+localrules: trim_stlfr, tag_stlfr
 
 rule trim_stlfr:
     """Trim away possible 3' adapter."""

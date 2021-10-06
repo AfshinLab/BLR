@@ -15,6 +15,9 @@ READ2 LAYOUT
 Processing is partly based on the 10x end-to-end workflow described for the EMA aligner. See the docs on their github
 https://github.com/arshajii/ema#end-to-end-workflow-10x
 """
+
+localrules: link_to_whitelist, count_10x, preproc_10x, merge_bins, split_pairs, split_nobc_reads
+
 # If not mapping with ema it is unneccessary to generate a lot of bins.
 if config["read_mapper"] != "ema":
     config["fastq_bins"] = min(config["fastq_bins"], workflow.cores)
