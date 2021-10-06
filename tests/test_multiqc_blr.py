@@ -2,14 +2,15 @@ from pathlib import Path
 from shutil import copyfile
 import subprocess
 
-TESTDATA_STATS = Path("tests/testdata_multiqc_blr/data/example_stats.log")
-TESTDATA_STATS_PHASEBLOCK_DATA = Path("tests/testdata_multiqc_blr/data/example_stats_phaseblock_data.tsv")
-TESTDATA_STATS_MOLECULES = Path("tests/testdata_multiqc_blr/data/example_stats_molecule_lengths.tsv")
-TESTDATA_STATS_MOLECULE_STATS = Path("tests/testdata_multiqc_blr/data/example.molecule_stats.txt")
-TESTDATA_STATS_BARCODE_STATS = Path("tests/testdata_multiqc_blr/data/example.barcode_stats.txt")
-TESTDATA_HAPCUT2_PHASING_STATS = Path("tests/testdata_multiqc_blr/data/example_hapcut2_phasing_stats.txt")
-TESTDATA_WHATSHAP_STATS = Path("tests/testdata_multiqc_blr/data/example_whatshap_stats.tsv")
-TESTDATA_WHATSHAP_HAPLOTAG = Path("tests/testdata_multiqc_blr/data/example.haplotag.log")
+TESTDATA_BASE = Path("tests/testdata_multiqc_blr/data")
+TESTDATA_STATS = TESTDATA_BASE / "example_stats.log"
+TESTDATA_STATS_PHASEBLOCK_DATA = TESTDATA_BASE / "example_stats_phaseblock_data.tsv"
+TESTDATA_STATS_MOLECULES = TESTDATA_BASE / "example_stats_molecule_lengths.tsv"
+TESTDATA_STATS_MOLECULE_STATS = TESTDATA_BASE / "example.molecule_stats.txt"
+TESTDATA_STATS_BARCODE_STATS = TESTDATA_BASE / "example.barcode_stats.txt"
+TESTDATA_HAPCUT2_PHASING_STATS = TESTDATA_BASE / "example_hapcut2_phasing_stats.txt"
+TESTDATA_WHATSHAP_STATS = TESTDATA_BASE / "example_whatshap_stats.tsv"
+TESTDATA_WHATSHAP_HAPLOTAG = TESTDATA_BASE / "example.haplotag.log"
 
 REF_BASE = Path("tests/testdata_multiqc_blr/reference")
 
