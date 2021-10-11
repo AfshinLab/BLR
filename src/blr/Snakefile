@@ -1048,6 +1048,16 @@ rule concat_called_vcfs:
         "bcftools concat -o {output.vcf} {input.vcf}"
 
 
+rule generate_primary_bed:
+    """Generate BED of primary contigs"""
+    output:
+        bed = temp("primary.bed")
+    input:
+        beds = expand("chunks/{chunk[0].name}.bed", chunk=chunks["primary"])
+    shell:
+        "cat {input.beds} > {output.bed}"
+
+
 rule mosdepth:
     """Calculate depth stats"""
     output:
@@ -1055,7 +1065,8 @@ rule mosdepth:
         "final.mosdepth.summary.txt",
     input:
         bam = "final.bam",
-        bai = "final.bam.bai"
+        bai = "final.bam.bai",
+        bed = "primary.bed"
     params:
         prefix = "final"
     threads: workflow.cores * 0.75
@@ -1063,6 +1074,7 @@ rule mosdepth:
         "mosdepth"
         " --threads {threads}"
         " --no-per-base"
+        " --by {input.bed}"
         " {params.prefix}"
         " {input.bam}"
 
