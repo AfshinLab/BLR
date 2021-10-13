@@ -46,28 +46,61 @@ rule trim_stlfr:
         " > {log}"
 
 
+if config["read_mapper"] == "ema" and config["fastq_bins"] > 1:
+    tag_output = temp(expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]))
+    output_cmd = f" --output-bins {config['_ema_bins_dir']} --nr-bins {config['fastq_bins']}"
+    ruleorder: merge_bins > tag_stlfr
+else:
+    tag_output = expand("trimmed.barcoded.{nr}.fastq.gz", nr=["1", "2"])
+    output_cmd = f" --output1 {tag_output[0]} --output2 {tag_output[1]}"
+    ruleorder: tag_stlfr > merge_bins
+
+if config["read_mapper"] == "ema":
+    # Add non barcoded reads to output
+    tag_output += expand("trimmed.non_barcoded.{nr}.fastq.gz", nr=["1", "2"])
+    output_cmd += f" --output-nobc1 {tag_output[-2]} --output-nobc2 {tag_output[-1]}"
+
+
 rule tag_stlfr:
     """Modify header for downstream analysis."""
     output:
-        r1_fastq = "trimmed.barcoded.1.fastq.gz",
-        r2_fastq = "trimmed.barcoded.2.fastq.gz",
-        tranlations = "process_stlfr.barcode_translations.csv",
+        tag_output
     input:
         interleaved_fastq = "trimmed.fastq",
     params:
-        barcodes = "" if config["stlfr_barcodes"] is None else f"--barcodes {config['stlfr_barcodes']}",
+        output = output_cmd,
         barcode_tag = config["cluster_tag"],
         mapper = config["read_mapper"],
         sample_nr = config["sample_nr"],
-    log: "process_stlfr.log"
+    log:
+        log = "process_stlfr.log",
+        csv = "process_stlfr.barcode_translations.csv"
     shell:
         "blr process_stlfr"
-        " --o1 {output.r1_fastq}"
-        " --o2 {output.r2_fastq}"
+        " {params.output}"
         " -b {params.barcode_tag}"
         " --mapper {params.mapper}"
         " --sample-nr {params.sample_nr}"
-        " --output-translations {output.tranlations}"
-        " {params.barcodes}"
+        " --output-translations {log.csv}"
         " {input.interleaved_fastq}"
-        " 2> {log}"
+        " 2> {log.log}"
+
+
+rule merge_bins:
+    """Merge bins of trimmed and barcoded reads together"""
+    output:
+        r1_fastq="trimmed.barcoded.1.fastq.gz",
+        r2_fastq="trimmed.barcoded.2.fastq.gz"
+    input:
+        bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
+    params:
+        modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
+    shell:
+        "cat {input.bins}"
+        "{params.modify_header}"
+        " |"
+        " paste - - - - - - - -"
+        " |"
+        " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
+        " |"
+        " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"

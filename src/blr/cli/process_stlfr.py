@@ -1,13 +1,15 @@
 """
 Process stLFR reads with existing barcodes in header.
 
-Barcodes of type '21_325_341' where numbers correspond to barcode sequences are translated to IUPAC bases.
+Barcodes of type '21_325_341' where numbers correspond to barcode sequences are translated to unique DNA strings-type
+barcode of length 16 nt (similar to 10x barcode format)
 """
 
 from contextlib import ExitStack
 from itertools import product
 import logging
 import sys
+from pathlib import Path
 
 from tqdm import tqdm
 import dnaio
@@ -24,7 +26,10 @@ def main(args):
         input2=args.input2,
         output1=args.output1,
         output2=args.output2,
-        barcode_file=args.barcodes,
+        output_nobc1=args.output_nobc1,
+        output_nobc2=args.output_nobc2,
+        output_bins=args.output_bins,
+        nr_bins=args.nr_bins,
         output_translations=args.output_translations,
         barcode_tag=args.barcode_tag,
         mapper=args.mapper,
@@ -37,7 +42,10 @@ def run_process_stlfr(
         input2: str,
         output1: str,
         output2: str,
-        barcode_file: str,
+        output_nobc1: str,
+        output_nobc2: str,
+        output_bins: str,
+        nr_bins: int,
         output_translations: str,
         barcode_tag: str,
         mapper: str,
@@ -47,24 +55,33 @@ def run_process_stlfr(
 
     summary = Summary()
 
-    barcodes = BarcodeGenerator(barcode_file)
+    barcodes = BarcodeGenerator()
 
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
-    # If no output1 is given output is sent to stdout
-    if not output1:
-        logger.info("Writing output to stdout.")
-        output1 = sys.stdout.buffer
-        output2 = None
+    out_interleaved = not output2 or not output1
+    if output_bins is not None:
+        logger.info(f"Writing output as binned interleaved FASTQ to {output_bins}.")
+        output_bins = Path(output_bins)
+        output_bins.mkdir(exist_ok=True)
+        output1, output2 = None, None
+    else:
+        if not output1:
+            logger.info("Writing output to stdout.")
+            output1 = sys.stdout.buffer
+            output2 = None
+        logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
 
-    out_interleaved = not output2
-    logger.info(f"Output detected as {'interleaved' if out_interleaved else 'paired'} FASTQ.")
+    if output_nobc1 is not None and mapper != "ema":
+        logger.warning(f"Writing non barcoded reads to {output_nobc1} is only available with option '--mapper ema'.")
+        output_nobc1, output_nobc2 = None, None
 
     # Parse input FASTA/FASTQ for read1 and read2, uncorrected barcodes and write output
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
-        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper))
+        writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper,
+                                            file_nobc1=output_nobc1, file_nobc2=output_nobc2, bins_dir=output_bins))
         chunks = None
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
@@ -73,6 +90,13 @@ def run_process_stlfr(
         for read1, read2, barcode in parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
             if barcode is None:
                 summary["Read pairs missing barcode"] += 1
+
+                # Write non barcoded reads to separate file if exists for ema.
+                if mapper == "ema" and output_nobc1 is not None:
+                    summary["Read pairs written"] += 1
+                    writer.write_nobc(read1, read2)
+                    continue
+
                 if mapper in ["ema", "lariat"]:
                     continue
 
@@ -107,6 +131,12 @@ def run_process_stlfr(
         # Empty final cache
         if chunks is not None:
             chunks.write_chunk()
+
+        if output_bins is not None:
+            remaining_reads = summary["Read pairs read"] - summary["Reads missing barcode"] - summary["Read pairs written"]
+            bin_size = remaining_reads // nr_bins
+            logger.info(f"Using bin of size {bin_size}.")
+            writer.set_bin_size(bin_size)
 
         if mapper == "ema":
             write_ema_output(chunks, writer, summary)
@@ -148,7 +178,7 @@ def parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
 
 
 def translate_indeces(index_string, barcodes, summary):
-    if index_string == "0_0_0":  # stLFR reads are tagged with #0_0_0 if the barcode could not be identified.
+    if index_string == "0_0_0":  # stLFR reads are tagged with 0_0_0 if the barcode could not be identified.
         summary["Skipped barcode type 0_0_0"] += 1
         return None
     elif len(index_string.split("_")) < 3:
@@ -159,36 +189,22 @@ def translate_indeces(index_string, barcodes, summary):
 
 class BarcodeGenerator:
     """
-    Generate barcodes for particular stLFR index string, e.g. '1_2_4', either using reference in barcodes_file or
-    if not barcode file not provided, a 16 nt unique barcode.
+    Generate 16 nt unique barcode barcodes for particular stLFR index string, e.g. '1_2_4'
      """
-    def __init__(self, barcodes_file):
-        self._barcodes_file = barcodes_file
+    def __init__(self,):
         self._barcode_generator = self._generate_barcodes()
-        self._index_to_string = None
-        if self._barcodes_file is not None:
-            # TODO This translation might not acctually be true since its unsure how the barcode file relates to the
-            #  tagged indeces on the FASTQs.
-            self._index_to_string = {index: barcode for barcode, index in self._parse_barcodes()}
-
+        # Skip first entry which is AAAAAAAAAAAAAAAA. Reads tagged with this barcode causes
+        # error `Segmentation fault: 11` in ema.
+        _ = next(self._barcode_generator)
         self.translate_barcode = {}
 
     def get(self, index_string):
         if index_string in self.translate_barcode:
             return self.translate_barcode[index_string]
 
-        if self._index_to_string is not None:
-            barcode = "".join([self._index_to_string[int(i)] for i in index_string.split("_") if i != ""])
-        else:
-            barcode = next(self._barcode_generator)
+        barcode = next(self._barcode_generator)
         self.translate_barcode[index_string] = barcode
         return barcode
-
-    def _parse_barcodes(self):
-        with open(self._barcodes_file) as f:
-            for line in f:
-                barcode, index = line.strip().split(maxsplit=1)
-                yield barcode, int(index)
 
     @staticmethod
     def _generate_barcodes():
@@ -225,7 +241,8 @@ def add_arguments(parser):
         "input2", nargs='?',
         help="Input  FASTQ/FASTA for read2 for paired-end read. Leave empty if using interleaved."
     )
-    parser.add_argument(
+    output = parser.add_mutually_exclusive_group(required=False)
+    output.add_argument(
         "--output1", "--o1",
         help="Output FASTQ/FASTA file name for read1. If not specified the result is written to "
              "stdout as interleaved. If output1 given but not output2, output will be written as "
@@ -237,9 +254,23 @@ def add_arguments(parser):
              "result is written as interleaved ."
     )
     parser.add_argument(
-        "--barcodes",
-        help="stLFR barocode list for tab separated barcode sequences and indexes. If not provided a IUPAC barcode "
-             "of length 16 nt will be generated for each stLFR barcode."
+        "--output-nobc1", "--n1",
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read1 reads. "
+             "If output_nobc1 given but not output_nobc2, output will be written as interleaved to "
+             "output_nobc1."
+    )
+    parser.add_argument(
+        "--output-nobc2", "--n2",
+        help="Only for ema! Output FASTQ/FASTA file name to write non-barcoded read2 reads."
+    )
+    output.add_argument(
+        "--output-bins",
+        help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "
+             f"directory. Entries will be grouped based on barcode. Only used for ema mapping."
+    )
+    parser.add_argument(
+        "--nr-bins", type=int, default=100,
+        help="Number of bins to split reads into when using the '--output-bins' alternative. Default: %(default)s."
     )
     parser.add_argument(
         "-t", "--output-translations",

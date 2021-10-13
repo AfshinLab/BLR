@@ -25,7 +25,6 @@ barcode_whitelist: # string - Path to 10x barcode whitelist.
 apply_hamming_correction: false # boolean - Apply hamming correction when demultiplexing 10x barcodes. Increases runtime.
 
 # stLFR libraries
-stlfr_barcodes: # string - Path to stLFR barcodes, recommended to skip if mapping using ema
 stlfr_adapter: CTGTCTCTTATACACATCT # string - Adaptor sequence for stLFR constructs (from tagmentation)
 
 # TELL-Seq libraries
@@ -33,7 +32,6 @@ tellseq_index: # string - Path to index 1 file containing the 18 bp barcode sequ
 tellseq_correction: correct_singles # string - Correct TELL-seq reads using mode 'cluster' or 'correct_singles'
 tellseq_barcode: NNHNNYRNNNNYRNNHNN # string - Barcode sequence in IUPAC DNA bases
 
-# NB! This option is currently only available for 10x, DBS and TELL-Seq input
 fastq_bins: 100 # integer - Number of bins to split FASTQ over for ema mapping. To not split --> set to 1 or less.
 
 ###########

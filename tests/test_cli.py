@@ -250,7 +250,6 @@ def _workdir_stlfr(tmp_path_factory):
     change_config(
         path / DEFAULT_CONFIG, [
             ("genome_reference", REFERENCE_GENOME),
-            ("stlfr_barcodes", TESTDATA_STLFR_BARCODES),
             ("chunk_size", "50000"),
             ("phasing_contigs", "null"),
             ("heap_space", "1")
@@ -272,14 +271,21 @@ def test_trim_stlfr(workdir_stlfr, read_mapper):
     workdir = workdir_stlfr
     change_config(
         workdir / DEFAULT_CONFIG,
-        [("read_mapper", read_mapper)]
+        [("read_mapper", read_mapper),
+         ("fastq_bins", "5")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, snakemake_args=trimmed + DEFAULT_SMK_ARGS)
+
+    # Check that all bins exist and have barcodes in groups.
+    if read_mapper == "ema":
+        for nr in range(5):
+            bin_file = workdir / "fastq_bins" / f"ema-bin-00{nr}"
+            assert bin_file.exists()
+            assert fastq_ema_has_barcodes_grouped(bin_file)
+
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
         assert 0 < count_fastq_reads(workdir / trimmed) <= count_fastq_reads(raw)
-        if read_mapper == "ema":
-            assert fastq_ema_has_barcodes_grouped(workdir / trimmed)
 
 
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")

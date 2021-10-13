@@ -160,10 +160,6 @@ properties:
     type: boolean
     default: false
     description: Skip merging of overlapping barcodes
-  stlfr_barcodes:
-    type: ["string", "null"]
-    description: Path to stLFR barcodes
-    default: null
   stlfr_adapter:
     type: string
     description: Adaptor sequence for stLFR constructs (from tagmentation)
