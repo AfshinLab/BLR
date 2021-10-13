@@ -75,5 +75,3 @@ Unpack archive on Bianca
 .. code-block::
   
   source path/to/my-env/bin/deactivate
-
-
