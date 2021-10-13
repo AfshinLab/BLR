@@ -107,7 +107,7 @@ rule fastqc:
         "fastqc"
         " {input.reads}"
         " -t {threads}"
-        " 2> {log}"
+        " &> {log}"
 
 
 def get_multiqc_input(wildcards):
@@ -1033,8 +1033,9 @@ rule concat_phased_vcfs:
         vcf = temp("final.phased.vcf")
     input:
         vcfs_to_merge
+    log: "final.phased.vcf.log"
     shell:
-        "bcftools concat -o {output.vcf} {input}"
+        "bcftools concat -o {output.vcf} {input} 2> {log}"
 
 
 rule concat_called_vcfs:
@@ -1042,8 +1043,9 @@ rule concat_called_vcfs:
         vcf = temp("called.{filtered,(filtered.|)}vcf")
     input:
         vcf = expand("chunks/{chunk[0].name}.variants.called.{{filtered}}vcf", chunk=chunks["primary"])
+    log: "called.{filtered,(filtered.|)}vcf.log"
     shell:
-        "bcftools concat -o {output.vcf} {input.vcf}"
+        "bcftools concat -o {output.vcf} {input.vcf} 2> {log}"
 
 
 rule generate_primary_bed:
@@ -1117,7 +1119,7 @@ rule whatshap_stats:
     shell:
          "whatshap stats"
          " --tsv {output.tsv}"
-         " {input.phased_vcf} > {log}"
+         " {input.phased_vcf} &> {log}"
 
 
 rule collect_duplicate_metrics:

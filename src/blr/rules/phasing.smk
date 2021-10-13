@@ -179,7 +179,7 @@ rule get_naibr_path:
             # Using forked branch with fix for NAIBR repo.
             # TODO Use original repo as below when https://github.com/raphael-group/NAIBR/pull/20 is merged.
             # shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
-            shell("git clone --branch fix-19 https://github.com/pontushojer/NAIBR.git {output.naibr_path} > {log}")
+            shell("git clone --branch fix-19 https://github.com/pontushojer/NAIBR.git {output.naibr_path} &> {log}")
 
 
 rule lsv_calling:
@@ -208,7 +208,7 @@ rule lsv_calling:
         " {params.cwd}/{input.config}"
         " &> {params.cwd}/{log}"
         " &&"
-        " cd -"
+        " cd - > /dev/null"
         " &&"
         " mv {params.outdir}/NAIBR_SVs.bedpe {output.results}"
         " &&"
