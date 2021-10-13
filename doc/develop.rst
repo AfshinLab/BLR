@@ -1,6 +1,57 @@
 Development
 ===========
 
+- `Installing BLR`_
+- Testing_
+- Linting_
+- `Conda environment files`_
+- Profiling_
+- `Snakemake Pipeline`_
+
+  + `Chunk handlig`_
+
+
+Installing BLR
+--------------
+
+To setup BLR for development it is benefitial to install it in editable mode. Use the command below:
+
+.. code-block::
+
+    pip install -e .[dev]
+
+This also install development tools such as ``pytest`` and ``flake8``.
+
+
+Testing
+-------
+
+Testdata needs to be downloaded and setup for running the tests. Copy and run the block the block below.
+
+.. code-block::
+
+    testdata_version=0.6
+    wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
+    tar xf blr-testdata-${testdata_version}.tar.gz
+    ln -s blr-testdata-${testdata_version} blr-testdata
+
+Now that everything is setup tests can be run using the `tests/run.sh` script.
+
+.. code-block::
+
+    bash tests/run.sh
+
+
+Linting
+-------
+
+``flake8`` is used for linting. Either run the command below before commiting or setup pre-commit to run this automatically.
+
+.. code-block::
+
+    flake8 src tests
+
+
 Conda environment files
 -----------------------
 
@@ -38,6 +89,7 @@ or conda
 
 SAM Tags
 --------
+
 Specifications on SAM-tags used for holding information during data processing and which argparse
 option flags to use when specifying them in python scripts. The `10x Genomics barcoded BAM format
 <https://support.10xgenomics.com/genome-exome/software/pipelines/latest/output/bam>`_ is followed

@@ -25,7 +25,7 @@ setup(
         "multiqc"
     ],
     extras_require={
-        "dev": ["flake8"],
+        "dev": ["flake8", "pytest"],
     },
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
