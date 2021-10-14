@@ -115,7 +115,6 @@ def run_process_stlfr(
                         f"{read2.qualities}\n"
                     )
             elif mapper == "lariat":
-                corrected_barcode_qual = "K" * len(barcode)
                 chunks.build_chunk(
                     f"{heaps.get_heap(barcode)}\t"
                     f"@{read1.name}\t"
@@ -124,7 +123,7 @@ def run_process_stlfr(
                     f"{read2.sequence}\t"
                     f"{read2.qualities}\t"
                     f"{barcode}-{sample_number}\t"
-                    f"{corrected_barcode_qual}\t"
+                    f"KKKKKKKKKKKKKKKK\t"
                     "AAAAAA\t"
                     "KKKKKK\n"
                 )
