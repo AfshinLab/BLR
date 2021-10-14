@@ -414,7 +414,7 @@ class Output:
             self._open_file.close()
         bin_nr_str = str(self._bin_nr).zfill(3)
         file_name = self._bins_dir / Output.BIN_FASTQ_TEMPLATE.replace("*", bin_nr_str)
-        self._open_file = self._open_file = dnaio.open(file_name, interleaved=True, mode="w", fileformat="fastq")
+        self._open_file = dnaio.open(file_name, interleaved=True, mode="w", fileformat="fastq")
         self._bin_nr += 1
 
     def _open_new_bin_if_full(self, heap):
