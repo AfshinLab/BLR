@@ -11,10 +11,9 @@ import logging
 import sys
 from pathlib import Path
 
-from tqdm import tqdm
 import dnaio
 
-from blr.utils import Summary, ACCEPTED_READ_MAPPERS
+from blr.utils import Summary, ACCEPTED_READ_MAPPERS, tqdm
 from blr.cli.tagfastq import Output, ChunkHandler, write_ema_output, write_lariat_output
 
 logger = logging.getLogger(__name__)
