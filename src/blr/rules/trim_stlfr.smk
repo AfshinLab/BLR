@@ -89,18 +89,23 @@ rule tag_stlfr:
 rule merge_bins:
     """Merge bins of trimmed and barcoded reads together"""
     output:
+        interleaved_fastq=temp("trimmed.barcoded.fastq"),
+    input:
+        bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
+    shell:
+        "cat {input.bins} |"
+        """ awk -F " " 'BEGIN{{OFS="\\n"}} {{print $2":"$1" BX:Z:"$1"-1",$3,"+",$4,$2":"$1" BX:Z:"$1"-1",$5,"+",$6}}'"""
+        " > {output.interleaved_fastq}"
+
+
+rule split_pairs:
+    """Split into read pairs."""
+    output:
         r1_fastq="trimmed.barcoded.1.fastq.gz",
         r2_fastq="trimmed.barcoded.2.fastq.gz"
     input:
-        bins = expand(config['_ema_bins_dir'] / "ema-bin-{nr}", nr=config["_fastq_bin_nrs"]),
-    params:
-        modify_header = "" if config["read_mapper"]  == "ema" else " | tr ' ' '_' "
+        interleaved_fastq="trimmed.barcoded.fastq",
     shell:
-        "cat {input.bins}"
-        "{params.modify_header}"
-        " |"
-        " paste - - - - - - - -"
-        " |"
-        " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq})"
-        " |"
+        "paste - - - - - - - - < {input.interleaved_fastq} |"
+        " tee >(cut -f 1-4 | tr '\t' '\n' | pigz -c > {output.r1_fastq}) |"
         " cut -f 5-8 | tr '\t' '\n' | pigz -c > {output.r2_fastq}"

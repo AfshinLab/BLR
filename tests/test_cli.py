@@ -277,13 +277,6 @@ def test_trim_stlfr(workdir_stlfr, read_mapper):
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
     run(workdir=workdir, snakemake_args=trimmed + DEFAULT_SMK_ARGS)
 
-    # Check that all bins exist and have barcodes in groups.
-    if read_mapper == "ema":
-        for nr in range(5):
-            bin_file = workdir / "fastq_bins" / f"ema-bin-00{nr}"
-            assert bin_file.exists()
-            assert fastq_ema_has_barcodes_grouped(bin_file)
-
     for raw, trimmed in zip((TESTDATA_STLFR_READ1, TESTDATA_STLFR_READ2), trimmed):
         assert 0 < count_fastq_reads(workdir / trimmed) <= count_fastq_reads(raw)
 

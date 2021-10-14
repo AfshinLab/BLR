@@ -211,7 +211,7 @@ rule map_sort_ema_bins:
         tmpdir = " -T $TMPDIR" if "TMPDIR" in os.environ else "",
         # Binned FASTQs from 10x are processed using `ema preproc` and have a different format than DBS and Tellseq
         # See: https://github.com/arshajii/ema#input-formats
-        input_mode = "-s" if config["library_type"] == "10x" else "-1",
+        input_mode = "-s" if config["library_type"] in ["10x", "stlfr"] else "-1",
         readgroup = readgroup,
         sample_nr = config["sample_nr"],
         reference = config["genome_reference"],

@@ -22,7 +22,7 @@ the read by including it in the header.
 
 from contextlib import ExitStack
 from heapq import merge
-from itertools import islice
+from itertools import islice, cycle
 import logging
 from pathlib import Path
 import sys
@@ -364,15 +364,18 @@ class Output:
     BIN_FASTQ_TEMPLATE = "ema-bin-*"  # Same name as in `ema preproc`.
 
     def __init__(self, file1=None, file2=None, interleaved=False, file_nobc1=None, file_nobc2=None, mapper=None,
-                 bins_dir=None):
+                 bins_dir=None, nr_bins=None):
         self._mapper = mapper
 
         self._bin_nr = 0
         self._reads_written = 0
         self._bin_size = None
         self._bins_dir = bins_dir
+        self._nr_bins = nr_bins
+        self._barcode_bin_map = {}
+        self._open_bins = None
         self._prev_heap = None
-        self._bin_filled = False
+        self._bin_filled = True
         self._pre_write = lambda *args: None
         self._post_write = lambda *args: None
 
@@ -380,7 +383,6 @@ class Output:
         if file1 is not None:
             self._open_file = self._setup_single_output(file1, file2, interleaved)
         elif bins_dir is not None:
-            self._open_new_bin()
             self._pre_write = self._open_new_bin_if_full
             self._post_write = self._check_bin_full
         else:
@@ -390,6 +392,7 @@ class Output:
         if file_nobc1 is not None:
             self._open_file_nobc = self._setup_single_output(file_nobc1, file_nobc2,
                                                              interleaved=file_nobc2 is None)
+
         # Setup writers based on mapper.
         if self._mapper == "lariat":
             self._write = self._write_lariat
@@ -409,13 +412,18 @@ class Output:
         else:
             return dnaio.open(file1, file2=file2, interleaved=interleaved, mode="w", fileformat="fastq")
 
+    def _get_bin_name(self):
+        bin_nr_str = str(self._bin_nr).zfill(3)
+        file_name = self._bins_dir / Output.BIN_FASTQ_TEMPLATE.replace("*", bin_nr_str)
+        self._bin_nr += 1
+        return file_name
+
     def _open_new_bin(self):
         if self._open_file is not None:
             self._open_file.close()
-        bin_nr_str = str(self._bin_nr).zfill(3)
-        file_name = self._bins_dir / Output.BIN_FASTQ_TEMPLATE.replace("*", bin_nr_str)
+
+        file_name = self._get_bin_name()
         self._open_file = dnaio.open(file_name, interleaved=True, mode="w", fileformat="fastq")
-        self._bin_nr += 1
 
     def _open_new_bin_if_full(self, heap):
         # Start a new bin if the current is full while not splitting heaps over separate bins
@@ -425,6 +433,18 @@ class Output:
             logger.debug(f"Bin overflow = {self._reads_written} ")
 
         self._prev_heap = heap
+
+    def _open_next_bin(self):
+        if self._open_bins is None:
+            # Open all bins
+            self._open_bins = []
+            for i in range(self._nr_bins):
+                file_name = self._get_bin_name()
+                self._open_bins.append(xopen(file_name, "w"))
+
+            self._open_bins = cycle(self._open_bins)
+
+        self._open_file = next(self._open_bins)
 
     def _check_bin_full(self):
         if self._reads_written > self._bin_size:
@@ -437,6 +457,10 @@ class Output:
     def _write_lariat(self, read1, _):
         self._open_file.write(read1)
 
+    def _write_ema_special(self, read1, read2, barcode):
+        line = f"{barcode} {read1.name} {read1.sequence} {read1.qualities} {read2.sequence} {read2.qualities}\n"
+        self._open_file.write(line)
+
     def write(self, read1, read2=None, heap=None):
         self._pre_write(heap)
 
@@ -445,6 +469,15 @@ class Output:
         self._reads_written += 1
 
         self._post_write()
+
+    def write_ema_special(self, read1, read2, barcode):
+        assert self._nr_bins is not None, "Please set nr_bins to use ema special format"
+        self._open_file = self._barcode_bin_map.get(barcode)
+        if self._open_file is None:
+            self._open_next_bin()
+            self._barcode_bin_map[barcode] = self._open_file
+
+        self._write_ema_special(read1, read2, barcode)
 
     def _write_nobc_default(self, read1, read2):
         self._open_file_nobc.write(read1, read2)
@@ -460,9 +493,17 @@ class Output:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._open_file.close()
+        if self._open_file is not None:
+            self._open_file.close()
         if self._open_file_nobc is not None:
             self._open_file_nobc.close()
+
+        if self._open_bins is not None:
+            for file in self._open_bins:
+                if file.closed:
+                    break
+                else:
+                    file.close()
 
 
 class ChunkHandler:

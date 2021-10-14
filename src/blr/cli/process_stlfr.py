@@ -80,9 +80,10 @@ def run_process_stlfr(
     with ExitStack() as stack:
         reader = stack.enter_context(dnaio.open(input1, file2=input2, interleaved=in_interleaved, mode="r"))
         writer = stack.enter_context(Output(file1=output1, file2=output2, interleaved=out_interleaved, mapper=mapper,
-                                            file_nobc1=output_nobc1, file_nobc2=output_nobc2, bins_dir=output_bins))
+                                            file_nobc1=output_nobc1, file_nobc2=output_nobc2, bins_dir=output_bins,
+                                            nr_bins=nr_bins))
         chunks = None
-        if mapper in ["ema", "lariat"]:
+        if mapper == "lariat" or (mapper == "ema" and output_bins is not None):
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
             heaps = BarcodeHeap()
 
@@ -101,14 +102,18 @@ def run_process_stlfr(
 
             # Write to out
             if mapper == "ema":
-                chunks.build_chunk(
-                    f"{heaps.get_heap(barcode)}\t"
-                    f"{read1.name}\t"
-                    f"{read1.sequence}\t"
-                    f"{read1.qualities}\t"
-                    f"{read2.sequence}\t"
-                    f"{read2.qualities}\n"
-                )
+                if output_bins is not None:
+                    writer.write_ema_special(read1, read2, barcode)
+                    summary["Read pairs written"] += 1
+                else:
+                    chunks.build_chunk(
+                        f"{heaps.get_heap(barcode)}\t"
+                        f"{read1.name}\t"
+                        f"{read1.sequence}\t"
+                        f"{read1.qualities}\t"
+                        f"{read2.sequence}\t"
+                        f"{read2.qualities}\n"
+                    )
             elif mapper == "lariat":
                 corrected_barcode_qual = "K" * len(barcode)
                 chunks.build_chunk(
@@ -131,13 +136,13 @@ def run_process_stlfr(
         if chunks is not None:
             chunks.write_chunk()
 
-        if output_bins is not None:
+        if mapper == "lariat" and output_bins is not None:
             remaining_reads = summary["Read pairs read"] - summary["Reads missing barcode"] - summary["Read pairs written"]
             bin_size = remaining_reads // nr_bins
             logger.info(f"Using bin of size {bin_size}.")
             writer.set_bin_size(bin_size)
 
-        if mapper == "ema":
+        if mapper == "ema" and output_bins is None:
             write_ema_output(chunks, writer, summary)
         elif mapper == "lariat":
             write_lariat_output(chunks, writer, summary)
@@ -264,8 +269,8 @@ def add_arguments(parser):
     )
     output.add_argument(
         "--output-bins",
-        help=f"Output interleaved FASTQ split into bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided "
-             f"directory. Entries will be grouped based on barcode. Only used for ema mapping."
+        help=f"Output barcoded reads to bins named '{Output.BIN_FASTQ_TEMPLATE}' in the provided directory. Only "
+             f"used for ema mapping and uses ema special format."
     )
     parser.add_argument(
         "--nr-bins", type=int, default=100,
