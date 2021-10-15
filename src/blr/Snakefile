@@ -464,7 +464,7 @@ rule get_unmapped_reads:
         bai = "initialmapping.bam.bai"
     log: "unmapped.bam.log"
     params:
-        tag = ">" if skip_tagbam else f"| blr tagbam -  -m {config['read_mapper']} -s {config['sample_nr']}"
+        tag = ">" if skip_tagbam else f"| blr tagbam - -s {config['sample_nr']}"
                                       f" -b {config['cluster_tag']} -o",
         outtype = "-bh" if skip_tagbam else "-h"
     shell:
@@ -485,7 +485,6 @@ rule tagbam:
     shell:
         "blr tagbam "
         " -o {output.bam}"
-        " --mapper {params.mapper}"
         " --sample-nr {params.sample_nr}"
         " --barcode-tag {params.barcode_tag}"
         " {input.bam} 2> {log}"

@@ -3,8 +3,10 @@ Strips headers from tags and depending on mode, set the appropriate SAM tag.
 """
 
 import logging
+from itertools import chain
+import re
 
-from blr.utils import Summary, PySAMIO, get_bamtag, tqdm, ACCEPTED_READ_MAPPERS
+from blr.utils import Summary, PySAMIO, get_bamtag, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,6 @@ def main(args):
     run_tagbam(
         input=args.input,
         output=args.output,
-        mapper=args.mapper,
         sample_number=args.sample_nr,
         barcode_tag=args.barcode_tag,
     )
@@ -24,24 +25,40 @@ def main(args):
 def run_tagbam(
         input: str,
         output: str,
-        mapper: str,
         sample_number: int,
         barcode_tag: str,
 ):
     logger.info("Starting analysis")
 
-    if mapper == "ema":
-        processing_function = mode_ema
-    elif mapper == "lariat":
-        processing_function = mode_void
-    else:
-        processing_function = mode_samtags_underline_separation
-
     summary = Summary()
+
+    samtags_undeline_pattern = re.compile(r"_[A-Z][A-Z]:[AifZHB]:.*(_|$)")
+    barcodes_end_pattern = re.compile(r":[ATGC]*$")
 
     # Read SAM/BAM files and transfer barcode information from alignment name to SAM tag
     with PySAMIO(input, output, __name__) as (infile, outfile):
-        for read in tqdm(infile.fetch(until_eof=True), desc="Processing reads", unit=" reads"):
+        parser = infile.fetch(until_eof=True)
+        processing_function = mode_void
+
+        first = []
+        # Check first 100 reads for format
+        for i in range(100):
+            try:
+                read = next(parser)
+            except StopIteration:
+                break
+
+            first.append(read)
+            if re.match(samtags_undeline_pattern, read.query_name):
+                processing_function = mode_samtags_underline_separation
+                break
+            elif re.match(barcodes_end_pattern, read.query_name) and read.has_tag(barcode_tag):
+                processing_function = mode_ema
+                break
+
+        parser = chain(first, parser)
+
+        for read in tqdm(parser, desc="Processing reads", unit=" reads"):
             # Strips header from tag and depending on script mode, possibly sets SAM tag
             summary["Total reads"] += 1
             processing_function(read, sample_number, barcode_tag, summary)
@@ -117,10 +134,6 @@ def add_arguments(parser):
     parser.add_argument(
         "-o", "--output", default="-",
         help="Write output BAM to file rather then stdout."
-    )
-    parser.add_argument(
-        "-m", "--mapper", default="bowtie2", choices=ACCEPTED_READ_MAPPERS,
-        help="Mapper used for aligning reads. Default: %(default)s."
     )
     parser.add_argument(
         "-s", "--sample-nr", default=1, type=int,
