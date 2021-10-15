@@ -59,12 +59,14 @@ def run_process_stlfr(
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
+    special_fmt = False
     out_interleaved = not output2 or not output1
     if output_bins is not None:
         logger.info(f"Writing output as binned interleaved FASTQ to {output_bins}.")
         output_bins = Path(output_bins)
         output_bins.mkdir(exist_ok=True)
         output1, output2 = None, None
+        special_fmt = mapper == "ema"
     else:
         if not output1:
             logger.info("Writing output to stdout.")
@@ -83,11 +85,11 @@ def run_process_stlfr(
                                             file_nobc1=output_nobc1, file_nobc2=output_nobc2, bins_dir=output_bins,
                                             nr_bins=nr_bins))
         chunks = None
-        if mapper == "lariat" or (mapper == "ema" and output_bins is not None):
+        if mapper == "lariat" or (mapper == "ema" and output_bins is None):
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
             heaps = BarcodeHeap()
 
-        for read1, read2, barcode in parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
+        for read1, read2, barcode in parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary, special_fmt):
             if barcode is None:
                 summary["Read pairs missing barcode"] += 1
 
@@ -101,19 +103,18 @@ def run_process_stlfr(
                     continue
 
             # Write to out
-            if mapper == "ema":
-                if output_bins is not None:
-                    writer.write_ema_special(read1, read2, barcode)
-                    summary["Read pairs written"] += 1
-                else:
-                    chunks.build_chunk(
-                        f"{heaps.get_heap(barcode)}\t"
-                        f"{read1.name}\t"
-                        f"{read1.sequence}\t"
-                        f"{read1.qualities}\t"
-                        f"{read2.sequence}\t"
-                        f"{read2.qualities}\n"
-                    )
+            if special_fmt:
+                writer.write_ema_special(read1, read2, barcode)
+                summary["Read pairs written"] += 1
+            elif mapper == "ema":
+                chunks.build_chunk(
+                    f"{heaps.get_heap(barcode)}\t"
+                    f"{read1.name}\t"
+                    f"{read1.sequence}\t"
+                    f"{read1.qualities}\t"
+                    f"{read2.sequence}\t"
+                    f"{read2.qualities}\n"
+                )
             elif mapper == "lariat":
                 chunks.build_chunk(
                     f"{heaps.get_heap(barcode)}\t"
@@ -155,7 +156,7 @@ def run_process_stlfr(
     logger.info("Finished")
 
 
-def parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
+def parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary, special_fmt):
     for read1, read2 in tqdm(reader, desc="Read pairs processed"):
         summary["Read pairs read"] += 1
 
@@ -168,8 +169,10 @@ def parse_stlfr_reads(reader, barcodes, barcode_tag, mapper, summary):
 
         if barcode is not None:
             barcode_id = f"{barcode_tag}:Z:{barcode}"
-            if mapper == "ema":
-                # The EMA aligner requires reads in 10x format e.g.
+            if special_fmt:
+                pass
+            elif mapper == "ema":
+                # The EMA aligner requires reads in 10x FASTQ format e.g.
                 # @READNAME:AAAAAAAATATCTACGCTCA BX:Z:AAAAAAAATATCTACGCTCA
                 name = f"{name}:{barcode} {barcode_id}"
             elif mapper != "lariat":

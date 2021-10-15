@@ -458,7 +458,7 @@ class Output:
         self._open_file.write(read1)
 
     def _write_ema_special(self, read1, read2, barcode):
-        line = f"{barcode} {read1.name} {read1.sequence} {read1.qualities} {read2.sequence} {read2.qualities}\n"
+        line = f"{barcode} @{read1.name} {read1.sequence} {read1.qualities} {read2.sequence} {read2.qualities}\n"
         self._open_file.write(line)
 
     def write(self, read1, read2=None, heap=None):
