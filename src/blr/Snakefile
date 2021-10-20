@@ -665,16 +665,12 @@ rule get_barcodes_to_filter:
     input:
          tsv = "final.molecule_stats.tsv"
     params:
-        threshold = config["max_molecules_per_bc"]
-    run:
-        if params.threshold > 0:
-            molecules = pd.read_csv(input.tsv, sep="\t")
-            molecules_per_barcode = molecules.groupby("Barcode", sort=False)["Barcode"].count()
-            barcodes_to_filter = molecules_per_barcode[molecules_per_barcode > params.threshold].index.to_list()
-            with open(output.tsv, "w") as file:
-                print("\n".join(barcodes_to_filter), file=file)
-        else:
-            shell("touch {output.tsv}")
+        threshold = config["max_molecules_per_bc"],
+        reference = config["genome_reference"],
+        window = config["window_size"]
+    script:
+        "scripts/barcodes_to_filter.py"
+
 
 
 rule filter_molecule_stats:

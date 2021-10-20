@@ -100,7 +100,7 @@ properties:
     pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
     description: Library type
   max_molecules_per_bc:
-    type: integer
+    type: number
     description: Max number of molecules allowed for a single barcode
     default: 260
   min_count:

@@ -49,7 +49,11 @@ ema_optimization: true # boolean - Use read density optimization when mapping wi
 chunk_size: 20000000 # integer - Chunk size for parallelization
 contigs_skipped: .*_random|chrM|chrUn_.*|hs37d5|chrEBV # string - Regex pattern for contigs to skip in primary analysis
 skip_bcmerge: false # boolean - Skip merging of overlapping barcodes.
-max_molecules_per_bc: 260 # integer - Max number of molecules per barcode. Set to 0 if not filtering
+max_molecules_per_bc: 260 # number - Different use of number x based on value, see below:
+#  if x=0:   No filtering applied
+#  if 0<x<1: x denotes highest accepted probabability for collision between molecules in barcode
+#  if x>=1:  x denotes the maximum number of molecules per barcode
+
 window_size: 30000 # integer - Window size used for linking reads by barcodes.
 min_mapq: 20 # integer - Minimum MAPQ to include reads in certain analysis steps.
 
