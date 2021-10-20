@@ -1107,16 +1107,31 @@ rule aggregate_molecule_lengths:
         binned_lengths.to_csv(output.tsv, sep="\t", index=False)
 
 
+rule generate_phase_chr_lengths:
+    """Generate list of lengths for phased contigs"""
+    output:
+        txt = temp("phased_contig_lengths.txt")
+    input:
+        beds = expand("chunks/{chunk[0].name}.bed", chunk=chunks["phased"])
+    shell:
+        "cat {input.beds} | cut -f1,3 > {output.txt}"
+
+
 rule whatshap_stats:
     """Calculate phaseing stats related to variants and phaseblocks."""
     output:
         tsv = "final.whatshap_stats.tsv"
     input:
         phased_vcf = "final.phased.vcf.gz",
-        phased_vcf_index = "final.phased.vcf.gz.tbi"
+        phased_vcf_index = "final.phased.vcf.gz.tbi",
+        phased_contigs_lengths = "phased_contig_lengths.txt"
     log: "final.whatshap_stats.tsv.log"
+    params:
+        chromosomes = ' '.join([f"--chromosome {contig.name}" for chunk in chunks["phased"] for contig in chunk ])
     shell:
          "whatshap stats"
+         " --chr-lengths {input.phased_contigs_lengths}"
+         " {params.chromosomes}"
          " --tsv {output.tsv}"
          " {input.phased_vcf} &> {log}"
 

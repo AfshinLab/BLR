@@ -51,6 +51,9 @@ class MultiqcModule(BaseMultiqcModule):
                     'share_key': False
                 })
             )
+            ng50_max = max(v.get("n50", 0) for v in general_stats_data.values())
+            ng50_multiplier = 0.000001 if ng50_max > 1_000_000 else 0.001
+            ng50_suffix = " Mb" if ng50_max > 1_000_000 else " kb"
 
             general_stats_header = OrderedDict({
                 "percent_SNVs_phased": {
@@ -75,6 +78,15 @@ class MultiqcModule(BaseMultiqcModule):
                     'scale': 'PuBuGn',
                     'suffix': 'M',
                     'format': '{:,.3f}'
+                },
+                "n50": {
+                    'title': 'NG50 block',
+                    'description': 'Phaseblock NG50. N50 of phase blocks relative genome length',
+                    'scale': 'PuRd',
+                    'modify': lambda x: x * ng50_multiplier,
+                    'suffix': ng50_suffix,
+                    'format': '{:,.1f}',
+                    'hidden': True,
                 }
             })
 
@@ -163,6 +175,8 @@ class MultiqcModule(BaseMultiqcModule):
             general_stats_data[s_name]["percent_SNVs_phased"] = 100 * phased_snvs / snvs if snvs > 0 else 0
             general_stats_data[s_name]["million_SNVs"] = snvs / 1_000_000
             general_stats_data[s_name]["million_phased_SNVs"] = phased_snvs / 1_000_000
+
+            general_stats_data[s_name]["n50"] = table_data[s_name]["block_n50"]
 
         # Filter out samples to ignore
         table_data = self.ignore_samples(table_data)
@@ -358,9 +372,9 @@ class MultiqcModule(BaseMultiqcModule):
             'hidden': False,
         }
         headers['block_n50'] = {
-            'title': 'Phaseblock N50',
-            'description': 'Phaseblock N50 related to genome length.',
-            'format': '{:,.3f}',
+            'title': 'Phaseblock NG50',
+            'description': 'Phaseblock N50 relative genome length.',
+            'format': '{:,.0f}',
             'scale': 'Blues',
             'hidden': True,
             'placement': 19,
