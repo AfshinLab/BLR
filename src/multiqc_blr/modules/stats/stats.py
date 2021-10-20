@@ -525,7 +525,7 @@ class MultiqcModule(BaseMultiqcModule):
                 'format': '{:,.1f}',
                 'hidden': True,
             },
-            "mediqan_reads_per_molecule": {
+            "median_reads_per_molecule": {
                 'title': 'Median LPM',
                 'description': 'Median reads per molecule',
                 'scale': 'BuGn',
