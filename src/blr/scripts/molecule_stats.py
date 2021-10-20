@@ -40,6 +40,8 @@ def main(tsvs, output):
     stats = OrderedDict()
     stats["Barcodes final"] = len(all_data["Barcode"].unique())
     stats["N50 reads per molecule"] = calculate_N50(all_data["Reads"])
+    stats["Mean reads per molecule"] = all_data["Reads"].mean()
+    stats["Median reads per molecule"] = all_data["Reads"].median()
     stats["Mean molecule length"] = float(all_data["Length"].mean())
     stats["Median molecule length"] = float(all_data["Length"].median())
 

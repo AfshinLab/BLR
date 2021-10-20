@@ -433,9 +433,12 @@ class MultiqcModule(BaseMultiqcModule):
                 "dna_in_molecules_20_kbp_percent": sample_data["dna_in_molecules_>20_kbp_(%)"],
                 "dna_in_molecules_100_kbp_percent": sample_data["dna_in_molecules_>100_kbp_(%)"],
                 "nr_barcodes_final": sample_data["barcodes_final"],
+                "mean_molecule_count": sample_data["mean_molecule_count"],
                 "median_molecule_count": sample_data["median_molecule_count"],
                 "mean_dna_per_barcode_kbp": sample_data["mean_dna_per_barcode"] / 1000,
                 "median_dna_per_barcode_kbp": sample_data["median_dna_per_barcode"] / 1000,
+                "mean_reads_per_molecule": sample_data["mean_reads_per_molecule"],
+                "median_reads_per_molecule": sample_data["median_reads_per_molecule"],
             }
 
         # Scale number of barcodes
@@ -486,6 +489,13 @@ class MultiqcModule(BaseMultiqcModule):
                 'scale': 'BuGn',
                 'format': '{:,.1f}'
             },
+            "mean_molecule_count": {
+                'title': ' Mean Mol',
+                'description': 'Mean number of molecules per barcode',
+                'scale': 'YlOrBr',
+                'format': '{:,.1f}',
+                'hidden': True,
+            },
             "median_molecule_count": {
                 'title': ' # Mol',
                 'description': 'Median number of molecules per barcode',
@@ -506,6 +516,20 @@ class MultiqcModule(BaseMultiqcModule):
                 'scale': 'Oranges',
                 'format': '{:,.1f}',
                 'suffix': 'kbp',
+                'hidden': True,
+            },
+            "mean_reads_per_molecule": {
+                'title': 'Mean LPM',
+                'description': 'Mean reads per molecule',
+                'scale': 'YlOrBr',
+                'format': '{:,.1f}',
+                'hidden': True,
+            },
+            "mediqan_reads_per_molecule": {
+                'title': 'Median LPM',
+                'description': 'Median reads per molecule',
+                'scale': 'BuGn',
+                'format': '{:,.0f}',
                 'hidden': True,
             },
         })
