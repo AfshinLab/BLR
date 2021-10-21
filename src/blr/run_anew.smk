@@ -15,16 +15,21 @@ chunks = generate_chunks(reference=config["genome_reference"],
                          phasing_contigs_string=config["phasing_contigs"],
                          contigs_skipped=config["contigs_skipped"])
 
+final_input = [
+    "trimmed.barcoded.1_fastqc.html",
+    "trimmed.barcoded.2_fastqc.html",
+    "final.molecule_stats.filtered.tsv",
+    "unmapped.bam",
+    expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["all"]),
+    "final.bam"
+]
+if config["library_type"] in {"dbs", "blr", "tellseq"}:
+    final_input.append("barcodes.clstr.gz")
+
 
 rule final:
     input:
-        "trimmed.barcoded.1_fastqc.html",
-        "trimmed.barcoded.2_fastqc.html",
-        "barcodes.clstr.gz",
-        "final.molecule_stats.filtered.tsv",
-        "unmapped.bam",
-        expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["all"]),
-        "final.bam"
+        final_input
 
 
 input_bams = glob_wildcards("inputs/{name}.bam").name
