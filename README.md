@@ -113,7 +113,14 @@ If using `gatk` for variant calling or doing base recalibrartion you will
 
 ### 5. Merging different analysis runs
 
-If you have two or more libraries run on the same sample it is possible to merge these inorder to increase coverage. First analysis should be run separately for each library. Make sure that different `sample_nr` (set using `blr config`) have been assigned to each library in order to not mix overlapping barcodes. The files that will be merged from each library is the filtered BAM (`final.bam`), the molecule stats TSV (`final.molecule_stats.tsv`) and the clustered barcodes (`barcodes.clstr`).
+If you have two or more libraries run on the same sample it is possible to
+ merge these inorder to increase coverage. First analysis should be run
+  separately for each library. Make sure that different `sample_nr` (set
+   using `blr config`) have been assigned to each library in order to not mix
+    overlapping barcodes. The files that will be merged from each library is
+     the filtered BAM (`final.phased.cram`, `final.phased.bam` or `final.bam`), the
+      molecule stats TSV (`final.molecule_stats.filtered.tsv`) and for DBS
+       and TELL-seq libraries the clustered barcodes (`barcodes.clstr.gz`).
 
 To merge the different runs we initialize a new analysis folder using `blr init`. In this example we have analysed two DBS library runs called `MySample_1` and `MySample_2`. Using the command below we can initialize a new folder called `MySample_merged`.
 
@@ -125,7 +132,11 @@ In order to merge the files and run analysis on the merged files a special subsc
 
     blr run --anew
 
-Using this the files will be merged and the workflow run from varinat calling and on.
+Using this the files will be merged and the workflow run from varinat calling
+ and on. 
+ 
+ Note that this approach can also be used to rerun a single sample with
+  different configurations from variant calling and on.
 
 ### 6. MultiQC plugin
 
