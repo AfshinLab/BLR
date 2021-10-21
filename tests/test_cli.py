@@ -24,7 +24,6 @@ TESTDATA_STLFR_BARCODES = str((TESTDATA / "stlfr_barcodes.txt").absolute())
 TESTDATA_TELLSEQ_READ1 = TESTDATA / "tellseq_reads.1.fastq.gz"
 TESTDATA_TELLSEQ_READ2 = TESTDATA / "tellseq_reads.2.fastq.gz"
 TESTDATA_TELLSEQ_INDEX = str((TESTDATA / "tellseq_index.fastq.gz").absolute())
-DEFAULT_CONFIG = "blr.yaml"
 REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
 REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf.gz").absolute())
 DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
@@ -115,7 +114,7 @@ def _workdir(tmp_path_factory):
     path = tmp_path_factory.mktemp(basename="analysis-") / "analysis"
     init(path, TESTDATA_DBS_READ1, "dbs")
     change_config(
-        path / DEFAULT_CONFIG, [
+        path / CONFIGURATION_FILE_NAME, [
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
             ("phasing_contigs", "null"),
@@ -164,7 +163,7 @@ def test_default_read_mapper(workdir):
 def test_trim_dbs_bowtie2(workdir):
     # bowtie2 is the default so we don't need to rerun anything
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "bowtie2")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -188,7 +187,7 @@ def test_trim_dbs_ema(workdir):
 @pytest.mark.skipif(shutil.which("lariat") is None, reason="Lariat not installed")
 def test_trim_dbs_lariat(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -205,7 +204,7 @@ def _workdir_tenx(tmp_path_factory):
     path = tmp_path_factory.mktemp(basename="analysis-tenx") / "analysis"
     init(path, TESTDATA_TENX_READ1, "10x")
     change_config(
-        path / DEFAULT_CONFIG, [
+        path / CONFIGURATION_FILE_NAME, [
             ("genome_reference", REFERENCE_GENOME),
             ("barcode_whitelist", TESTDATA_TENX_BARCODES),
             ("chunk_size", "50000"),
@@ -229,7 +228,7 @@ def test_trim_tenx(workdir_tenx, read_mapper):
     workdir = workdir_tenx
     nr_bins = 5
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", read_mapper),
          ("fastq_bins", str(nr_bins))]
     )
@@ -248,7 +247,7 @@ def _workdir_stlfr(tmp_path_factory):
     path = tmp_path_factory.mktemp(basename="analysis-stlfr") / "analysis"
     init(path, TESTDATA_STLFR_READ1, "stlfr")
     change_config(
-        path / DEFAULT_CONFIG, [
+        path / CONFIGURATION_FILE_NAME, [
             ("genome_reference", REFERENCE_GENOME),
             ("chunk_size", "50000"),
             ("phasing_contigs", "null"),
@@ -270,7 +269,7 @@ def workdir_stlfr(_workdir_stlfr, tmp_path):
 def test_trim_stlfr(workdir_stlfr, read_mapper):
     workdir = workdir_stlfr
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", read_mapper),
          ("fastq_bins", "5")]
     )
@@ -285,7 +284,7 @@ def test_trim_stlfr(workdir_stlfr, read_mapper):
 def test_trim_stlfr_lariat(workdir_stlfr):
     workdir = workdir_stlfr
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -302,7 +301,7 @@ def _workdir_tellseq(tmp_path_factory):
     path = tmp_path_factory.mktemp(basename="analysis-tellseq") / "analysis"
     init(path, TESTDATA_TELLSEQ_READ1, "tellseq")
     change_config(
-        path / DEFAULT_CONFIG, [
+        path / CONFIGURATION_FILE_NAME, [
             ("genome_reference", REFERENCE_GENOME),
             ("tellseq_index", TESTDATA_TELLSEQ_INDEX),
             ("chunk_size", "50000"),
@@ -325,7 +324,7 @@ def workdir_tellseq(_workdir_tellseq, tmp_path):
 def test_trim_tellseq_bowtie2(workdir_tellseq):
     workdir = workdir_tellseq
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "bowtie2")]
     )
     targets = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -338,7 +337,7 @@ def test_trim_tellseq_ema(workdir_tellseq):
     workdir = workdir_tellseq
     nr_bins = 5
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "ema"),
          ("fastq_bins", str(nr_bins))]
     )
@@ -361,7 +360,7 @@ def test_trim_tellseq_ema(workdir_tellseq):
 def test_trim_tellseq_lariat(workdir_tellseq):
     workdir = workdir_tellseq
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("read_mapper", "lariat")]
     )
     trimmed = ["trimmed.barcoded.1.fastq.gz", "trimmed.barcoded.2.fastq.gz"]
@@ -378,7 +377,7 @@ def test_nondefault_read_mappers(tmp_path, read_mapper):
     workdir = tmp_path / "analysis"
     init(workdir, TESTDATA_DBS_READ1, "dbs")
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("genome_reference", REFERENCE_GENOME),
          ("read_mapper", read_mapper),
          ("phasing_contigs", "null"),
@@ -403,7 +402,7 @@ def test_final_compressed_reads_exist(workdir):
 
 def test_BQSR(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
          ("variant_caller", "gatk")]
     )
@@ -425,7 +424,7 @@ variant_callers = ["freebayes", "bcftools", "gatk"] + (["deepvariant"] if shutil
 @pytest.mark.parametrize("variant_caller", variant_callers)
 def test_call_variants(workdir, variant_caller):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("reference_variants", "null"), ("variant_caller", variant_caller)]
     )
     target = "chunks/chrA.variants.called.vcf"
@@ -435,7 +434,7 @@ def test_call_variants(workdir, variant_caller):
 
 def test_filter_variants(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("reference_variants", "null"), ("filter_variants", "true")]
     )
     target = "chunks/chrA.variants.called.filtered.vcf"
@@ -445,7 +444,7 @@ def test_filter_variants(workdir):
 
 def test_haplotag(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("reference_variants", REFERENCE_VARIANTS)]
     )
     target = "chunks/chrA.calling.phased.bam"
@@ -471,7 +470,7 @@ def test_init_from_workdir(tmp_path, workdir):
     # Initialize new dir based on old and run setup.
     init_from_dir(new_workdir, [old_workdir], "dbs")
     change_config(
-        new_workdir / DEFAULT_CONFIG,
+        new_workdir / CONFIGURATION_FILE_NAME,
         [("genome_reference", REFERENCE_GENOME),
          ("chunk_size", "50000"),
          ("phasing_contigs", "null"),
@@ -497,7 +496,7 @@ def test_merge_workdirs(tmp_path, workdir):
     # Initialize new dir based on old and run setup.
     init_from_dir(merge_workdir, [workdir, other_workdir], "dbs")
     change_config(
-        merge_workdir / DEFAULT_CONFIG,
+        merge_workdir / CONFIGURATION_FILE_NAME,
         [("genome_reference", REFERENCE_GENOME),
          ("chunk_size", "50000"),
          ("phasing_contigs", "null"),
@@ -508,7 +507,7 @@ def test_merge_workdirs(tmp_path, workdir):
 
 def test_lsv_calling(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("reference_variants", "null")]
     )
     target = "chunks/chrA.naibr_sv_calls.tsv"
@@ -518,7 +517,7 @@ def test_lsv_calling(workdir):
 
 def test_phasing_contigs(workdir):
     change_config(
-        workdir / DEFAULT_CONFIG,
+        workdir / CONFIGURATION_FILE_NAME,
         [("phasing_contigs", "chrA"),
          ("reference_variants", REFERENCE_VARIANTS)]
     )
