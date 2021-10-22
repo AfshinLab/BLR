@@ -1,2 +1,2 @@
-Sample	barcodes_final	n50_reads_per_molecule	mean_molecule_length	median_molecule_length	dna_in_molecules_>20_kbp_(%)	dna_in_molecules_>100_kbp_(%)	weighted_mean_length	mean_molecule_count	median_molecule_count	single_molecule_droplets_(%)	mean_dna_per_barcode	median_dna_per_barcode
-example	312101	13	17778.608187766273	11377.0	71.73488227676239	2.915331277365725	37733.112955308396	1.1566832531776572	1.0	87.00580901695284	20564.218355596426	13284.0
+Sample	barcodes_final	n50_reads_per_molecule	mean_reads_per_molecule	median_reads_per_molecule	mean_molecule_length	median_molecule_length	dna_in_molecules_>20_kbp_(%)	dna_in_molecules_>100_kbp_(%)	weighted_mean_length	mean_molecule_count	median_molecule_count	single_molecule_droplets_(%)	mean_dna_per_barcode	median_dna_per_barcode
+example	312101	13	20.21332131932	19	17778.608187766273	11377.0	71.73488227676239	2.915331277365725	37733.112955308396	1.1566832531776572	1.0	87.00580901695284	20564.218355596426	13284.0

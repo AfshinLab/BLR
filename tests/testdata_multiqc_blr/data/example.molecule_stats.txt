@@ -2,6 +2,8 @@
 # Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.
 SN	Barcodes final	312101
 SN	N50 reads per molecule	13
+SN	Mean reads per molecule	20.21332131932
+SN	Median reads per molecule	19
 SN	Mean molecule length	17778.608187766273
 SN	Median molecule length	11377.0
 SN	DNA in molecules >20 kbp (%)	71.73488227676239
