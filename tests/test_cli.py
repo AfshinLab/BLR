@@ -26,7 +26,7 @@ TESTDATA_TELLSEQ_READ2 = TESTDATA / "tellseq_reads.2.fastq.gz"
 TESTDATA_TELLSEQ_INDEX = str((TESTDATA / "tellseq_index.fastq.gz").absolute())
 REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
 REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf.gz").absolute())
-DB_SNP = str((TESTDATA / "dbSNP.vcf.gz").absolute())
+KNOWN_SITES = str((TESTDATA / "dbSNP.vcf.gz").absolute())
 
 DEFAULT_SMK_ARGS = ["--notemp", "--show-failed-logs"]
 
@@ -403,7 +403,7 @@ def test_final_compressed_reads_exist(workdir):
 def test_BQSR(workdir):
     change_config(
         workdir / CONFIGURATION_FILE_NAME,
-        [("dbSNP", DB_SNP), ("BQSR", "true"), ("reference_variants", "null"),
+        [("known_sites", KNOWN_SITES), ("BQSR", "true"), ("reference_variants", "null"),
          ("variant_caller", "gatk")]
     )
     # Since the workdir fixture creates the calling.bam files already, we need to

@@ -38,10 +38,6 @@ properties:
     type: ["string", "null"]
     description: Regex pattern for chromosomes to skip in primary analysis.
     default: null
-  dbSNP:
-    type: ["string", "null" ]
-    description: dbSNP, common SNP positions
-    default: null
   ema_optimization:
     type: boolean
     description: Use read density optimization when mapping reads using ema.
@@ -95,6 +91,10 @@ properties:
     description: Human genome assembly used options are 'GRCh38' and 'GRCh37'.
     default: GRCh38
     pattern: "(GRCh38)|(GRCh37)"
+  known_sites:
+    type: ["string", "null" ]
+    description: Comma separated path(s) to databases of known polymorphic sites for base recallibration.
+    default: null
   library_type:
     type: string
     pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr

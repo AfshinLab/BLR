@@ -749,11 +749,12 @@ rule recal_base_qual_scores:
     params:
         java_args = f"-Xmx{config['heap_space']}g",
         reference = config["genome_reference"],
-        dbsnp = config["dbSNP"],
+        knowns_sites = ' '.join([f"--known-sites {s}" for s in config["known_sites"].split(",")])
+                       if config["known_sites"] is not None else ''
     shell:
         "gatk --java-options {params.java_args} BaseRecalibrator"
         " -R {params.reference}"
-        " --known-sites {params.dbsnp}"
+        " {params.knowns_sites}"
         " -I {input.bam}"
         " -O {output.recal_table}"
         " 2> {log}"
