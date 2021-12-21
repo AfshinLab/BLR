@@ -6,47 +6,39 @@ Use indepentant from snakemake with command:
     python format_naibr_bedpe.py input.tsv output.bedpe
 
 """
-import pandas as pd
 import sys
+
+from blr.utils import parse_naibr_tsv
 
 
 def main(tsv, bedpe):
-    # Translation based on this: https://github.com/raphael-group/NAIBR/issues/11
-    # Note that this is not entirely accurate as the more complex variants are possible.
-    sv_types = {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}
-    zygosity = {"1,1": "HOM", "2,2": "HOM", "1,2": "HET",
-                "2,1": "HET"}  # From https://github.com/raphael-group/NAIBR/issues/10
-    names = ["Chr1", "Break1", "Chr2", "Break2", "SplitMolecules", "DiscordantReads", "Orientation",
-             "Haplotype", "Score", "PassFilter"]
-    data = pd.read_csv(tsv, sep="\t", header=0, names=names)
-    with open(bedpe, "w") as file:
+    with open(tsv) as infile, open(bedpe, "w") as outfile:
         # Header
         print("#chrom1", "start1", "stop1", "chrom2", "start2", "stop2", "sv_type", "sv_id", "sv_length", "qual_score",
-              "filter", "info", sep="\t", file=file)
-
-        for nr, row in enumerate(data.itertuples(index=False)):
+              "filter", "info", sep="\t", file=outfile)
+        for nr, sv in enumerate(parse_naibr_tsv(infile)):
             # Use BEDPE format according to LinkedSV: https://github.com/WGLab/LinkedSV#-sv-call-file
             print(
-                f"chr{row.Chr1}",
-                row.Break1,
-                row.Break1+1,
-                f"chr{row.Chr2}",
-                row.Break2,
-                row.Break2+1,
-                sv_types[row.Orientation],
+                f"chr{sv.chr1}",
+                sv.break1,
+                sv.break1+1,
+                f"chr{sv.chr2}",
+                sv.break2,
+                sv.break2+1,
+                sv.svtype(),
                 f"ID{nr:04}",
-                abs(row.Break1 - row.Break2),
-                row.Score,
-                row.PassFilter,
+                len(sv),
+                sv.score,
+                sv.pass_filter,
                 "ZYGOSITY={};NUM_SPLIT_MOLECULES={};NUM_DISCORDANT_READS={};ORIENTATION={};HAPLOTYPE={}".format(
-                    zygosity.get(row.Haplotype, "UNK"),
-                    row.SplitMolecules,
-                    row.DiscordantReads,
-                    row.Orientation,
-                    row.Haplotype,
+                    sv.zygosity(),
+                    sv.nr_split_molecules,
+                    sv.nr_discordant_reads,
+                    sv.orientation,
+                    sv.haplotype_string,
                 ),
                 sep="\t",
-                file=file
+                file=outfile
             )
 
 
