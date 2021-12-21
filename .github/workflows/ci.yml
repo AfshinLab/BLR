@@ -3,7 +3,7 @@ name: CI
 on: 
   pull_request:
   schedule:
-    - cron: 0 7 * * 1,3,5
+    - cron: 0 7 10 * *
 
 jobs:
   Linting:
