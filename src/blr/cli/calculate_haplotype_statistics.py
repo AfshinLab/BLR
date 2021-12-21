@@ -485,6 +485,9 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
                     if {t1_dict[pos], t2_dict[pos]} != {a1, a2} or (ref_str, alt1_str, alt2_str) != a_dict[pos]:
                         if a == 0:
                             different_alleles += 1
+                            logger.debug(f"Different alleles for position {ref_name}:{pos}")
+                            logger.debug(f"Ref {set([t1_dict[pos], t2_dict[pos]])} != {set([a1, a2])} Query")
+                            logger.debug(f"Ref {a_dict[pos]} != {(ref_str, alt1_str, alt2_str)} Query")
                         continue
 
                     if first_SNP:
@@ -560,7 +563,7 @@ def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=N
         assert len(mismatch_loc) == mismatch_count
 
     if different_alleles > 0:
-        logger.warning(f"{different_alleles} positions had different ref,alt pairs and were skipped.")
+        logger.warning(f"On {ref_name}: {different_alleles} positions had different ref,alt pairs and were skipped.")
 
     poss_flat = poss_mm
 
