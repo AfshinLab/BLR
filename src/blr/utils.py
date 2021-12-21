@@ -374,3 +374,58 @@ def tempif(files, condition):
     if condition:
         return temp(files)
     return files
+
+
+@dataclass
+class NaibrSV:
+    chr1: str
+    break1: int
+    chr2: str
+    break2: int
+    nr_split_molecules: int
+    nr_discordant_reads: int
+    orientation: str
+    haplotype_string: str
+    score: float
+    pass_filter: str
+
+    def length(self):
+        if self.chr1 == self.chr2:
+            return abs(self.break2 - self.break1)
+        return 0
+
+    def __len__(self):
+        return self.length()
+
+    def svtype(self):
+        # Translation based on this: https://github.com/raphael-group/NAIBR/issues/11
+        # Note that this is not entirely accurate as the more complex variants are possible.
+        return {"+-": "DEL", "++": "INV", "--": "INV", "-+": "DUP"}.get(self.orientation, "UNK")
+
+    def zygosity(self):
+        # From https://github.com/raphael-group/NAIBR/issues/10
+        return {"1,1": "HOM", "2,2": "HOM", "1,2": "HET", "2,1": "HET"}.get(self.haplotype_string, "UNK")
+
+    @classmethod
+    def from_string(cls, string):
+        els = string.strip().split("\t")
+        return cls(
+            els[0],
+            int(els[1]),
+            els[2],
+            int(els[3]),
+            int(float(els[4])),
+            int(float(els[5])),
+            els[6],
+            els[7],
+            float(els[8]),
+            els[9],
+        )
+
+
+def parse_naibr_tsv(file):
+    """Parse open NAIBR output file of TSV-type. Returns iterator with NaibrSV instances"""
+    header = next(file)  # Skip header
+    assert header.startswith("Chr1")
+    for line in file:
+        yield NaibrSV.from_string(line)

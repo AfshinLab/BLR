@@ -1,8 +1,9 @@
 from io import StringIO
 from blr.utils import parse_fai, FastaIndexRecord, chromosome_chunks, symlink_relpath, generate_chunks, get_bamtag
-from blr.utils import calculate_N50, parse_filters
+from blr.utils import calculate_N50, parse_filters, NaibrSV, parse_naibr_tsv
 from pathlib import Path
 import os
+import pytest
 
 from .test_tagbam import build_read
 
@@ -112,3 +113,25 @@ def test_parse_filters():
     filter_command = parse_filters(filter_string)
 
     assert filter_command == filter_command_ref
+
+
+def test_naibr_sv_from_string():
+    string = "22\t36746940\t22\t36751965\t40.0\t0.0\t+-\t3,3\t258.872434847\tPASS"
+    sv = NaibrSV.from_string(string)
+    assert sv.pass_filter == "PASS"
+    assert sv.break2 == 36_751_965
+
+
+def test_parse_naibr_tsv():
+    s = "Chr1\tBreak1\tChr2\tBreak2\tSplit molecules\tDiscordant reads\tOrientation\tHaplotype\tScore\tPass filter\n"
+    s += "22\t36746940\t22\t36751965\t40.0\t0.0\t+-\t3,3\t258.872434847\tPASS\n"
+    s += "22\t65743624\t22\t65783121\t33.0\t3.0\t--\t2,2\t41.241421411\tFAIL\n"
+    with StringIO(s) as f:
+        parser = parse_naibr_tsv(f)
+        first = next(parser)
+        assert first.pass_filter == "PASS"
+        second = next(parser)
+        assert second.pass_filter == "FAIL"
+
+        with pytest.raises(StopIteration):
+            next(parser)

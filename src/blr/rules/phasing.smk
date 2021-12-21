@@ -224,6 +224,16 @@ rule format_naibr_bedpe:
         "../scripts/format_naibr_bedpe.py"
 
 
+rule format_naibr_vcf:
+    output:
+        vcf = temp("final.naibr_sv_calls.vcf")
+    input:
+        tsv = "final.naibr_sv_calls.tsv", 
+        fai = config["genome_reference"] + ".fai"
+    script:
+        "../scripts/format_naibr_vcf.py"
+
+
 rule aggregate_sv_sizes:
     output:
         tsv = "final.sv_sizes.tsv"

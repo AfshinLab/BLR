@@ -75,6 +75,8 @@ def final_input(wildcards):
         "final.phased.vcf.gz",
         "final.phased.vcf.gz.tbi",
         "final.naibr_sv_calls.bedpe",
+        "final.naibr_sv_calls.vcf.gz",
+        "final.naibr_sv_calls.vcf.gz.tbi",
         "final.sv_sizes.tsv"
     ]
     if not config["reference_variants"]:
