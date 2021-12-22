@@ -217,7 +217,7 @@ def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_
         # TODO Handle reads with single header
         name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
 
-        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
+        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(read1.name)
         corrected_barcode_seq = corrected_barcodes.get(uncorrected_barcode_seq, None)
 
         # Check if barcode was found and update header with barcode info.
@@ -328,24 +328,19 @@ class BarcodeReader:
     def __init__(self, filename):
         self._cache = {}
         self._file = dnaio.open(filename, mode="r")
-        self.barcodes = self.parse()
-
-    def parse(self):
-        for barcode_entry in self._file:
-            name, *_ = barcode_entry.name.split(" ")
-            yield name, barcode_entry.sequence
+        self.barcodes = iter(self._file)
 
     def get_barcode(self, read_name, maxiter=128):
         if read_name in self._cache:
             return self._cache.pop(read_name)
 
-        for barcode_read_name, barcode_sequence in islice(self.barcodes, maxiter):
+        for barcode in islice(self.barcodes, maxiter):
             # If read_name in next pair then parser lines are synced --> drop cache.
-            if read_name == barcode_read_name:
+            if read_name == barcode.name:
                 self._cache.clear()
-                return barcode_sequence
+                return barcode.sequence
 
-            self._cache[barcode_read_name] = barcode_sequence
+            self._cache[barcode.name] = barcode.sequence
 
     def __enter__(self):
         return self
