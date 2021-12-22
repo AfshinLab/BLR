@@ -11,7 +11,7 @@ from multiqc import config
 from multiqc.plots import table, linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 
-from multiqc_blr.utils import bin_sum, get_tail_x
+from multiqc_blr.utils import get_tail_x
 
 
 # Initialise the main MultiQC logger

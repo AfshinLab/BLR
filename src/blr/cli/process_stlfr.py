@@ -137,7 +137,7 @@ def run_process_stlfr(
             chunks.write_chunk()
 
         if mapper == "lariat" and output_bins is not None:
-            remaining_reads = summary["Read pairs read"] - summary["Reads missing barcode"] - summary["Read pairs written"]
+            remaining_reads = summary["Read pairs read"] - summary["Reads missing barcode"] - summary["Read pairs written"]  # noqa: E501
             bin_size = remaining_reads // nr_bins
             logger.info(f"Using bin of size {bin_size}.")
             writer.set_bin_size(bin_size)

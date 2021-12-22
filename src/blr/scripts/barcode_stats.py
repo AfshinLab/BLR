@@ -52,17 +52,17 @@ def main(clstrs, output):
     # Write output. Format is based on `samtools stats`
     with smart_open(output) as f:
         print(f"# Stats compiled from barcode_stats.py ({__version__})", file=f)
-        print(f"# Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.", file=f)
+        print("# Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.", file=f)
         for stat, value in stats.items():
             print("SN", stat, value, sep="\t", file=f)
 
-        print(f"# Reads per Barcode. Use `grep ^RB | cut -f 2-` to extract this part.", file=f)
-        print(f"# Columns are: Reads, Nr of Barcodes, Total reads, Density.", file=f)
+        print("# Reads per Barcode. Use `grep ^RB | cut -f 2-` to extract this part.", file=f)
+        print("# Columns are: Reads, Nr of Barcodes, Total reads, Density.", file=f)
         for reads, count, total_reads, density in reads_per_barcode:
             print("RB", reads, count, total_reads, density, sep="\t", file=f)
 
-        print(f"# Components per barcode. Use `grep ^CB | cut -f 2-` to extract this part.", file=f)
-        print(f"# Columns are: Nr of components, Count.", file=f)
+        print("# Components per barcode. Use `grep ^CB | cut -f 2-` to extract this part.", file=f)
+        print("# Columns are: Nr of components, Count.", file=f)
         for size, count in components_per_barcode.items():
             print("CB", size, count, sep="\t", file=f)
 

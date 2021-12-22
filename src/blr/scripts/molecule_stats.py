@@ -78,7 +78,7 @@ def main(tsvs, output):
     # Write output. Format is based on `samtools stats`
     with smart_open(output) as f:
         print(f"# Stats compiled from molecule_stats.py ({__version__})", file=f)
-        print(f"# Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.", file=f)
+        print("# Summary Numbers. Use `grep ^SN | cut -f 2-` to extract this part.", file=f)
         for stat, value in stats.items():
             print("SN", stat, value, sep="\t", file=f)
 
