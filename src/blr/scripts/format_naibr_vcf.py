@@ -90,6 +90,6 @@ if __name__ == "__main__":
     else:
         tsv = snakemake.input.tsv  # noqa: F821
         fai = snakemake.input.fai  # noqa: F821
-        vcf = snakemake.output.bedpe  # noqa: F821
+        vcf = snakemake.output.vcf  # noqa: F821
 
     main(tsv, fai, vcf)
