@@ -14,6 +14,7 @@ def main(inputname, fainame, outputname):
     with open(fainame) as f:
         chromosomes = parse_fai(f)
 
+    # NAIBR removes "chr" from contig names, rename if present in reference names.
     rename_chroms = any(c.name.startswith("chr") for c in chromosomes)
 
     # Build header
