@@ -23,7 +23,6 @@ extra_fn_clean_exts:
     module: picard
 
 fn_ignore_dirs:
-  - '.snakemake'
   - 'fastq_bins'
 
 module_order:
