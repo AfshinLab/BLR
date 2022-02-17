@@ -33,6 +33,7 @@ def main(inputname, fainame, outputname):
 ##INFO=<ID=NRREADS,Number=1,Type=Integer,Description="Number of supporting discordant reads">
 ##INFO=<ID=NRSPLIT,Number=1,Type=Integer,Description="Number of supporting split molecules">
 ##INFO=<ID=ZYGOSITY,Number=1,Type=String,Description="Zygosity">
+##INFO=<ID=HAP,Number=1,Type=String,Description="Haplotype string from NAIBR">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE'''
 
@@ -54,6 +55,7 @@ def main(inputname, fainame, outputname):
                 f'NRREADS={sv.nr_discordant_reads}',
                 f'NRSPLIT={sv.nr_split_molecules}',
                 f'ZYGOSITY={sv.zygosity()}',
+                f'HAP={sv.haplotype_string}',
             ))
 
             # Final line construction and appending to list
@@ -67,7 +69,11 @@ def main(inputname, fainame, outputname):
                 sv.pass_filter,
                 output_infos,
                 'GT',
-                './.'
+                # TODO This is not the correct genotype, but using './.' corresponds to
+                #  a "non-called" variant in downstream applications. I cannot figure
+                #  out how to translate the haplotype string from NAIBR. Aslo it down
+                #  not seem correct most of the time. Sigh!!
+                '0/0',
             )
             output.append(output_line)
 
