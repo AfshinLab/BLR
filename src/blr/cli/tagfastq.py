@@ -101,7 +101,7 @@ def run_tagfastq(
     with xopen(corrected_barcodes) as reader:
         corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
                                                             min_count=min_count)
-
+    print(len(corrected_barcodes))
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
@@ -217,7 +217,7 @@ def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_
         # TODO Handle reads with single header
         name_and_pos, nr_and_index1 = read1.name.split(maxsplit=1)
 
-        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(read1.name)
+        uncorrected_barcode_seq = uncorrected_barcode_reader.get_barcode(name_and_pos)
         corrected_barcode_seq = corrected_barcodes.get(uncorrected_barcode_seq, None)
 
         # Check if barcode was found and update header with barcode info.
@@ -331,16 +331,18 @@ class BarcodeReader:
         self.barcodes = iter(self._file)
 
     def get_barcode(self, read_name, maxiter=128):
+        print(read_name)
         if read_name in self._cache:
             return self._cache.pop(read_name)
 
         for barcode in islice(self.barcodes, maxiter):
+            barcode_id = barcode.name.partition(" ")[0]
             # If read_name in next pair then parser lines are synced --> drop cache.
-            if read_name == barcode.name:
+            if read_name == barcode_id:
                 self._cache.clear()
                 return barcode.sequence
 
-            self._cache[barcode.name] = barcode.sequence
+            self._cache[barcode_id] = barcode.sequence
 
     def __enter__(self):
         return self
