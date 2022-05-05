@@ -34,7 +34,7 @@ def main(inputname, fainame, outputname):
 ##INFO=<ID=NRSPLIT,Number=1,Type=Integer,Description="Number of supporting split molecules">
 ##INFO=<ID=ZYGOSITY,Number=1,Type=String,Description="Zygosity">
 ##INFO=<ID=HAP,Number=1,Type=String,Description="Haplotype string from NAIBR">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype, NB just a placeholder and might not be correct.">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE'''
 
     # Lines list. Needed to output the lines in numerical order at the end
@@ -73,7 +73,7 @@ def main(inputname, fainame, outputname):
                 #  a "non-called" variant in downstream applications. I cannot figure
                 #  out how to translate the haplotype string from NAIBR. Aslo it down
                 #  not seem correct most of the time. Sigh!!
-                '0/0',
+                '1/1',
             )
             output.append(output_line)
 
