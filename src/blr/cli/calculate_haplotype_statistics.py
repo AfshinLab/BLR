@@ -105,8 +105,7 @@ def get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=False):
                 continue
 
             ps = sample.get("PS")
-            if ps is not None:
-                blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
+            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
 
     logger.debug(f"Chromsome {chromosome} has {nr_het_var:,} heterozygous variants")
     blocklist = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
@@ -133,9 +132,7 @@ def get_phaseblocks(vcf_file, sample_name, indels=False):
                 continue
 
             ps = sample.get("PS")
-
-            if ps is not None:
-                blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
+            blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
 
     if blocks:
         chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
@@ -146,7 +143,7 @@ def get_phaseblocks(vcf_file, sample_name, indels=False):
 def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
     with VariantFile(vcf_file) as open_vcf:
         if "PS" not in open_vcf.header.formats:
-            logger.warning("PS flag is missing from VCF. Assuming that all phased variants are in the same phase "
+            logger.warning(f"PS flag is missing from {vcf_file}. Assuming that all phased variants are in the same phase "
                            "block.")
 
         if len(list(open_vcf.header.samples)) > 1:
