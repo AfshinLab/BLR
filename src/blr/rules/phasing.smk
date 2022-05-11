@@ -127,9 +127,10 @@ rule haplotag:
         " {input.bam}"
         " --linked-read-distance-cutoff {params.window}"
         " --reference {params.reference}"
-        " -o {output.bam}"
         " {params.ignore_readgroups}"
         " 2> {log}"
+        " |"
+        " samtools view -bh -o {output.bam} -"  # Faster than using whatshap for compression
 
 
 
