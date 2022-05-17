@@ -194,12 +194,12 @@ class MultiqcModule(BaseMultiqcModule):
             The length of the phaseblock at which the sum of phaseblock lengths in decreasing order passes half (50%)
             the combined length of all phaseblocks. This is used as a measure for phasing completeness which places
             less emphasis on shorter phaseblocks.
-            
+
             **auN**
-            
-            The area under the Nx-curve, where x is 0-100. A more balanced measure for contiguity. 
+
+            The area under the Nx-curve, where x is 0-100. A more balanced measure for contiguity.
             See https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
-            
+
             Also see [HapCUT2/utilities/README.md](https://github.com/vibansal/HapCUT2/blob/master/utilities/README.md)
             ''',
             plot=table_html

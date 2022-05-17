@@ -143,8 +143,8 @@ def get_phaseblocks(vcf_file, sample_name, indels=False):
 def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
     with VariantFile(vcf_file) as open_vcf:
         if "PS" not in open_vcf.header.formats:
-            logger.warning(f"PS flag is missing from {vcf_file}. Assuming that all phased variants are in the same phase "
-                           "block.")
+            logger.warning(f"PS flag is missing from {vcf_file}. Assuming that all phased variants are in the same"
+                           " phase block.")
 
         if len(list(open_vcf.header.samples)) > 1:
             sys.exit("VCF file must be single-sample.")
