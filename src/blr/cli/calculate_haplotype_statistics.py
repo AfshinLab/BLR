@@ -416,22 +416,32 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
     chromosomes = input_chromosomes if input_chromosomes else chroms_in_a
 
+    chrom_t_blocklist = defaultdict(list)
     if reference_vcf_file:
         logger.info(f"Parsing {reference_vcf_file}")
         chrom_t_blocklist, _ = parse_vcf_phase(reference_vcf_file, indels, chromosomes, threads)
         chroms_in_t = [chrom for chrom, blocks in chrom_t_blocklist.items() if len(blocks) > 0]
         chroms_in_t.sort(key=chromosome_rank)
         logger.debug(f"Chromsomes in 'vcf2': {','.join(chroms_in_t)}")
-    else:
-        chrom_t_blocklist = defaultdict(list)
 
     logger.info("Computing statistics")
     err = defaultdict(ErrorResult)
-    for c in chromosomes:
-        logger.debug(f"Current chromsome = {c}")
-        err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
-        err["all"] += err[c]
+    if threads > 0:
+        iter_blocks = ((chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, nr_het_var[c]) for c in chromosomes)
+        with Pool(threads) as workers:
+            for err_result, chromosome in workers.imap_unordered(error_rate_calc_parallel, iter_blocks):
+                err[chromosome] = err_result
+                err["all"] += err_result
+    else:
+        for c in tqdm(chromosomes):
+            logger.debug(f"Current chromsome = {c}")
+            err[c], _ = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
+            err["all"] += err[c]
     return err, chromosomes
+
+
+def error_rate_calc_parallel(args):
+    return error_rate_calc(*args), args[3]
 
 
 def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=None):
