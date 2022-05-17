@@ -453,7 +453,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
 
 def error_rate_calc_parallel(args):
-    return error_rate_calc(*args), args[3]
+    return error_rate_calc(*args), args[2]
 
 
 def error_rate_calc(t_blocklist, a_blocklist, ref_name, indels=False, num_snps=None):
