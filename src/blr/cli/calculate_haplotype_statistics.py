@@ -20,7 +20,7 @@ import sys
 
 from pysam import VariantFile
 
-from blr.utils import smart_open
+from blr.utils import smart_open, tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -160,12 +160,13 @@ def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
         logger.warning(f"Cannot run multiple threads on non-indexed VCF '{vcf_file}'.")
         threads = 1
 
+    tqdm_kwargs = dict(total=len(chromosomes), desc="Chromosomes")
     if threads > 1:
         chrom_blocks = defaultdict(list)
         nr_het_var_per_chrom = defaultdict(int)
         func = partial(get_phaseblocks_chrom, vcf_file=vcf_file, sample_name=sample_name, indels=indels)
         with Pool(threads) as workers:
-            for chromosome, blocks, nr_het_var in workers.imap_unordered(func, chromosomes):
+            for chromosome, blocks, nr_het_var in tqdm(workers.imap_unordered(func, chromosomes), **tqdm_kwargs):
                 chrom_blocks[chromosome] = blocks
                 nr_het_var_per_chrom[chromosome] = nr_het_var
     else:
@@ -174,7 +175,7 @@ def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
         if chromosomes and is_indexed:
             chrom_blocks = defaultdict(list)
             nr_het_var_per_chrom = defaultdict(int)
-            for chromosome in chromosomes:
+            for chromosome in tqdm(chromosomes, **tqdm_kwargs):
                 _,  blocks, nr_het_var = get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=indels)
                 chrom_blocks[chromosome] = blocks
                 nr_het_var_per_chrom[chromosome] = nr_het_var
