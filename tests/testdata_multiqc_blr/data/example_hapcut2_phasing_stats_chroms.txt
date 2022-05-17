@@ -1,0 +1,27 @@
+----------- chrA -----------
+switch rate:        0.005454353320743
+mismatch rate:      0.003643633246098
+flat rate:          0.003262235322342
+phased count:       34390
+AN50:               342890.3003361973
+N50:                664244
+auN:                656143.2312309320
+num snps max blk:   5144
+----------- chrB -----------
+switch rate:        n/a
+mismatch rate:      n/a
+flat rate:          n/a
+phased count:       34390
+AN50:               342890.3003361973
+N50:                664244
+auN:                656143.2312309320
+num snps max blk:   5144
+----------- All -----------
+switch rate:        0.005454353320743
+mismatch rate:      0.003643633246098
+flat rate:          0.003262235322342
+phased count:       34390
+AN50:               342890.3003361973
+N50:                664244
+auN:                656143.2312309320
+num snps max blk:   5144
