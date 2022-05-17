@@ -158,10 +158,9 @@ def parse_vcf_phase(vcf_file, indels=False, chromosomes=None, threads=1):
     is_indexed = os.path.isfile(vcf_file + ".tbi") or os.path.isfile(vcf_file + ".cbi")
     if not is_indexed and threads > 1:
         logger.warning(f"Cannot run multiple threads on non-indexed VCF '{vcf_file}'.")
-        threads = 1
 
     tqdm_kwargs = dict(total=len(chromosomes), desc="Chromosomes")
-    if threads > 1:
+    if threads > 1 and is_indexed:
         chrom_blocks = defaultdict(list)
         nr_het_var_per_chrom = defaultdict(int)
         func = partial(get_phaseblocks_chrom, vcf_file=vcf_file, sample_name=sample_name, indels=indels)
@@ -439,7 +438,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
 
     logger.info("Computing statistics")
     err = defaultdict(ErrorResult)
-    if threads > 0:
+    if threads > 1:
         iter_blocks = ((chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, nr_het_var[c]) for c in chromosomes)
         with Pool(threads) as workers:
             for err_result, chromosome in workers.imap_unordered(error_rate_calc_parallel, iter_blocks):
@@ -448,7 +447,7 @@ def vcf_vcf_error_rate(assembled_vcf_file, reference_vcf_file, indels, input_chr
     else:
         for c in tqdm(chromosomes):
             logger.debug(f"Current chromsome = {c}")
-            err[c], _ = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
+            err[c] = error_rate_calc(chrom_t_blocklist[c], chrom_a_blocklist[c], c, indels, num_snps=nr_het_var[c])
             err["all"] += err[c]
     return err, chromosomes
 
