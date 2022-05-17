@@ -364,6 +364,17 @@ class ErrorResult:
                 return span
         return "n/a"
 
+    def get_auN(self):
+        # Calculate auN = 'Area under the Nx curve'
+        # see https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        span_sum = sum(spans)
+        span_sq_sum = sum(s**2 for s in spans)
+        try:
+            return span_sq_sum / span_sum
+        except ZeroDivisionError:
+            return "n/a"
+
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return statistics.median(spanlst)
@@ -379,6 +390,7 @@ class ErrorResult:
             f"phased count:       {self.get_phased_count()}\n" \
             f"AN50:               {self.get_AN50()}\n" \
             f"N50:                {self.get_N50_phased_portion()}\n" \
+            f"auN:                {self.get_auN()}\n" \
             f"num snps max blk:   {self.get_num_snps_max_blk()}"
 
         return s
@@ -387,7 +399,7 @@ class ErrorResult:
 
         # Header. Sample name is included for MultiQC
         s = "Sample Name\tswitch rate\tmismatch rate\tflat rate\tphased count\tAN50 (Mbp)\tN50 (Mbp)\t" \
-            "num snps max blk\n"
+            "auN\tnum snps max blk\n"
 
         values = [
             "",                                           # Need string for MultiQC
@@ -397,6 +409,7 @@ class ErrorResult:
             self.get_phased_count(),
             self.get_AN50()/1_000_000,                    # Show as Mbp
             self.get_N50_phased_portion()/1_000_000,      # Show as Mbp
+            self.get_auN() / 1_000_000,                   # Show as Mbp
             sum(self.maxblk_snps.values())
         ]
 
