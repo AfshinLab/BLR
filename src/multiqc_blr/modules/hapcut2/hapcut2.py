@@ -152,7 +152,7 @@ class MultiqcModule(BaseMultiqcModule):
             headers[metric]["modify"] = lambda x: x * multiplier
             headers[metric]["suffix"] = suffix
 
-        table_html = table.plot(phasing_data, headers, pconfig)
+        table_html = table.plot(phasing_data, headers.copy(), pconfig)
 
         # Add a report section with table
         self.add_section(
