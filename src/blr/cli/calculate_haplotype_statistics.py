@@ -108,6 +108,9 @@ def get_phaseblocks_chrom(chromosome, vcf_file, sample_name, indels=False):
             blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
 
     logger.debug(f"Chromsome {chromosome} has {nr_het_var:,} heterozygous variants")
+    # If None in blocks then it should be the only block. Otherwice remove it.
+    if None in blocks and len(blocks) > 1:
+        del blocks[None]
     blocklist = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
     return chromosome, blocklist, nr_het_var
 
@@ -135,6 +138,9 @@ def get_phaseblocks(vcf_file, sample_name, indels=False):
             blocks[ps].append((snp_ix, rec.start, genotype[0], genotype[1], a0, a1, a2))
 
     if blocks:
+        # If None in blocks then it should be the only block. Otherwice remove it.
+        if None in blocks and len(blocks) > 1:
+            del blocks[None]
         chrom_blocks[prev_chrom] = [v for k, v in sorted(list(blocks.items())) if len(v) > 1]
 
     return chrom_blocks, nr_het_var_per_chrom
