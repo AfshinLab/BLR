@@ -1071,7 +1071,7 @@ rule mosdepth:
         bed = "primary.bed"
     params:
         prefix = "final"
-    threads: workflow.cores * 0.75
+    threads: 4
     shell:
         "mosdepth"
         " --threads {threads}"
