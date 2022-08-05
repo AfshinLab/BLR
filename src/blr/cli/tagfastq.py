@@ -101,7 +101,6 @@ def run_tagfastq(
     with xopen(corrected_barcodes) as reader:
         corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
                                                             min_count=min_count)
-    print(len(corrected_barcodes))
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
@@ -331,7 +330,6 @@ class BarcodeReader:
         self.barcodes = iter(self._file)
 
     def get_barcode(self, read_name, maxiter=128):
-        print(read_name)
         if read_name in self._cache:
             return self._cache.pop(read_name)
 
