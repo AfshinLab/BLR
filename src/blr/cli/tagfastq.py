@@ -19,7 +19,6 @@ the read by including it in the header.
 
     <HEADER> ==> <RAW_BARCODE> ==> <CORRECTED_BARCODE>
 """
-
 from contextlib import ExitStack
 from heapq import merge
 from itertools import islice, cycle
@@ -29,6 +28,7 @@ import sys
 import tempfile
 
 import dnaio
+import pandas as pd
 from xopen import xopen
 
 from blr.utils import tqdm, Summary, ACCEPTED_READ_MAPPERS
@@ -97,10 +97,10 @@ def run_tagfastq(
     summary = Summary()
     # Get the corrected barcodes and create a dictionary pointing each raw barcode to its
     # canonical sequence.
+    logger.info("Map clusters")
     template = [set(IUPAC[base]) for base in pattern_match] if pattern_match else []
-    with xopen(corrected_barcodes) as reader:
-        corrected_barcodes, heap = parse_corrected_barcodes(reader, summary, mapper, template,
-                                                            min_count=min_count)
+    seq_to_barcode, heap = map_corrected_barcodes(corrected_barcodes, summary, mapper, template, min_count)
+
     in_interleaved = not input2
     logger.info(f"Input detected as {'interleaved' if in_interleaved else 'paired'} FASTQ.")
 
@@ -132,7 +132,7 @@ def run_tagfastq(
         if mapper in ["ema", "lariat"]:
             chunks = stack.enter_context(ChunkHandler(chunk_size=1_000_000))
 
-        for read1, read2, corrected_barcode_seq in parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader,
+        for read1, read2, corrected_barcode_seq in parse_reads(reader, seq_to_barcode, uncorrected_barcode_reader,
                                                                barcode_tag, sequence_tag, mapper):
             summary["Read pairs read"] += 1
             if corrected_barcode_seq is None:
@@ -238,7 +238,7 @@ def parse_reads(reader, corrected_barcodes, uncorrected_barcode_reader, barcode_
         yield read1, read2, corrected_barcode_seq
 
 
-def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
+def map_corrected_barcodes(file, summary, mapper, template, min_count=0):
     """
     Parse starcode cluster output and return a dictionary with raw sequences pointing to a
     corrected canonical sequence
@@ -247,30 +247,27 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
     :param min_count: int. Skip clusters with fewer than min_count reads.
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
-    corrected_barcodes = {}
-    canonical_seqs = []
+    df = pd.read_csv(file, sep="\t", dtype={"canonical_seq": str, "size": int, "cluster_seqs":str},
+                     names=["canonical_seq", "size", "cluster_seqs"])
+
+    summary["Corrected barcodes"] = len(df)
+    summary["Reads with corrected barcodes"] = sum(df["size"])
+
+    if template:
+        df = df[(df["size"] >= min_count) & (df["canonical_seq"].apply(match_template, template=template))]
+    else:
+        df = df[df["size"] >= min_count]
+
+    summary["Barcodes not passing filters"] = summary["Corrected barcodes"] - len(df)
+    summary["Reads with barcodes not passing filters"] = summary["Reads with corrected barcodes"] - sum(df["size"])
+
+    corrected_barcodes = {s: canonical_seq for canonical_seq, seqs in zip(df["canonical_seq"], df["cluster_seqs"]) for s in seqs.split(",")}
+    canonical_seqs = df["canonical_seq"].tolist()
+
     heap_index = {}
-    for canonical_seq, size, cluster_seqs in tqdm(parse_clstr(open_file), desc="Clusters processed"):
-        summary["Corrected barcodes"] += 1
-        summary["Reads with corrected barcodes"] += size
-        summary["Uncorrected barcodes"] += len(cluster_seqs)
-
-        if size < min_count:
-            summary["Barcodes with too few reads"] += 1
-            summary["Reads with barcodes with too few reads"] += size
-            continue
-
-        if template and not match_template(canonical_seq, template):
-            summary["Barcodes not matching pattern"] += 1
-            summary["Reads with barcodes not matching pattern"] += size
-            continue
-
-        corrected_barcodes.update({raw_seq: canonical_seq for raw_seq in cluster_seqs})
-        canonical_seqs.append(canonical_seq)
-
     if mapper in ["ema", "lariat"]:
         logger.info("Creating heap index for sorting barcodes for ema mapping.")
-
+        canonical_seqs = df["canonical_seq"].tolist()
         # Scramble seqs to ensure no seqs sharing 16-bp prefix are neighbours for ema.
         if mapper == "ema":
             scramble(canonical_seqs, maxiter=100)
@@ -278,13 +275,6 @@ def parse_corrected_barcodes(open_file, summary, mapper, template, min_count=0):
         heap_index = {seq: nr for nr, seq in enumerate(canonical_seqs)}
 
     return corrected_barcodes, heap_index
-
-
-def parse_clstr(clstr_file):
-    """"Generator to parse open .clstr files from starcode."""
-    for cluster in clstr_file:
-        canonical_seq, size, cluster_seqs_list = cluster.strip().split("\t")
-        yield canonical_seq, int(size), cluster_seqs_list.split(",")
 
 
 def scramble(seqs, maxiter=10):
