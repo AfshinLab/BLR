@@ -1,7 +1,7 @@
 from collections import Counter
 import pysam
 
-from blr.cli.tagbam import is_sequence, mode_ema, mode_samtags_underline_separation
+from blr.cli.tagbam import is_sequence, mode_ema, mode_samtags_underline_separation, get_mode, mode_void
 
 
 def build_read(name, barcode=None):
@@ -77,3 +77,31 @@ def test_ema_formatted_read_no_barcode():
     mode_ema(modified_read, 3, "BX", Counter())
     assert not modified_read.has_tag("BX")
     assert modified_read.query_name == name
+
+
+def test_get_mode_ema():
+    name = "myread:11213:21314"
+    barcode = "ACTGACTGACTGACTGACTG"
+    barcode_in_tag = barcode[:16] + "-1"
+    read = build_read(f"{name}:{barcode}", barcode=barcode_in_tag)
+
+    mode, _ = get_mode(iter([read]), "BX")
+    assert mode.__name__ == mode_ema.__name__
+
+
+def test_get_mode_samtags_underline_separation():
+    name = "myread:11213:21314"
+    barcode = "ACTGACTGACTGACTGACTG"
+    sequence = "ACTGACTGTCTGACTGCCTG"
+    read = build_read(f"{name}_BX:Z:{barcode}_RX:Z:{sequence}")
+
+    mode, _ = get_mode(iter([read]), "BX")
+    assert mode.__name__ == mode_samtags_underline_separation.__name__
+
+
+def test_get_mode_void():
+    name = "myread:11213:21314"
+    read = build_read(name)
+
+    mode, _ = get_mode(iter([read]), "BX")
+    assert mode.__name__ == mode_void.__name__

@@ -22,6 +22,35 @@ def main(args):
     )
 
 
+def get_mode(parser, barcode_tag: str):
+    samtags_underline_pattern = re.compile(r"_[A-Z]{2}:[AifZHB]:.*(_|$)")
+    barcodes_end_pattern = re.compile(r":[ATGC]{17,}$")
+    processing_function = mode_void
+
+    first = []
+    # Check first 1000 reads for format
+    for i in range(1000):
+        try:
+            read = next(parser)
+        except StopIteration:
+            logger.info("Using mode_void")
+            break
+
+        first.append(read)
+        if samtags_underline_pattern.search(read.query_name):
+            logger.info("Using mode_samtags_underline_separation")
+            processing_function = mode_samtags_underline_separation
+            break
+        elif barcodes_end_pattern.search(read.query_name) and read.has_tag(barcode_tag):
+            logger.info("Using mode_ema")
+            processing_function = mode_ema
+            break
+    else:  # found nothing
+        logger.info("Using mode_void")
+
+    return processing_function, chain(first, parser)
+
+
 def run_tagbam(
         input: str,
         output: str,
@@ -32,31 +61,10 @@ def run_tagbam(
 
     summary = Summary()
 
-    samtags_undeline_pattern = re.compile(r"_[A-Z][A-Z]:[AifZHB]:.*(_|$)")
-    barcodes_end_pattern = re.compile(r":[ATGC]*$")
-
     # Read SAM/BAM files and transfer barcode information from alignment name to SAM tag
     with PySAMIO(input, output, __name__) as (infile, outfile):
         parser = infile.fetch(until_eof=True)
-        processing_function = mode_void
-
-        first = []
-        # Check first 100 reads for format
-        for i in range(100):
-            try:
-                read = next(parser)
-            except StopIteration:
-                break
-
-            first.append(read)
-            if re.match(samtags_undeline_pattern, read.query_name):
-                processing_function = mode_samtags_underline_separation
-                break
-            elif re.match(barcodes_end_pattern, read.query_name) and read.has_tag(barcode_tag):
-                processing_function = mode_ema
-                break
-
-        parser = chain(first, parser)
+        processing_function, parser = get_mode(parser, barcode_tag=barcode_tag)
 
         for read in tqdm(parser, desc="Processing reads", unit=" reads"):
             # Strips header from tag and depending on script mode, possibly sets SAM tag
