@@ -18,6 +18,7 @@ setup(
         "tqdm",
         "pandas",
         "numpy",
+        "scipy",
         "matplotlib",
         "snakemake",
         "importlib_resources; python_version<'3.7'",
