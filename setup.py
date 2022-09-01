@@ -22,7 +22,7 @@ setup(
         "snakemake",
         "importlib_resources; python_version<'3.7'",
         "dataclasses; python_version<'3.7'",
-        "multiqc"
+        "multiqc>=1.10,<1.12"
     ],
     extras_require={
         "dev": ["flake8", "pytest"],
