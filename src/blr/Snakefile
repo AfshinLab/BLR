@@ -5,12 +5,17 @@ from pathlib import Path
 import pandas as pd
 from snakemake.utils import validate
 from snakemake.logging import Logger
+from snakemake.exceptions import WorkflowError
 
 from blr.utils import ReadGroup, generate_chunks, symlink_relpath, parse_phaseblocks, parse_filters, tempif
 from blr.cli.find_clusterdups import UnionFind
 
 configfile: "blr.yaml"
 validate(config, "config.schema.yaml")
+
+if config["BQSR"] and config["known_sites"] is None:
+    raise WorkflowError("When BQSR is True, 'known_sites' needs to be set. Use: "
+                        "'$ blr config -s known_sites /path/to/sites.vcf.gz'")
 
 # TODO remove in next version
 if config["library_type"] == "blr":

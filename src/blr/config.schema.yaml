@@ -95,6 +95,7 @@ properties:
     type: ["string", "null" ]
     description: Comma separated path(s) to databases of known polymorphic sites for base recallibration.
     default: null
+    pattern: '.*(.vcf.gz)$'
   library_type:
     type: string
     pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
