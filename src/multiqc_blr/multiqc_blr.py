@@ -7,6 +7,8 @@ using the setuptools plugin hooks.
 
 import logging
 
+from importlib_resources import path as resource_path
+
 from multiqc.utils import config
 from blr import __version__
 
@@ -16,11 +18,17 @@ log = logging.getLogger('multiqc')
 # Save this plugin's version number (defined in setup.py) to the MultiQC config
 config.multiqc_blr_version = __version__
 
+MULTIQC_CONFIG = "multiqc_config.yaml"
+
 
 # Add default config options for the things that are used in multiqc_blr
 def before_config():
     # Use blr template by default
     config.template = "blr"
+
+    # Use source configs as defaults, these can be overwritten by later if user requests
+    with resource_path('blr', MULTIQC_CONFIG) as config_path:
+        config.mqc_load_config(str(config_path))
 
 
 def execution_start():
