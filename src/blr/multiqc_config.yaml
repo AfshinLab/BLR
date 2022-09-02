@@ -47,6 +47,12 @@ run_modules:
   - cutadapt
   - custom_content
 
+report_section_order:
+  phaseblocks:
+    order: 1000
+  about:
+    order: -1000
+
 sp:
   picard/alignment_metrics:
     fn: "final.alignment_summary_metrics.txt"

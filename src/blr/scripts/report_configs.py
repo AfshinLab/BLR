@@ -18,10 +18,10 @@ def parse_nested(d, root=None):
 with open(snakemake.output.yaml, "w") as out:  # noqa: F821
     unique_id = "".join(sample(ascii_lowercase, 10))
     workdir = os.path.dirname(os.path.abspath(snakemake.input.yaml))  # noqa: F821
-    text = "parent_id: 'configs'\n"
-    text += "parent_name: 'Configurations'\n"
+    text = "parent_id: 'about'\n"
+    text += "parent_name: 'About'\n"
     text += f"id: 'run-configs-{unique_id}'\n"
-    text += "section_name: 'Run configs'\n"
+    text += "section_name: 'Configurations'\n"
     text += "plot_type: 'html'\n"
     text += f"description: 'Configuration parameters used for run found in `{workdir}`.'\n"
     text += "data: |\n"

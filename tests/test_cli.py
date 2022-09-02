@@ -153,6 +153,16 @@ def test_config(tmp_path):
     )
 
 
+def test_software_versions(tmp_path):
+    workdir = tmp_path / "analysis"
+    init(workdir, TESTDATA_DBS_READ1, "dbs")
+    change_config(workdir / "blr.yaml", [
+        ("genome_reference", REFERENCE_GENOME),
+        ("phasing_contigs", "null")
+    ])
+    run(workdir=workdir, snakemake_args=["versions.yaml"])
+
+
 def test_default_read_mapper(workdir):
     n_input_fastq_reads = 2 * count_fastq_reads(workdir / "trimmed.barcoded.1.fastq.gz")
     n_input_fastq_reads += 2 * count_fastq_reads(workdir / "trimmed.non_barcoded.1.fastq.gz")
