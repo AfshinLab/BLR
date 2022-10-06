@@ -183,7 +183,7 @@ rule get_versions:
         shell("echo 'python:' $(python --version 2>&1 | sed 's|^Python ||') >> {output.yaml}")
         shell("echo 'cutadapt:' $(cutadapt --version) >> {output.yaml}")
         shell("echo 'starcode:' $(starcode --version 2>&1 | sed 's|^starcode-v||;s| .*$||') >> {output.yaml}")
-        shell("echo 'fastqc:' $(fastqc --version 2>&1 | sed 's|^FastQC  v||') >> {output.yaml}")
+        shell("echo 'fastqc:' $(fastqc --version 2>&1 | sed 's|^FastQC v||') >> {output.yaml}")
         shell("echo 'multiqc:' $(multiqc --version | sed 's|^multiqc, version ||') >> {output.yaml}")
         shell("echo 'ema:' $(ema 2>&1 | head -1 | sed 's|^EMA version ||') >> {output.yaml}")
         shell("echo 'bwa:' $(bwa 2>&1 | grep ^Version | sed 's|^Version: ||') >> {output.yaml}")
@@ -197,7 +197,7 @@ rule get_versions:
         shell("echo 'vcflib:' $(vcffilter 2>&1 | head -1 | sed 's|^vcflib ||;s| filter.*$||') >> {output.yaml}")
         shell("echo 'bcftools:' $(bcftools --version 2>&1 | head -1 | sed 's|^bcftools ||') >> {output.yaml}")
         shell("echo 'mosdepth:' $(mosdepth --version 2>&1 | sed 's|^mosdepth ||') >> {output.yaml}")
-        shell("echo 'whatshap:' $(whatshap --version) >> {output.yaml}")
+        shell("echo 'whatshap:' $(whatshap --version | sed 's|^whatshap ||') >> {output.yaml}")
 
 
 rule report_versions:
