@@ -22,7 +22,7 @@ def main(tsvs, output):
     all_data = []
     for nr, tsv in enumerate(tsvs):
         data = pd.read_csv(tsv, sep="\t")
-        if not set(data.columns).issuperset({"MoleculeID", "Barcode", "Reads", "Length", "BpCovered", "ChunkID"}):
+        if not set(data.columns).issuperset({"MoleculeID", "Barcode", "Reads", "Length", "BpCovered"}):
             print(f"# WARNING: File {tsv} does not have the expected columns.")
             continue
 
