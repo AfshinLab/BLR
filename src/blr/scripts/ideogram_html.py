@@ -166,7 +166,7 @@ var config = {{
         html += """
         ]},
     annotationsLayout: 'overlay',
-    orientation: 'horizontal'
+    orientation: 'vertical'
 };
 
 var ideogram = new Ideogram(config);
