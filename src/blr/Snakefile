@@ -191,7 +191,7 @@ rule get_versions:
         shell("echo 'picard:' $( picard MarkDuplicates --version 2>&1 | sed 's|^Version:||') >> {output.yaml}")
         shell("echo 'bowtie2:' $(bowtie2 --version 2>&1 | head -1 | sed 's|^.* version ||') >> {output.yaml}")
         shell("echo 'minimap2:' $(minimap2 --version) >> {output.yaml}")
-        shell("echo 'lariat:' $(lariat 2>&1 | head -1 | sed 's|^Starting lariat. Version: ||' | tr -d \\') >> {output.yaml}")
+        shell("echo 'lariat:' $(command -v lariat >/dev/null && lariat 2>&1 | head -1 | sed 's|^Starting lariat. Version: ||' | tr -d \\') >> {output.yaml}")
         shell("echo 'gatk:' $(gatk --version 2>&1 | grep '^The' | sed 's|^The Genome Analysis Toolkit (GATK) v||') >> {output.yaml}")
         shell("echo 'freebayes:' $(freebayes --version 2>&1 | sed 's|^version:.*v||') >> {output.yaml}")
         shell("echo 'vcflib:' $(vcffilter 2>&1 | head -1 | sed 's|^vcflib ||;s| filter.*$||') >> {output.yaml}")
