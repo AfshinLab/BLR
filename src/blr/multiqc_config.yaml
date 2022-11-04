@@ -107,16 +107,16 @@ sp:
   cutadapt:
     fn: "trimmed.fastq.log"
   whatshap/stats:
-    fn: "final.whatshap_stats.tsv"
+    fn: "*.whatshap_stats.tsv"
   whatshap/haplotag:
     fn: "*.haplotag.log"
   fastqc:
     fn_re: "trimmed.barcoded.[1|2].fastq.gz"
   hapcut2/phasing_stats:
-    fn: "final.phasing_stats.txt"
+    fn: "*.phasing_stats.txt"
   stats/sv_sizes:
-    fn: "final.sv_sizes.tsv"
+    fn: "*.sv_sizes.tsv"
   stats/molecule_stats:
-    fn: "final.molecule_stats.txt"
+    fn: "*.molecule_stats.txt"
   stats/barcode_stats:
-    fn: "final.barcode_stats.txt"
+    fn: "*.barcode_stats.txt"

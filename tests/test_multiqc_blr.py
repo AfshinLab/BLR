@@ -95,7 +95,7 @@ def test_stats_barcode_stats(tmpdir):
 
 
 def test_hapcut2(tmpdir):
-    copyfile(TESTDATA_HAPCUT2_PHASING_STATS, tmpdir / "example.txt")
+    copyfile(TESTDATA_HAPCUT2_PHASING_STATS, tmpdir / "example.phasing_stats.txt")
 
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "hapcut2"])
 
@@ -107,7 +107,7 @@ def test_hapcut2(tmpdir):
 
 
 def test_hapcut2_with_auN(tmpdir):
-    copyfile(TESTDATA_HAPCUT2_PHASING_STATS_AUN, tmpdir / "example.txt")
+    copyfile(TESTDATA_HAPCUT2_PHASING_STATS_AUN, tmpdir / "example.phasing_stats.txt")
 
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "hapcut2"])
 
@@ -119,7 +119,7 @@ def test_hapcut2_with_auN(tmpdir):
 
 
 def test_hapcut2_chroms(tmpdir):
-    copyfile(TESTDATA_HAPCUT2_PHASING_STATS_CHROM, tmpdir / "example.txt")
+    copyfile(TESTDATA_HAPCUT2_PHASING_STATS_CHROM, tmpdir / "example.phasing_stats.txt")
 
     subprocess.run(["multiqc", "-f", tmpdir, "-o", tmpdir, "-m", "hapcut2"])
 
