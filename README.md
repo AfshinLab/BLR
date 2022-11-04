@@ -1,6 +1,6 @@
 # Barcode Linked Reads (BLR)
 
-[![CI Linux](https://github.com/NBISweden/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions/workflows/ci.yml?query=branch%3Amaster) [![CI MacOS](https://github.com/NBISweden/BLR/actions/workflows/ci_macos.yml/badge.svg?branch=master)](https://github.com/NBISweden/BLR/actions/workflows/ci_macos.yml?query=branch%3Amaster)
+[![CI Linux](https://github.com/AfhsinLab/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/AfhsinLab/BLR/actions/workflows/ci.yml?query=branch%3Amaster) [![CI MacOS](https://github.com/AfhsinLab/BLR/actions/workflows/ci_macos.yml/badge.svg?branch=master)](https://github.com/AfhsinLab/BLR/actions/workflows/ci_macos.yml?query=branch%3Amaster)
 
 - [About the pipeline](#About-the-pipeline)
 - [Usage](#Usage)
@@ -245,7 +245,7 @@ Issues are tracked through [FrickTobias/BLR/issues](https://github.com/FrickTobi
 
 ## Old version
 
-To run the analysis described in [High throughput barcoding method for genome-scale phasing][1], look at the [stable branch](https://github.com/FrickTobias/BLR/tree/stable) for this git repository.
+To run the analysis described in [High throughput barcoding method for genome-scale phasing][1], look at the [stable branch](https://github.com/AfhsinLab/BLR/tree/stable) for this git repository.
 
 That version of BLR Analysis is also available at [OMICtools](https://omictools.com/blr-tool).
 
