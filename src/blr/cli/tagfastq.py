@@ -247,7 +247,7 @@ def map_corrected_barcodes(file, summary, mapper, template, min_count=0):
     :param min_count: int. Skip clusters with fewer than min_count reads.
     :return: dict: raw sequences pointing to a corrected canonical sequence.
     """
-    df = pd.read_csv(file, sep="\t", dtype={"canonical_seq": str, "size": int, "cluster_seqs":str},
+    df = pd.read_csv(file, sep="\t", dtype={"canonical_seq": str, "size": int, "cluster_seqs": str},
                      names=["canonical_seq", "size", "cluster_seqs"])
 
     summary["Corrected barcodes"] = len(df)
@@ -261,7 +261,9 @@ def map_corrected_barcodes(file, summary, mapper, template, min_count=0):
     summary["Barcodes not passing filters"] = summary["Corrected barcodes"] - len(df)
     summary["Reads with barcodes not passing filters"] = summary["Reads with corrected barcodes"] - sum(df["size"])
 
-    corrected_barcodes = {s: canonical_seq for canonical_seq, seqs in zip(df["canonical_seq"], df["cluster_seqs"]) for s in seqs.split(",")}
+    corrected_barcodes = {
+        s: canonical for canonical, seqs in zip(df["canonical_seq"], df["cluster_seqs"]) for s in seqs.split(",")
+    }
     canonical_seqs = df["canonical_seq"].tolist()
 
     heap_index = {}
