@@ -1,7 +1,6 @@
 # Barcode Linked Reads (BLR)
 
-[![CI Linux](https://github.com/AfhsinLab/BLR/workflows/CI/badge.svg?branch=master)](https://github.com/AfhsinLab/BLR/actions/workflows/ci.yml?query=branch%3Amaster) [![CI MacOS](https://github.com/AfhsinLab/BLR/actions/workflows/ci_macos.yml/badge.svg?branch=master)](https://github.com/AfhsinLab/BLR/actions/workflows/ci_macos.yml?query=branch%3Amaster)
-
+[![CI](https://github.com/AfshinLab/BLR/actions/workflows/ci.yml/badge.svg)](https://github.com/AfshinLab/BLR/actions/workflows/ci.yml) [![CI macos](https://github.com/AfshinLab/BLR/actions/workflows/ci_macos.yml/badge.svg)](https://github.com/AfshinLab/BLR/actions/workflows/ci_macos.yml)
 - [About the pipeline](#About-the-pipeline)
 - [Usage](#Usage)
 - [Installation](#Installation)
