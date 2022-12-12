@@ -19,6 +19,7 @@ setup(
         "pandas",
         "numpy",
         "matplotlib",
+        "ruamel.yaml",
         "snakemake",
         "importlib_resources; python_version<'3.7'",
         "dataclasses; python_version<'3.7'",
