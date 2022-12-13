@@ -207,7 +207,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Add N50 to general stats table
         general_stats_data = {
-            sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items()
+            sample: {"N50_phaseblock": data["N50"]} for sample, data in phasing_data.items() if "N50" in data
         }
         max_n50 = max(v.get("N50_phaseblock", 0) for v in general_stats_data.values())
         multiplier = 0.000001 if max_n50 > 1_000_000 else 0.001
