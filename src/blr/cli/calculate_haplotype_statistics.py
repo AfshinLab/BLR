@@ -524,24 +524,22 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                 last_base_was_switch = False
                 is_first = True
                 for block_asm_index, (variant_index, position, genotype, alleles) in enumerate(block_asm):
-                    genotype_asm = genotype[a]
-                    genotype_ref = position_to_genotype_ref[position][0]
+                    genotype_ref = position_to_genotype_ref[position]
 
-                    if genotype_ref == '-':
+                    if genotype_ref[0] == '-':
                         continue
 
                     alleles_ref = position_to_alleles_ref[position]
-                    genotypes_ref = set(position_to_genotype_ref[position])
-                    if genotypes_ref != set(genotype) or alleles != alleles_ref:
+                    if set(genotype_ref) != set(genotype) or alleles_ref != alleles:
                         if a == 0:
                             different_alleles += 1
                             logger.debug(f"Different alleles for position {ref_name}:{position}")
-                            logger.debug(f"Ref {genotypes_ref} != {set(genotype)} Query")
+                            logger.debug(f"Ref {set(genotype_ref)} != {set(genotype)} Query")
                             logger.debug(f"Ref {alleles_ref} != {alleles} Query")
                         continue
 
                     if is_first:
-                        switched = (genotype_ref != genotype_asm)
+                        switched = (genotype_ref[0] != genotype[a])
                         consecutive_switches = count_consecutive_switches(
                             position_to_genotype_ref, block_asm[block_asm_index:], a
                         )
@@ -552,8 +550,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                     # if there is a mismatch against the true haplotype and we are in a normal state,
                     # or if there is a "match" that isn't a match because we are in a switched state,
                     # then we need to flip the state again and iterate the count
-                    if (genotype_ref != genotype_asm and not switched) or (
-                            genotype_ref == genotype_asm and switched):  # current base is mismatched, implying a switch
+                    if (genotype_ref[0] != genotype[a] and not switched) or (
+                            genotype_ref[0] == genotype[a] and switched):  # current base is mismatched, implying a switch
                         switched = not switched  # flip the "switched" status
 
                         if last_base_was_switch:  # then this is actually a single-base mismatch
