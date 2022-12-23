@@ -34,16 +34,43 @@ def main(args):
 
     stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes, args.threads)
 
+    chrom_lengths = get_chrom_lengths(args.reference_lengths, chromosomes)
+
     with smart_open(args.output) as file:
         if args.per_chrom:
             for c in chromosomes:
                 print(f"----------- {c} -----------", file=file)
-                print(stats[c].to_txt(), file=file)
+                print(stats[c].to_txt(reference_lengths=chrom_lengths), file=file)
             print("----------- All -----------", file=file)
 
-        print(stats["all"].to_txt(), file=file)
+        print(stats["all"].to_txt(reference_lengths=chrom_lengths), file=file)
 
     logger.info("Finished")
+
+
+def get_chrom_lengths(reference_lengths, chromosomes):
+    chrom_lengths = defaultdict(int)
+    if reference_lengths is None:
+        return chrom_lengths
+
+    if not os.path.exists(reference_lengths):
+        logger.warning(f"Path to '-r/--reference-lengths' file not found ({reference_lengths})")
+        return chrom_lengths
+
+    with open(reference_lengths) as f:
+        for line in f:
+            els = line.strip().split("\t")
+            assert len(els) > 1
+            chrom_name, chrom_length, *_ = els
+            if chrom_name in chromosomes:
+                chrom_lengths[chrom_name] = int(chrom_length)
+
+    if len(chrom_lengths) < len(chromosomes):
+        missing = sorted(set(chromosomes) - set(chrom_lengths), key=chromosome_rank)
+        logger.warning(f"Not all phased chromosomes found in {reference_lengths}. "
+                       f"Missing chromosomes: {','.join(missing)}")
+
+    return chrom_lengths
 
 
 def chromosome_rank(chromosome: str):
@@ -312,6 +339,9 @@ class ErrorResult:
 
         return new_err
 
+    def get_reference_length(self, reference_lengths):
+        return sum(reference_lengths[ref] for ref in self.ref)
+
     def get_switch_count(self):
         return sum(self.switch_count.values())
 
@@ -413,6 +443,18 @@ class ErrorResult:
         spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return self.calc_Nx(spans, x=50)
 
+    def get_QNG50(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, total=self.get_reference_length(reference_lengths), x=50)
+
+    def get_NG50(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, total=self.get_reference_length(reference_lengths), x=50)
+
     @staticmethod
     def calc_auN(spans, total: int = None):
         # Calculate auN = 'Area under the Nx curve'
@@ -435,6 +477,18 @@ class ErrorResult:
         spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
         return self.calc_auN(spans)
 
+    def get_auNG(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans, total=self.get_reference_length(reference_lengths))
+
+    def get_auQNG(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans, total=self.get_reference_length(reference_lengths))
+
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return statistics.median(spanlst)
@@ -442,7 +496,10 @@ class ErrorResult:
     def get_num_snps_max_blk(self):
         return sum(self.maxblk_snps.values()) if self.maxblk_snps.values() else "n/a"
 
-    def to_txt(self):
+    def to_txt(self, reference_lengths=None):
+        if reference_lengths is not None and not all(r in reference_lengths for r in self.ref):
+            reference_lengths = None
+
         return f"""\
 switch rate:        {self.get_switch_rate()}
 switch count:       {self.get_switch_count()}
@@ -454,12 +511,16 @@ flat rate:          {self.get_flat_error_rate()}
 flat count:         {self.get_flat_count()}
 flat positions:     {self.get_flat_positions()}
 QAN50:              {self.get_QAN50()}
+QNG50:              {self.get_QNG50(reference_lengths)}
 QN50:               {self.get_QN50()}
 auQN:               {self.get_auQN()}
+auQNG:              {self.get_auQNG(reference_lengths)}
 phased count:       {self.get_phased_count()}
 AN50:               {self.get_AN50()}
 N50:                {self.get_N50()}
+NG50:               {self.get_NG50(reference_lengths)}
 auN:                {self.get_auN()}
+auNG:               {self.get_auNG(reference_lengths)}
 num snps max blk:   {self.get_num_snps_max_blk()}"""
 
 
@@ -879,6 +940,9 @@ def add_arguments(parser):
     )
     parser.add_argument(
         "-o", "--output", help="Output file name. Default: Print to stdout."
+    )
+    parser.add_argument(
+        "-r", "--reference-lengths", help="Tab separated file with chromosome name and chromosome lengths."
     )
     parser.add_argument(
         "-t", "--threads", type=int, default=1,
