@@ -8,7 +8,7 @@ on:
 
 jobs:
   Linting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
@@ -28,8 +28,8 @@ jobs:
     needs:
       - Linting
     name: Run pipeline
-    timeout-minutes: 12
-    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    runs-on: ubuntu-20.04
     defaults:
       run:
         shell: bash -l {0}
