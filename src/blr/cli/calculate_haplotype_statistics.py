@@ -694,9 +694,6 @@ def parse_assembled_blocks(blocks_asm):
         variants_phased_block = 0
 
         for variant_index, position, genotype, *_ in block:
-            if '-' in genotype:
-                continue
-
             variants_phased += 1
 
             variants_phased_block += 1
@@ -726,7 +723,7 @@ def add_arguments(parser):
     )
     parser.add_argument(
         '-v2', '--vcf2',
-        help="A phased, single sample  VCF (uncompressed or bgzip) file to use as the 'ground truth' haplotype."
+        help="A phased, single sample VCF (uncompressed or bgzip) file to use as the 'ground truth' haplotype."
     )
     parser.add_argument(
         '-i', '--indels', action="store_true",
