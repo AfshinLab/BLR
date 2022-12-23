@@ -653,14 +653,13 @@ def get_phased_pos_and_flat_count(block_asm, position_to_alleles_ref, position_t
     flat_count2 = 0
     for variant_index, pos, genotype, alleles in block_asm:
         alleles_ref = position_to_alleles_ref[pos]
+        if "-" in alleles_ref:
+            continue
+
         if set(position_to_genotype_ref[pos]) != set(genotype) or alleles != alleles_ref:
             continue
 
-        if position_to_genotype_ref[pos][0] != '-':
-            phased_known += 1
-
-        if position_to_genotype_ref[pos][0] == '-':
-            continue
+        phased_known += 1
 
         if genotype[0] != position_to_genotype_ref[pos][0]:
             flat_count1 += 1
