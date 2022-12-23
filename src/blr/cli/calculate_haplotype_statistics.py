@@ -91,6 +91,7 @@ import sys
 from pysam import VariantFile
 
 from blr.utils import smart_open, tqdm
+from blr._version import version
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,10 @@ def main(args):
             print("----------- All -----------", file=file)
 
         print(stats["all"].to_txt(reference_lengths=chrom_lengths), file=file)
+
+    if args.stats is not None:
+        with open(args.stats, "w") as f:
+            stats["all"].write_stats(f, reference_lengths=chrom_lengths)
 
     logger.info("Finished")
 
@@ -538,8 +543,6 @@ class ErrorResult:
         return span_sq_sum / total
 
     def get_auN(self):
-        # Calculate auN = 'Area under the Nx curve'
-        # see https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
         spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
         return self.calc_auN(spans)
 
@@ -594,38 +597,75 @@ auNG:               {self.get_auNG(reference_lengths)}
 num snps max blk:   {self.get_num_snps_max_blk()}"""
 
 
-        s = f"switch rate:        {self.get_switch_rate()}\n" \
-            f"mismatch rate:      {self.get_mismatch_rate()}\n" \
-            f"flat rate:          {self.get_flat_error_rate()}\n" \
-            f"phased count:       {self.get_phased_count()}\n" \
-            f"AN50:               {self.get_AN50()}\n" \
-            f"N50:                {self.get_N50_phased_portion()}\n" \
-            f"auN:                {self.get_auN()}\n" \
-            f"num snps max blk:   {self.get_num_snps_max_blk()}"
+    def write_stats(self, file, reference_lengths):
+        def print_range(func, short):
+            for x in range(0, 101):
+                value = func(x=x)
+                value = 0 if value == "n/a" else value
+                print(short, x, value, sep="\t", file=file)
 
-        return s
+        template_section_header = "# {section_name}. Use `grep ^{section_short} | cut -f 2-` to extract this part."
+        print(
+            f"# This file was produced by blr calculate_haplotype_statistics ({version}) for plotting.",
+            f"# The command line was: {' '.join(sys.argv)}",
+            sep="\n",
+            file=file
+        )
 
-    def to_tsv(self):
+        # Nx
+        print(
+            template_section_header.format(section_name="Nx contiguity", section_short="NX"),
+            sep="\n",
+            file=file
+        )
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_Nx, spans), "NX")
 
-        # Header. Sample name is included for MultiQC
-        s = "Sample Name\tswitch rate\tmismatch rate\tflat rate\tphased count\tAN50 (Mbp)\tN50 (Mbp)\t" \
-            "auN\tnum snps max blk\n"
+        # ANx
+        print(
+            template_section_header.format(section_name="ANx contiguity", section_short="ANX"),
+            sep="\n",
+            file=file
+        )
+        span_with_counts = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_ANx, span_with_counts), "ANX")
 
-        values = [
-            "",                                           # Need string for MultiQC
-            self.get_switch_rate(),
-            self.get_mismatch_rate(),
-            self.get_flat_error_rate(),
-            self.get_phased_count(),
-            self.get_AN50()/1_000_000,                    # Show as Mbp
-            self.get_N50_phased_portion()/1_000_000,      # Show as Mbp
-            self.get_auN() / 1_000_000,                   # Show as Mbp
-            sum(self.maxblk_snps.values())
-        ]
+        # QNx
+        print(
+            template_section_header.format(section_name="QNx contiguity", section_short="QNX"),
+            sep="\n",
+            file=file
+        )
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_Nx, spans), "QNX")
 
-        s += "\t".join(list(map(str, values))) + "\n"
+        # QANx
+        print(
+            template_section_header.format(section_name="QANx contiguity", section_short="QAN"),
+            sep="\n",
+            file=file
+        )
+        span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_ANx, span_with_counts), "QAN")
 
-        return s
+        if reference_lengths is not None and all(r in reference_lengths for r in self.ref):
+            # NGx
+            print(
+                template_section_header.format(section_name="NGx contiguity", section_short="NGX"),
+                sep="\n",
+                file=file
+            )
+            spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "NGX")
+
+            # QNGx
+            print(
+                template_section_header.format(section_name="QNGx contiguity", section_short="QNG"),
+                sep="\n",
+                file=file
+            )
+            spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "QNG")
 
 
 # compute haplotype error rates between 2 VCF files
@@ -1007,6 +1047,9 @@ def add_arguments(parser):
         '-c', '--chromosomes',
         help="Name(s) of chromsome(s) to calculate stats for. Multiple chromsomes are joined through commas. "
              "Default: use all chromosomes."
+    )
+    parser.add_argument(
+        "-s", "--stats", help="Output additional statistics for plotting to FILE.", metavar="FILE",
     )
     parser.add_argument(
         "-o", "--output", help="Output file name. Default: Print to stdout."
