@@ -596,7 +596,6 @@ auN:                {self.get_auN()}
 auNG:               {self.get_auNG(reference_lengths)}
 num snps max blk:   {self.get_num_snps_max_blk()}"""
 
-
     def write_stats(self, file, reference_lengths):
         def print_range(func, short):
             for x in range(0, 101):
@@ -631,22 +630,24 @@ num snps max blk:   {self.get_num_snps_max_blk()}"""
         print_range(partial(self.calc_ANx, span_with_counts), "ANX")
 
         # QNx
-        print(
-            template_section_header.format(section_name="QNx contiguity", section_short="QNX"),
-            sep="\n",
-            file=file
-        )
-        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
-        print_range(partial(self.calc_Nx, spans), "QNX")
+        if sum([value for spanlst in self.QN50_spanlst.values() for value in spanlst]) > 0:
+            print(
+                template_section_header.format(section_name="QNx contiguity", section_short="QNX"),
+                sep="\n",
+                file=file
+            )
+            spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_Nx, spans), "QNX")
 
         # QANx
-        print(
-            template_section_header.format(section_name="QANx contiguity", section_short="QAN"),
-            sep="\n",
-            file=file
-        )
-        span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
-        print_range(partial(self.calc_ANx, span_with_counts), "QAN")
+        if sum([value for spanlst in self.QAN50_spanlst.values() for value in spanlst]) > 0:
+            print(
+                template_section_header.format(section_name="QANx contiguity", section_short="QAN"),
+                sep="\n",
+                file=file
+            )
+            span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_ANx, span_with_counts), "QAN")
 
         if reference_lengths is not None and all(r in reference_lengths for r in self.ref):
             # NGx
@@ -659,13 +660,14 @@ num snps max blk:   {self.get_num_snps_max_blk()}"""
             print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "NGX")
 
             # QNGx
-            print(
-                template_section_header.format(section_name="QNGx contiguity", section_short="QNG"),
-                sep="\n",
-                file=file
-            )
-            spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
-            print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "QNG")
+            if sum([value for spanlst in self.QN50_spanlst.values() for value in spanlst]) > 0:
+                print(
+                    template_section_header.format(section_name="QNGx contiguity", section_short="QNG"),
+                    sep="\n",
+                    file=file
+                )
+                spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+                print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "QNG")
 
 
 # compute haplotype error rates between 2 VCF files
