@@ -205,7 +205,7 @@ def count_consecutive_switches(position_to_genotype_ref, block_asm, allele):
     for _, pos, genotype, *_ in block_asm:
         x = position_to_genotype_ref[pos][0]  # base in true haplotype
         y = genotype[allele]  # base in assembled haplotype
-        if x == '-' or y == '-':
+        if x == '-':
             if is_first:
                 continue
             break
