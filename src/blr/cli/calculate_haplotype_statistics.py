@@ -248,6 +248,8 @@ class ErrorResult:
         maxblk_snps=None,
         AN50_spanlst=None,
         N50_spanlst=None,
+        QAN50_spanlst=None,
+        QN50_spanlst=None,
         switch_loc=None,
         mismatch_loc=None
     ):
@@ -272,6 +274,8 @@ class ErrorResult:
         self.phased_count = create_dict(phased_count, int, ref)
         self.AN50_spanlst = create_dict(AN50_spanlst, list, ref)
         self.N50_spanlst = create_dict(N50_spanlst, list, ref)
+        self.QAN50_spanlst = create_dict(QAN50_spanlst, list, ref)
+        self.QN50_spanlst = create_dict(QN50_spanlst, list, ref)
 
         # these are things that are non-additive properties, because they
         # refer to the whole reference and would be double-counted
@@ -299,6 +303,8 @@ class ErrorResult:
         new_err.phased_count = merge_dicts(self.phased_count, other.phased_count)
         new_err.AN50_spanlst = merge_dicts(self.AN50_spanlst, other.AN50_spanlst)
         new_err.N50_spanlst = merge_dicts(self.N50_spanlst, other.N50_spanlst)
+        new_err.QAN50_spanlst = merge_dicts(self.QAN50_spanlst, other.QAN50_spanlst)
+        new_err.QN50_spanlst = merge_dicts(self.QN50_spanlst, other.QN50_spanlst)
         new_err.num_snps = merge_dicts(self.num_snps, other.num_snps)
         new_err.maxblk_snps = merge_dicts(self.maxblk_snps, other.maxblk_snps)
         new_err.switch_loc = merge_dicts(self.switch_loc, other.switch_loc)
@@ -360,40 +366,74 @@ class ErrorResult:
             return float(flat_count) / flat_positions
         return "n/a"
 
-    def get_AN50(self):
-        AN50_spanlst = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
-        AN50_spanlst.sort(reverse=True)
-        half_num_snps = self.get_num_snps() / 2.0
+    @staticmethod
+    def calc_ANx(spans_with_counts, total: int = None, x: int = 50):
+        spans_with_counts.sort(reverse=True)
+        assert 0 <= x <= 100
+        if total is None:
+            total = sum(count for span, count in spans_with_counts)
+
+        target = total * (x/100)
+
         phased_sum = 0
-        for span, phased in AN50_spanlst:
+        for span, phased in spans_with_counts:
             phased_sum += phased
-            if phased_sum > half_num_snps:
+            if phased_sum > target:
                 return span
         return "n/a"
 
-    def get_N50_phased_portion(self):
-        N50_spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
-        N50_spanlst.sort(reverse=True)
+    def get_QAN50(self):
+        span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
+        return self.calc_ANx(span_with_counts, total=self.get_mismatch_positions(), x=50)
 
-        half_L = sum(N50_spanlst) / 2.0
+    def get_AN50(self):
+        span_with_counts = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
+        return self.calc_ANx(span_with_counts, total=self.get_mismatch_positions(), x=50)
 
+    @staticmethod
+    def calc_Nx(spans, total: int = None, x: int = 50):
+        assert 0 <= x <= 100
+        if total is None:
+            total = sum(spans)
+        target = total * (x/100)
+
+        spans.sort(reverse=True)
         total = 0
-        for span in N50_spanlst:
+        for span in spans:
             total += span
-            if total > half_L:
+            if total > target:
                 return span
         return "n/a"
+
+    def get_QN50(self):
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, x=50)
+
+    def get_N50(self):
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, x=50)
+
+    @staticmethod
+    def calc_auN(spans, total: int = None):
+        # Calculate auN = 'Area under the Nx curve'
+        # see https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
+        if total is None:
+            total = sum(spans)
+
+        span_sq_sum = sum(s**2 for s in spans)
+        if total == 0:
+            return "n/a"
+        return span_sq_sum / total
 
     def get_auN(self):
         # Calculate auN = 'Area under the Nx curve'
         # see https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
         spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
-        span_sum = sum(spans)
-        span_sq_sum = sum(s**2 for s in spans)
-        try:
-            return span_sq_sum / span_sum
-        except ZeroDivisionError:
-            return "n/a"
+        return self.calc_auN(spans)
+
+    def get_auQN(self):
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans)
 
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
@@ -403,6 +443,25 @@ class ErrorResult:
         return sum(self.maxblk_snps.values()) if self.maxblk_snps.values() else "n/a"
 
     def to_txt(self):
+        return f"""\
+switch rate:        {self.get_switch_rate()}
+switch count:       {self.get_switch_count()}
+switch positions:   {self.get_switch_positions()}
+mismatch rate:      {self.get_mismatch_rate()}
+mismatch count:     {self.get_mismatch_count()}
+mismatch positions: {self.get_mismatch_positions()}
+flat rate:          {self.get_flat_error_rate()}
+flat count:         {self.get_flat_count()}
+flat positions:     {self.get_flat_positions()}
+QAN50:              {self.get_QAN50()}
+QN50:               {self.get_QN50()}
+auQN:               {self.get_auQN()}
+phased count:       {self.get_phased_count()}
+AN50:               {self.get_AN50()}
+N50:                {self.get_N50()}
+auN:                {self.get_auN()}
+num snps max blk:   {self.get_num_snps_max_blk()}"""
+
 
         s = f"switch rate:        {self.get_switch_rate()}\n" \
             f"mismatch rate:      {self.get_mismatch_rate()}\n" \
@@ -493,6 +552,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
     different_alleles = 0
     switch_loc = []
     mismatch_loc = []
+    QAN50_spanlst = []
+    QN50_spanlst = []
 
     AN50_spanlst, N50_spanlst, maxblk_snps, phased_count = parse_assembled_blocks(blocks_asm)
 
@@ -526,7 +587,6 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                 last_phased_position = None
                 for block_asm_index, (variant_index, position, genotype, alleles) in enumerate(block_asm):
                     genotype_ref = position_to_genotype_ref[position]
-
                     if genotype_ref[0] == '-':
                         continue
 
@@ -615,6 +675,15 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
 
             flat_count += flat_count_block
 
+            # Use switch/mismatch location to split blocks. This give N50/AN50 metrics adjusted
+            # for errors. Also count the number of phased variants confirmed by the reference
+            block_QAN50_spans, block_QN50_spans = get_switch_adjusted_length(
+                block_asm, position_to_genotype_ref, position_to_alleles_ref, allele_switch_loc[i], allele_mismatch_loc[i]
+            )
+
+            QAN50_spanlst.extend(block_QAN50_spans)
+            QN50_spanlst.extend(block_QN50_spans)
+
         assert len(switch_loc) == switch_count
         assert len(mismatch_loc) == mismatch_count
 
@@ -640,6 +709,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
         maxblk_snps=maxblk_snps,
         AN50_spanlst=AN50_spanlst,
         N50_spanlst=N50_spanlst,
+        QAN50_spanlst=QAN50_spanlst,
+        QN50_spanlst=QN50_spanlst,
         switch_loc=switch_loc,
         mismatch_loc=mismatch_loc
     )
@@ -678,6 +749,74 @@ def mapp_positions_to_block(block_ref):
         position_to_genotype[position] = genotype
         position_to_alleles[position] = alleles
     return position_to_alleles, position_to_genotype
+
+
+def get_switch_adjusted_length(block_asm, position_to_genotype_ref, position_to_alleles_ref, switch_loc, mismatch_loc):
+    positions = []
+    indeces = []
+    for variant_index, position, genotype, alleles in block_asm:
+        # check if phased in reference
+        genotype_ref = position_to_genotype_ref[position]
+        alleles_ref = position_to_alleles_ref[position]
+        if "-" in genotype_ref:
+            continue
+
+        # check if phased in reference
+        if set(genotype_ref) != set(genotype) or alleles != alleles_ref:
+           continue
+
+        positions.append(position)
+        indeces.append(variant_index)
+
+    # Sort and label errors
+    error_loc = [(pos, "switch") for pos in switch_loc]
+    error_loc.extend([(pos, "mismatch") for pos in mismatch_loc])
+    error_loc.sort()
+    assert all(pos in set(positions) for pos, _ in error_loc)
+
+    # Split positions and indeces into new blocks based on error_loc
+    # Ref:          00000000
+    # Asm:          00001111
+    # Switch loc        x
+    # Adj. blocks   <--><-->
+    #
+    # Ref:          00000000
+    # Asm:          00001000
+    # Mismatch loc       x
+    # Adj. blocks   <--> <->
+
+    split_positions = []
+    split_indeces = []
+    for pos, err_type in error_loc:
+        i = positions.index(pos)
+        if err_type == "mismatch" and i > 2:
+            split_positions.append(positions[:i-1])
+            split_indeces.append(indeces[:i-1])
+        elif err_type == "switch" and i > 1:
+            split_positions.append(positions[:i])
+            split_indeces.append(indeces[:i])
+
+        positions = positions[i:]
+        indeces = indeces[i:]
+
+    if len(positions) > 1:
+        split_positions.append(positions)
+        split_indeces.append(indeces)
+
+    adjusted_block_lengths = []
+    block_lengths = []
+    for block_positions, block_indeces in zip(split_positions, split_indeces):
+        block_index_span = block_indeces[-1] - block_indeces[0] + 1
+        block_length = block_positions[-1] - block_positions[0]
+        variants_phased_block = len(block_positions)
+        assert variants_phased_block > 1
+
+        adjusted_block_lengths.append(
+            (block_length * (variants_phased_block / block_index_span), variants_phased_block)
+        )
+        block_lengths.append(block_length)
+
+    return adjusted_block_lengths, block_lengths
 
 
 def parse_assembled_blocks(blocks_asm):
