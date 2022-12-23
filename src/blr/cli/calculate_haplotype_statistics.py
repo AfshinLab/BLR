@@ -640,7 +640,7 @@ num snps max blk:   {self.get_num_snps_max_blk()}"""
             print_range(partial(self.calc_Nx, spans), "QNX")
 
         # QANx
-        if sum([value for spanlst in self.QAN50_spanlst.values() for value in spanlst]) > 0:
+        if sum([value[1] for spanlst in self.QAN50_spanlst.values() for value in spanlst]) > 0:
             print(
                 template_section_header.format(section_name="QANx contiguity", section_short="QAN"),
                 sep="\n",
