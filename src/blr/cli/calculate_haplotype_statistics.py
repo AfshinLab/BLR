@@ -523,6 +523,7 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                 switched = False
                 last_base_was_switch = False
                 is_first = True
+                last_phased_position = None
                 for block_asm_index, (variant_index, position, genotype, alleles) in enumerate(block_asm):
                     genotype_ref = position_to_genotype_ref[position]
 
@@ -537,6 +538,9 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                             logger.debug(f"Ref {set(genotype_ref)} != {set(genotype)} Query")
                             logger.debug(f"Ref {alleles_ref} != {alleles} Query")
                         continue
+
+                    # Record position of last phased variant that also found in ref
+                    last_phased_position = position
 
                     if is_first:
                         switched = (genotype_ref[0] != genotype[a])
@@ -578,7 +582,7 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                 if last_base_was_switch:
                     # count the switch as a single-base mismatch instead
                     allele_mismatches[a] += 1
-                    allele_mismatch_loc[a].append(position)
+                    allele_mismatch_loc[a].append(last_phased_position)
                     allele_switches[a] -= 1
                     if len(allele_switch_loc[a]) > 0:
                         allele_switch_loc[a].pop()
