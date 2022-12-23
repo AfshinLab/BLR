@@ -1,7 +1,77 @@
 """
-Calculate statistics on haplotypes assembled using HapCUT2 or similar tools.
+Calculate statistics on haplotypes assembled using HapCUT2 or similar tools. Provide
+reference haplotypes to output comparative statistics such as switch errors.
 
-Based on script: calculate_haplotype_statistisc.py form HapCUT2
+Statistics:
+
+    phased count:
+        Number of phased variants in the reference.
+    AN50:
+        AN50 metric for haplotype contiguity. It is the span (in base pairs) of a block such that
+        half (50%) of all phased variants are in a block of that span or longer. To adjust for unphased
+        variants, the base-pair span of a block is multiplied by the fraction of variants spanned
+        by the block that are phased. Reference information:
+        https://doi.org/10.1101%2Fgr.213462.116 and https://doi.org/10.1186%2F1471-2105-12-S1-S24
+    N50:
+        N50 metric for haplotype contiguity. It is the span (in base pairs) of a block such that
+        half (50%) of the total block length are in a block of that span or longer.
+    NG50:
+        NG50 metric for haplotype contiguity. Similar to N50 but relative the genome length.
+        Requires '-r/--reference-lengths'.
+    auN:
+        auN metric for haplotype contiguity. Defined as the area under the Nx-curve where for x 0 -> 100.
+        A more stable metric for contiguity then the N50. Also see:
+        https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
+    auNG:
+        auNG metric for haplotype contiguity. Similar to auN but for NGx curve.
+        Requires '-r/--reference-lengths'.
+    num snps max blk:
+        Maxmum number of phased variants recovered for a block.
+    switch rate:
+        Switch errors (aka long-switch error) as a fractions of possible switch positions. Note that:
+        `switch rate` = `switch count` / `switch positions`.
+    switch count:
+        Switch error counts for all overlapping blocks between the assembly and reference haplotype.
+        A "switch" is defined as a stretch of multiple variants being assigned to the wrong haplotype
+        in relation to the reference.
+    switch positions:
+        The number of positions where switch errors are assayed. The number is the total number of variant
+        pairs in blocks excluding the ends (ends reported as mismatch errors). Only blocks with at least 4
+        variants recovered in both the assembly and reference are eligable for switch errors.
+    mismatch rate:
+        Mismatch errors (aka short-switch errors or point errors) as a fraction of possible mismatch
+        positions. Note that: `mismatch rate` = `mismatch count` / `mismatch positions`.
+    mismatch count:
+        Mismatch error counts for all overlapping blocks between the assembly and reference haplotype.
+        A "mismatch" is defined as two consequtive switches over a single position in relation to the
+        reference.
+    mismatch positions:
+        The number of positions where mismatch errors are assayed. This is every position shared between
+        the assebled and referece haplotype in blocks of at least length 2.
+    flat rate:
+        Flat errors (aka Hamming errors) as a fraction of possible flat error positions. Note that:
+        `flat errors` = `flat count` / `flat positions`.
+    flat count:
+        Flat error counts for all overlapping blocks between the assembly and reference haplotype. This the
+        total hamming distance between the assembled and reference haplotype summed over all overlapping
+        blocks.
+    flat positions:
+        The number of positions where mismatch errors are assayed. This is every position shared between
+        the assebled and referece haplotype in blocks of at least length 2. Same as `mismatch positions`.
+    QAN50:
+        Similar to AN50 but each phase block has been split at switch and mismatch locations.
+    QN50:
+        Similar to N50 but each phase block has been split at switch and mismatch locations.
+    auQN:
+        Similar to auN but each phase block has been split at switch and mismatch locations.
+    QNG50:
+        Similar to NG50 but each phase block has been split at switch and mismatch locations.
+        Requires '-r/--reference-lengths'.
+    auQNG:
+        Similar to auNG but each phase block has been split at switch and mismatch locations.
+        Requires '-r/--reference-lengths'.
+
+Based on script: calculate_haplotype_statistisc.py from HapCUT2
 https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_statistics.py
 """
 
