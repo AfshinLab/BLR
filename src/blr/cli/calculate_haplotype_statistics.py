@@ -5,21 +5,21 @@ reference haplotypes to output comparative statistics such as switch errors.
 Statistics:
 
     phased count:
-        Number of phased variants in the reference.
+        Number of phased variants.
     AN50:
-        AN50 metric for haplotype contiguity. It is the span (in base pairs) of a block such that
-        half (50%) of all phased variants are in a block of that span or longer. To adjust for unphased
-        variants, the base-pair span of a block is multiplied by the fraction of variants spanned
-        by the block that are phased. Reference information:
+        AN50 metric for haplotype contiguity. Defined as the span (in base pairs) of a block such that half
+        (50%) of all phased variants are in a block of that span or longer. Blocks are adjusted for unphased
+        variants by multipling the base-pair span by the fraction of variants spanned by the block that are
+        phased. Reference information:
         https://doi.org/10.1101%2Fgr.213462.116 and https://doi.org/10.1186%2F1471-2105-12-S1-S24
     N50:
-        N50 metric for haplotype contiguity. It is the span (in base pairs) of a block such that
-        half (50%) of the total block length are in a block of that span or longer.
+        N50 metric for haplotype contiguity. Defined as the span (in base pairs) of a block such that half
+        (50%) of the total block length are in a block of that span or longer.
     NG50:
         NG50 metric for haplotype contiguity. Similar to N50 but relative the genome length.
         Requires '-r/--reference-lengths'.
     auN:
-        auN metric for haplotype contiguity. Defined as the area under the Nx-curve where for x 0 -> 100.
+        auN metric for haplotype contiguity. Defined as the area under the Nx-curve where for x in [0, 100]
         A more stable metric for contiguity then the N50. Also see:
         https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
     auNG:
@@ -56,7 +56,7 @@ Statistics:
         total hamming distance between the assembled and reference haplotype summed over all overlapping
         blocks.
     flat positions:
-        The number of positions where mismatch errors are assayed. This is every position shared between
+        The number of positions where flat errors are assayed. This is every position shared between
         the assebled and referece haplotype in blocks of at least length 2. Same as `mismatch positions`.
     QAN50:
         Similar to AN50 but each phase block has been split at switch and mismatch locations.
