@@ -149,7 +149,7 @@ def test_config(tmp_path):
     change_config(
         workdir / "blr.yaml",
         [("read_mapper", "bwa"),
-         ("hard_filters.snps", "\"'QUAL < 15','lowQual'\"")]  # Nested parameter
+         ("hard_filters.snps", "QUAL < 15,lowQual; AF < 0.15,lowAF")]  # Nested parameter
     )
 
 

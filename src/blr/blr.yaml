@@ -65,12 +65,12 @@ variant_caller: gatk # string - Call varinats using freebayes, gatk or bcftools 
 filter_variants: true # boolean - Filter called variants (SNPs and INDELs) before phasing
 hard_filters: # Strings describing hard filters used if filter_variants=true. Should follow same format as defaults.
   # Default thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)
-  snps: "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.15','snpLowAF'"
-  indels: "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.25','indelLowAF'"
+  snps: QUAL < 15,lowQUAL; MQRankSum > 6.0,highMQRankSum; AF < 0.15,snpLowAF
+  indels: QUAL < 15,lowQUAL; MQRankSum > 6.0,highMQRankSum; AF < 0.25,indelLowAF
   # Threshold suggested by GATK (see link). Remove hash signs ('#') below to use
   # https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering)
-  # snps: "'QD < 2.0','QD2';'QUAL < 30.0','QUAL30';'SOR > 3.0','SOR3';'FS > 60.0','FS60';'MQ < 40.0','MQ40';'MQRankSum < -12.5','MQRankSum-12.5';'ReadPosRankSum < -8.0','ReadPosRankSum-8'"
-  # indels: "'QD < 2.0','QD2';'QUAL < 30.0','QUAL30';'FS > 200.0','FS200';'ReadPosRankSum < -20.0','ReadPosRankSum-20'"
+  # snps: QD < 2.0,QD2; QUAL < 30.0,QUAL30; SOR > 3.0,SOR3; FS > 60.0,FS60; MQ < 40.0,MQ40; MQRankSum < -12.5,MQRankSum-12.5;ReadPosRankSum < -8.0,ReadPosRankSum-8
+  # indels: QD < 2.0,QD2; QUAL < 30.0,QUAL30; FS > 200.0,FS200; ReadPosRankSum < -20.0,ReadPosRankSum-20
 phase_indels: true # boolean - Phase INDELs along with SNPs
 naibr_path: # string - Path to existing NAIBR repository. If not provided the latest version of the repo will be cloned
 naibr_min_mapq: 40 # integer - Minimum read mapping quality for NAIBR SV calling

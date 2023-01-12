@@ -364,8 +364,10 @@ def parse_filters(string: str):
     GATK VariantFiltration commands."""
     filters = ""
     for pair in string.split(";"):
-        filter_expression, filter_name = pair.split(",")
-        filters += f" -filter {filter_expression} --filter-name {filter_name}"
+        # Remove additional single-quotes present in old config files.
+        pair = pair.replace("'", "")
+        filter_expression, filter_name = pair.strip().split(",")
+        filters += f" -filter '{filter_expression}' --filter-name '{filter_name}'"
     return filters
 
 
