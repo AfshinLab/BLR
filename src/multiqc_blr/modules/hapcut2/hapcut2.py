@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for general stats"""
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from itertools import cycle
 import logging
 
@@ -37,6 +37,123 @@ class MultiqcModule(BaseMultiqcModule):
             log.info("Found {} phasing stats reports with chromsome breakdown".format(
                 n_phasing_stats_reports_per_chrom
                 ))
+
+        n_phasing_plots = self.gather_phasing_plots()
+        if n_phasing_plots > 0:
+            log.info("Found {} phasing plot data reports".format(
+                n_phasing_plots
+                ))
+
+    def gather_phasing_plots(self):
+        stat_names = [
+            "NX",
+            "ANX",
+            "NGX",
+            "QAN",
+            "QNX",
+            "QNG",
+        ]
+        data = {name: dict() for name in stat_names}
+        phasing_data_per_plot = [{} for n in stat_names]
+        stat_to_index = {name: index for index, name in enumerate(stat_names)}
+        for f in self.find_log_files('hapcut2/phasing_plots', filehandles=True):
+            sample_name = self.clean_s_name(f["fn"], f["root"]).replace(".phasing_stats.plot", "")
+
+            if sample_name in data:
+                log.debug("Duplicate sample name found! Overwriting: {}".format(sample_name))
+
+            self.add_data_source(f)
+            for d in phasing_data_per_plot:
+                d[sample_name] = {}
+
+            sample_data = defaultdict(list)
+            sample_summary = {}
+            for line in f["f"]:
+                if line.startswith("#"):
+                    continue
+
+                stat, x, y = line.split("\t")
+                assert stat in stat_names
+                index = stat_to_index[stat]
+                phasing_data_per_plot[index][sample_name][int(x)] = float(y)
+
+        # Filter out samples to ignore
+        phasing_data_per_plot = [{name: self.ignore_samples(d) for name, d in data.items()} for data in phasing_data_per_plot]
+
+        if all(len(d) == 0 for d in phasing_data_per_plot[0].values()):
+            log.debug("Could not find any summary reports in {}".format(config.analysis_dir))
+            return 0
+
+        phasing_data_per_plot_final = []
+        stat_names_final = []
+        for name in stat_names:
+            index = stat_to_index[name]
+            data = phasing_data_per_plot[index]
+            # Skip stats without data
+            if not any(len(d) > 0 for d in data.values()):
+                continue
+
+            # Scale values and set unit
+            max_y = max(max(d.values()) for d in data.values())
+            multiplier = 0.000001 if max_y > 1_000_000 else 0.001
+            unit = "Mbp" if max_y > 1_000_000 else "kbp"
+            data = {sample: {x: y*multiplier for x, y in sample_data.items()} for sample, sample_data in data.items()}
+            phasing_data_per_plot_final.append(data)
+            stat_names_final.append({
+                "name": name,
+                "label": f"{name} [{unit}]",
+                "unit": unit,
+            })
+
+        pconfig_per_plot = {
+            'id': 'hapcut2_phasing_plot',
+            'title': "HapCUT2: Phasing plots",
+            'xlab': "X [%]",
+            "ymin": 0,
+            'data_labels': [
+                {'name': name["name"], 'ylab': name["label"]} for name in stat_names_final
+            ]
+        }
+
+        plot_html = linegraph.plot(phasing_data_per_plot_final, pconfig_per_plot)
+
+        # Add a report section with plot
+        self.add_section(
+            name="Phasing plots",
+            description="Plots showing countious phasing stats various levels of coverage.",
+            helptext='''
+            # Description of plots
+            
+            The plots display continous phasing statistics for more accurate comparison 
+            samples. All plot a fashioned on the so call *Nx-curve* for plotting phasing 
+            contiguity. Here we can define a value Nx for which phase blocks no shorter 
+            than Nx covers x% of the total phase genome length. We then plot Nx 
+            as a function of x, with x ranging from 0 to 100. 
+            
+            Instead of using comparing phase block length to the total phased genome length 
+            other phasing statistics can be evaluated for differen insights.
+            
+            **NX**
+            Relates the phase block length to the total length on the phased assembly. 
+            Compare to the `N50` (value at x=50) and `auN` (area under curve) metrics above.
+            
+            **ANX**
+            Relates the corrected phase block length to the total number of phased variants. 
+            Phase block length corrected to proportion of phased variants with in the block 
+            range. Compare to the `AN50` (value at x=50) metric above.  
+             
+            **NGX**
+            Relates the phase block length to the total genome length. Compare to the `NG50`
+            (value at x=50) and `auNG` (area under curve) metrics above. 
+            
+            **QNX, QAN, QNG**
+            Similar to plots detailed above but the phase block length have now been split at
+            switch locations. 
+            ''',
+            plot=plot_html
+        )
+
+        return sum(len(d) > 0 for d in phasing_data_per_plot_final[0].values())
 
     def gather_phasing_stats(self):
         # Create headers
@@ -253,7 +370,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Add a report section with table
         self.add_section(
-            name="HapCUT2 phasing stats",
+            name="Phasing stats",
             description="Table of multiple metrics relevant for phased variants.",
             helptext='''
             # Description of statistics
