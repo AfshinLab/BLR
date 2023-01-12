@@ -170,7 +170,7 @@ Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if not alrea
 
 Clone the BLR repository.
 
-    git clone https://github.com/FrickTobias/BLR.git
+    git clone https://github.com/AfshinLab/BLR.git
 
 Install [conda-lock](https://github.com/conda-incubator/conda-lock#installation). 
 
