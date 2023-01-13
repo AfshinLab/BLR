@@ -31,6 +31,7 @@ rule hapcut2_extracthairs:
         "extractHAIRS"
         " --10X 1"
         " --indels {params.indels}"
+        # TODO - test to include option `--triallelic` to include GT 1/2 
         " --realign_variants 1"  # Improves overall error-rate
         " --ref {params.reference}"
         " --bam {input.bam}"

@@ -935,6 +935,7 @@ rule call_variants:
                 " --output_vcf={output.vcf}"
                 " --reads={input.bam}"
                 " --ref={params.reference}"
+                " 2> {log}" 
                 }
         shell(commands[config["variant_caller"]])
 
@@ -995,7 +996,14 @@ rule filter_vcfs:
     input:
         vcf = "chunks/{base}.variants.called.{type}.filtered.vcf"
     shell:
-        "bcftools view -f 'PASS' {input.vcf} > {output.vcf}"
+        "bcftools view"
+        # Only heterozygous
+        " -g het"
+        # Only keep genotypes that hapcut2 accepts. I.e. in {0, 1, 2}
+        # Mainly filters variants from DeepVariant
+        " -i 'GT == \"0/1\" || GT == \"0/2\" || GT == \"1/2\"'"
+        " -f 'PASS'"
+        " {input.vcf} > {output.vcf}"
 
 
 rule merge_filtered_snps_indels:
