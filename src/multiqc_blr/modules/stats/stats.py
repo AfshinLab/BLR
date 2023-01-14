@@ -194,20 +194,6 @@ class MultiqcModule(BaseMultiqcModule):
                 int(b / 1000): round(w, 6) for b, w in zip(bins, norm_hist)  # bin per kbp
             }
 
-        # Generate data for Nx curve plot
-        data_nx = dict()
-        for sample, values in data_lengths.items():
-            lengths = np.array(values)
-            lengths[::-1].sort()
-            csum = np.cumsum(lengths)
-            total = sum(lengths)
-            data_nx[sample] = {}
-            for x in range(1, 101):
-                x_of_total = int(total * x / 100)
-                csumn2 = min(csum[csum >= x_of_total])
-                ind = np.where(csum == csumn2)
-                data_nx[sample][x] = lengths[ind[0][0]] / 1000  # to kbp
-
         pconfig = {
             'id': 'phasingblock_lengths',
             'title': "Phaseblock lengths",
@@ -225,24 +211,6 @@ class MultiqcModule(BaseMultiqcModule):
             description="Plot showing length-weigthed and normalized bins of phaseblock lengths. Binning is done "
                         "over a geometric scale.",
             plot=plot_html
-        )
-
-        pconfig_nx = {
-            'id': 'phasingblock_nx',
-            'title': "N(x)",
-            'ylab': "Phaseblock length (kbp)",
-            'xlab': 'x (%)',
-            'tt_label': 'N{point.x} = {point.y:.1f} (kbp)',
-        }
-        plot_nx_html = linegraph.plot(data_nx, pconfig_nx)
-
-        # Add a report section with plot
-        self.add_section(
-            name="Phaseblock contiguity",
-            description="Phaseblock contiguity as Nx curve. Each point y corresponds to the length of the phaseblock "
-                        "for which the collection of all phaseblocks of that length or longer contains at least x% of "
-                        "the sum of the total length of all phaseblocks.",
-            plot=plot_nx_html
         )
 
         # Make new dict with keys as strings for writable output.

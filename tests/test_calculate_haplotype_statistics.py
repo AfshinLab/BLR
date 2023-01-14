@@ -45,6 +45,6 @@ def test_error_rate_calc():
     assert error_result.get_flat_count() == 5
     assert error_result.get_flat_positions() == 14
     assert error_result.get_flat_error_rate() == 5 / 14
-    assert error_result.get_N50_phased_portion() == 40
+    assert error_result.get_N50() == 40
     assert error_result.get_AN50() == 30.0
 

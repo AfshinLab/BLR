@@ -1,7 +1,77 @@
 """
-Calculate statistics on haplotypes assembled using HapCUT2 or similar tools.
+Calculate statistics on haplotypes assembled using HapCUT2 or similar tools. Provide
+reference haplotypes to output comparative statistics such as switch errors.
 
-Based on script: calculate_haplotype_statistisc.py form HapCUT2
+Statistics:
+
+    phased count:
+        Number of phased variants.
+    AN50:
+        AN50 metric for haplotype contiguity. Defined as the span (in base pairs) of a block such that half
+        (50%) of all phased variants are in a block of that span or longer. Blocks are adjusted for unphased
+        variants by multipling the base-pair span by the fraction of variants spanned by the block that are
+        phased. Reference information:
+        https://doi.org/10.1101%2Fgr.213462.116 and https://doi.org/10.1186%2F1471-2105-12-S1-S24
+    N50:
+        N50 metric for haplotype contiguity. Defined as the span (in base pairs) of a block such that half
+        (50%) of the total block length are in a block of that span or longer.
+    NG50:
+        NG50 metric for haplotype contiguity. Similar to N50 but relative the genome length.
+        Requires '-r/--reference-lengths'.
+    auN:
+        auN metric for haplotype contiguity. Defined as the area under the Nx-curve where for x in [0, 100]
+        A more stable metric for contiguity then the N50. Also see:
+        https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
+    auNG:
+        auNG metric for haplotype contiguity. Similar to auN but for NGx curve.
+        Requires '-r/--reference-lengths'.
+    num snps max blk:
+        Maxmum number of phased variants recovered for a block.
+    switch rate:
+        Switch errors (aka long-switch error) as a fractions of possible switch positions. Note that:
+        `switch rate` = `switch count` / `switch positions`.
+    switch count:
+        Switch error counts for all overlapping blocks between the assembly and reference haplotype.
+        A "switch" is defined as a stretch of multiple variants being assigned to the wrong haplotype
+        in relation to the reference.
+    switch positions:
+        The number of positions where switch errors are assayed. The number is the total number of variant
+        pairs in blocks excluding the ends (ends reported as mismatch errors). Only blocks with at least 4
+        variants recovered in both the assembly and reference are eligable for switch errors.
+    mismatch rate:
+        Mismatch errors (aka short-switch errors or point errors) as a fraction of possible mismatch
+        positions. Note that: `mismatch rate` = `mismatch count` / `mismatch positions`.
+    mismatch count:
+        Mismatch error counts for all overlapping blocks between the assembly and reference haplotype.
+        A "mismatch" is defined as two consequtive switches over a single position in relation to the
+        reference.
+    mismatch positions:
+        The number of positions where mismatch errors are assayed. This is every position shared between
+        the assebled and referece haplotype in blocks of at least length 2.
+    flat rate:
+        Flat errors (aka Hamming errors) as a fraction of possible flat error positions. Note that:
+        `flat errors` = `flat count` / `flat positions`.
+    flat count:
+        Flat error counts for all overlapping blocks between the assembly and reference haplotype. This the
+        total hamming distance between the assembled and reference haplotype summed over all overlapping
+        blocks.
+    flat positions:
+        The number of positions where flat errors are assayed. This is every position shared between
+        the assebled and referece haplotype in blocks of at least length 2. Same as `mismatch positions`.
+    QAN50:
+        Similar to AN50 but each phase block has been split at switch and mismatch locations.
+    QN50:
+        Similar to N50 but each phase block has been split at switch and mismatch locations.
+    auQN:
+        Similar to auN but each phase block has been split at switch and mismatch locations.
+    QNG50:
+        Similar to NG50 but each phase block has been split at switch and mismatch locations.
+        Requires '-r/--reference-lengths'.
+    auQNG:
+        Similar to auNG but each phase block has been split at switch and mismatch locations.
+        Requires '-r/--reference-lengths'.
+
+Based on script: calculate_haplotype_statistisc.py from HapCUT2
 https://github.com/vibansal/HapCUT2/blob/master/utilities/calculate_haplotype_statistics.py
 """
 
@@ -21,6 +91,7 @@ import sys
 from pysam import VariantFile
 
 from blr.utils import smart_open, tqdm
+from blr._version import version
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +105,47 @@ def main(args):
 
     stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes, args.threads)
 
+    chrom_lengths = get_chrom_lengths(args.reference_lengths, chromosomes)
+
     with smart_open(args.output) as file:
         if args.per_chrom:
             for c in chromosomes:
                 print(f"----------- {c} -----------", file=file)
-                print(stats[c].to_txt(), file=file)
+                print(stats[c].to_txt(reference_lengths=chrom_lengths), file=file)
             print("----------- All -----------", file=file)
 
-        print(stats["all"].to_txt(), file=file)
+        print(stats["all"].to_txt(reference_lengths=chrom_lengths), file=file)
+
+    if args.stats is not None:
+        with open(args.stats, "w") as f:
+            stats["all"].write_stats(f, reference_lengths=chrom_lengths)
 
     logger.info("Finished")
+
+
+def get_chrom_lengths(reference_lengths, chromosomes):
+    chrom_lengths = defaultdict(int)
+    if reference_lengths is None:
+        return chrom_lengths
+
+    if not os.path.exists(reference_lengths):
+        logger.warning(f"Path to '-r/--reference-lengths' file not found ({reference_lengths})")
+        return chrom_lengths
+
+    with open(reference_lengths) as f:
+        for line in f:
+            els = line.strip().split("\t")
+            assert len(els) > 1
+            chrom_name, chrom_length, *_ = els
+            if chrom_name in chromosomes:
+                chrom_lengths[chrom_name] = int(chrom_length)
+
+    if len(chrom_lengths) < len(chromosomes):
+        missing = sorted(set(chromosomes) - set(chrom_lengths), key=chromosome_rank)
+        logger.warning(f"Not all phased chromosomes found in {reference_lengths}. "
+                       f"Missing chromosomes: {','.join(missing)}")
+
+    return chrom_lengths
 
 
 def chromosome_rank(chromosome: str):
@@ -248,6 +350,8 @@ class ErrorResult:
         maxblk_snps=None,
         AN50_spanlst=None,
         N50_spanlst=None,
+        QAN50_spanlst=None,
+        QN50_spanlst=None,
         switch_loc=None,
         mismatch_loc=None
     ):
@@ -272,6 +376,8 @@ class ErrorResult:
         self.phased_count = create_dict(phased_count, int, ref)
         self.AN50_spanlst = create_dict(AN50_spanlst, list, ref)
         self.N50_spanlst = create_dict(N50_spanlst, list, ref)
+        self.QAN50_spanlst = create_dict(QAN50_spanlst, list, ref)
+        self.QN50_spanlst = create_dict(QN50_spanlst, list, ref)
 
         # these are things that are non-additive properties, because they
         # refer to the whole reference and would be double-counted
@@ -299,12 +405,17 @@ class ErrorResult:
         new_err.phased_count = merge_dicts(self.phased_count, other.phased_count)
         new_err.AN50_spanlst = merge_dicts(self.AN50_spanlst, other.AN50_spanlst)
         new_err.N50_spanlst = merge_dicts(self.N50_spanlst, other.N50_spanlst)
+        new_err.QAN50_spanlst = merge_dicts(self.QAN50_spanlst, other.QAN50_spanlst)
+        new_err.QN50_spanlst = merge_dicts(self.QN50_spanlst, other.QN50_spanlst)
         new_err.num_snps = merge_dicts(self.num_snps, other.num_snps)
         new_err.maxblk_snps = merge_dicts(self.maxblk_snps, other.maxblk_snps)
         new_err.switch_loc = merge_dicts(self.switch_loc, other.switch_loc)
         new_err.mismatch_loc = merge_dicts(self.mismatch_loc, other.mismatch_loc)
 
         return new_err
+
+    def get_reference_length(self, reference_lengths):
+        return sum(reference_lengths[ref] for ref in self.ref)
 
     def get_switch_count(self):
         return sum(self.switch_count.values())
@@ -360,40 +471,96 @@ class ErrorResult:
             return float(flat_count) / flat_positions
         return "n/a"
 
-    def get_AN50(self):
-        AN50_spanlst = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
-        AN50_spanlst.sort(reverse=True)
-        half_num_snps = self.get_num_snps() / 2.0
+    @staticmethod
+    def calc_ANx(spans_with_counts, total: int = None, x: int = 50):
+        spans_with_counts.sort(reverse=True)
+        assert 0 <= x <= 100
+        if total is None:
+            total = sum(count for span, count in spans_with_counts)
+
+        target = total * (x/100)
+
         phased_sum = 0
-        for span, phased in AN50_spanlst:
+        for span, phased in spans_with_counts:
             phased_sum += phased
-            if phased_sum > half_num_snps:
+            if phased_sum > target:
                 return span
         return "n/a"
 
-    def get_N50_phased_portion(self):
-        N50_spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
-        N50_spanlst.sort(reverse=True)
+    def get_QAN50(self):
+        span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
+        return self.calc_ANx(span_with_counts, total=self.get_mismatch_positions(), x=50)
 
-        half_L = sum(N50_spanlst) / 2.0
+    def get_AN50(self):
+        span_with_counts = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
+        return self.calc_ANx(span_with_counts, total=self.get_mismatch_positions(), x=50)
 
+    @staticmethod
+    def calc_Nx(spans, total: int = None, x: int = 50):
+        assert 0 <= x <= 100
+        if total is None:
+            total = sum(spans)
+        target = total * (x/100)
+
+        spans.sort(reverse=True)
         total = 0
-        for span in N50_spanlst:
+        for span in spans:
             total += span
-            if total > half_L:
+            if total > target:
                 return span
         return "n/a"
 
-    def get_auN(self):
+    def get_QN50(self):
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, x=50)
+
+    def get_N50(self):
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, x=50)
+
+    def get_QNG50(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, total=self.get_reference_length(reference_lengths), x=50)
+
+    def get_NG50(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_Nx(spans, total=self.get_reference_length(reference_lengths), x=50)
+
+    @staticmethod
+    def calc_auN(spans, total: int = None):
         # Calculate auN = 'Area under the Nx curve'
         # see https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
-        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
-        span_sum = sum(spans)
+        if total is None:
+            total = sum(spans)
+
         span_sq_sum = sum(s**2 for s in spans)
-        try:
-            return span_sq_sum / span_sum
-        except ZeroDivisionError:
+        if total == 0:
             return "n/a"
+        return span_sq_sum / total
+
+    def get_auN(self):
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans)
+
+    def get_auQN(self):
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans)
+
+    def get_auNG(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans, total=self.get_reference_length(reference_lengths))
+
+    def get_auQNG(self, reference_lengths):
+        if reference_lengths is None:
+            return "n/a"
+        spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+        return self.calc_auN(spans, total=self.get_reference_length(reference_lengths))
 
     def get_median_block_length(self):
         spanlst = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
@@ -402,40 +569,105 @@ class ErrorResult:
     def get_num_snps_max_blk(self):
         return sum(self.maxblk_snps.values()) if self.maxblk_snps.values() else "n/a"
 
-    def to_txt(self):
+    def to_txt(self, reference_lengths=None):
+        if reference_lengths is not None and not all(r in reference_lengths for r in self.ref):
+            reference_lengths = None
 
-        s = f"switch rate:        {self.get_switch_rate()}\n" \
-            f"mismatch rate:      {self.get_mismatch_rate()}\n" \
-            f"flat rate:          {self.get_flat_error_rate()}\n" \
-            f"phased count:       {self.get_phased_count()}\n" \
-            f"AN50:               {self.get_AN50()}\n" \
-            f"N50:                {self.get_N50_phased_portion()}\n" \
-            f"auN:                {self.get_auN()}\n" \
-            f"num snps max blk:   {self.get_num_snps_max_blk()}"
+        return f"""\
+switch rate:        {self.get_switch_rate()}
+switch count:       {self.get_switch_count()}
+switch positions:   {self.get_switch_positions()}
+mismatch rate:      {self.get_mismatch_rate()}
+mismatch count:     {self.get_mismatch_count()}
+mismatch positions: {self.get_mismatch_positions()}
+flat rate:          {self.get_flat_error_rate()}
+flat count:         {self.get_flat_count()}
+flat positions:     {self.get_flat_positions()}
+QAN50:              {self.get_QAN50()}
+QNG50:              {self.get_QNG50(reference_lengths)}
+QN50:               {self.get_QN50()}
+auQN:               {self.get_auQN()}
+auQNG:              {self.get_auQNG(reference_lengths)}
+phased count:       {self.get_phased_count()}
+AN50:               {self.get_AN50()}
+N50:                {self.get_N50()}
+NG50:               {self.get_NG50(reference_lengths)}
+auN:                {self.get_auN()}
+auNG:               {self.get_auNG(reference_lengths)}
+num snps max blk:   {self.get_num_snps_max_blk()}"""
 
-        return s
+    def write_stats(self, file, reference_lengths):
+        def print_range(func, short):
+            for x in range(0, 101):
+                value = func(x=x)
+                value = 0 if value == "n/a" else value
+                print(short, x, value, sep="\t", file=file)
 
-    def to_tsv(self):
+        template_section_header = "# {section_name}. Use `grep ^{section_short} | cut -f 2-` to extract this part."
+        print(
+            f"# This file was produced by blr calculate_haplotype_statistics ({version}) for plotting.",
+            f"# The command line was: {' '.join(sys.argv)}",
+            sep="\n",
+            file=file
+        )
 
-        # Header. Sample name is included for MultiQC
-        s = "Sample Name\tswitch rate\tmismatch rate\tflat rate\tphased count\tAN50 (Mbp)\tN50 (Mbp)\t" \
-            "auN\tnum snps max blk\n"
+        # Nx
+        print(
+            template_section_header.format(section_name="Nx contiguity", section_short="NX"),
+            sep="\n",
+            file=file
+        )
+        spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_Nx, spans), "NX")
 
-        values = [
-            "",                                           # Need string for MultiQC
-            self.get_switch_rate(),
-            self.get_mismatch_rate(),
-            self.get_flat_error_rate(),
-            self.get_phased_count(),
-            self.get_AN50()/1_000_000,                    # Show as Mbp
-            self.get_N50_phased_portion()/1_000_000,      # Show as Mbp
-            self.get_auN() / 1_000_000,                   # Show as Mbp
-            sum(self.maxblk_snps.values())
-        ]
+        # ANx
+        print(
+            template_section_header.format(section_name="ANx contiguity", section_short="ANX"),
+            sep="\n",
+            file=file
+        )
+        span_with_counts = [value for spanlst in self.AN50_spanlst.values() for value in spanlst]
+        print_range(partial(self.calc_ANx, span_with_counts), "ANX")
 
-        s += "\t".join(list(map(str, values))) + "\n"
+        # QNx
+        if sum([value for spanlst in self.QN50_spanlst.values() for value in spanlst]) > 0:
+            print(
+                template_section_header.format(section_name="QNx contiguity", section_short="QNX"),
+                sep="\n",
+                file=file
+            )
+            spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_Nx, spans), "QNX")
 
-        return s
+        # QANx
+        if sum([value[1] for spanlst in self.QAN50_spanlst.values() for value in spanlst]) > 0:
+            print(
+                template_section_header.format(section_name="QANx contiguity", section_short="QAN"),
+                sep="\n",
+                file=file
+            )
+            span_with_counts = [value for spanlst in self.QAN50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_ANx, span_with_counts), "QAN")
+
+        if reference_lengths is not None and all(r in reference_lengths for r in self.ref):
+            # NGx
+            print(
+                template_section_header.format(section_name="NGx contiguity", section_short="NGX"),
+                sep="\n",
+                file=file
+            )
+            spans = [value for spanlst in self.N50_spanlst.values() for value in spanlst]
+            print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "NGX")
+
+            # QNGx
+            if sum([value for spanlst in self.QN50_spanlst.values() for value in spanlst]) > 0:
+                print(
+                    template_section_header.format(section_name="QNGx contiguity", section_short="QNG"),
+                    sep="\n",
+                    file=file
+                )
+                spans = [value for spanlst in self.QN50_spanlst.values() for value in spanlst]
+                print_range(partial(self.calc_Nx, spans, total=self.get_reference_length(reference_lengths)), "QNG")
 
 
 # compute haplotype error rates between 2 VCF files
@@ -493,6 +725,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
     different_alleles = 0
     switch_loc = []
     mismatch_loc = []
+    QAN50_spanlst = []
+    QN50_spanlst = []
 
     AN50_spanlst, N50_spanlst, maxblk_snps, phased_count = parse_assembled_blocks(blocks_asm)
 
@@ -526,7 +760,6 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                 last_phased_position = None
                 for block_asm_index, (variant_index, position, genotype, alleles) in enumerate(block_asm):
                     genotype_ref = position_to_genotype_ref[position]
-
                     if genotype_ref[0] == '-':
                         continue
 
@@ -615,6 +848,15 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
 
             flat_count += flat_count_block
 
+            # Use switch/mismatch location to split blocks. This give N50/AN50 metrics adjusted
+            # for errors. Also count the number of phased variants confirmed by the reference
+            block_QAN50_spans, block_QN50_spans = get_switch_adjusted_length(
+                block_asm, position_to_genotype_ref, position_to_alleles_ref, allele_switch_loc[i], allele_mismatch_loc[i]
+            )
+
+            QAN50_spanlst.extend(block_QAN50_spans)
+            QN50_spanlst.extend(block_QN50_spans)
+
         assert len(switch_loc) == switch_count
         assert len(mismatch_loc) == mismatch_count
 
@@ -640,6 +882,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
         maxblk_snps=maxblk_snps,
         AN50_spanlst=AN50_spanlst,
         N50_spanlst=N50_spanlst,
+        QAN50_spanlst=QAN50_spanlst,
+        QN50_spanlst=QN50_spanlst,
         switch_loc=switch_loc,
         mismatch_loc=mismatch_loc
     )
@@ -678,6 +922,74 @@ def mapp_positions_to_block(block_ref):
         position_to_genotype[position] = genotype
         position_to_alleles[position] = alleles
     return position_to_alleles, position_to_genotype
+
+
+def get_switch_adjusted_length(block_asm, position_to_genotype_ref, position_to_alleles_ref, switch_loc, mismatch_loc):
+    positions = []
+    indeces = []
+    for variant_index, position, genotype, alleles in block_asm:
+        # check if phased in reference
+        genotype_ref = position_to_genotype_ref[position]
+        alleles_ref = position_to_alleles_ref[position]
+        if "-" in genotype_ref:
+            continue
+
+        # check if phased in reference
+        if set(genotype_ref) != set(genotype) or alleles != alleles_ref:
+           continue
+
+        positions.append(position)
+        indeces.append(variant_index)
+
+    # Sort and label errors
+    error_loc = [(pos, "switch") for pos in switch_loc]
+    error_loc.extend([(pos, "mismatch") for pos in mismatch_loc])
+    error_loc.sort()
+    assert all(pos in set(positions) for pos, _ in error_loc)
+
+    # Split positions and indeces into new blocks based on error_loc
+    # Ref:          00000000
+    # Asm:          00001111
+    # Switch loc        x
+    # Adj. blocks   <--><-->
+    #
+    # Ref:          00000000
+    # Asm:          00001000
+    # Mismatch loc       x
+    # Adj. blocks   <--> <->
+
+    split_positions = []
+    split_indeces = []
+    for pos, err_type in error_loc:
+        i = positions.index(pos)
+        if err_type == "mismatch" and i > 2:
+            split_positions.append(positions[:i-1])
+            split_indeces.append(indeces[:i-1])
+        elif err_type == "switch" and i > 1:
+            split_positions.append(positions[:i])
+            split_indeces.append(indeces[:i])
+
+        positions = positions[i:]
+        indeces = indeces[i:]
+
+    if len(positions) > 1:
+        split_positions.append(positions)
+        split_indeces.append(indeces)
+
+    adjusted_block_lengths = []
+    block_lengths = []
+    for block_positions, block_indeces in zip(split_positions, split_indeces):
+        block_index_span = block_indeces[-1] - block_indeces[0] + 1
+        block_length = block_positions[-1] - block_positions[0]
+        variants_phased_block = len(block_positions)
+        assert variants_phased_block > 1
+
+        adjusted_block_lengths.append(
+            (block_length * (variants_phased_block / block_index_span), variants_phased_block)
+        )
+        block_lengths.append(block_length)
+
+    return adjusted_block_lengths, block_lengths
 
 
 def parse_assembled_blocks(blocks_asm):
@@ -739,7 +1051,13 @@ def add_arguments(parser):
              "Default: use all chromosomes."
     )
     parser.add_argument(
+        "-s", "--stats", help="Output additional statistics for plotting to FILE.", metavar="FILE",
+    )
+    parser.add_argument(
         "-o", "--output", help="Output file name. Default: Print to stdout."
+    )
+    parser.add_argument(
+        "-r", "--reference-lengths", help="Tab separated file with chromosome name and chromosome lengths."
     )
     parser.add_argument(
         "-t", "--threads", type=int, default=1,

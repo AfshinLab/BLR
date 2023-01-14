@@ -84,16 +84,17 @@ rule hapcut2_phasing:
 
 
 rule hapcut2_stats:
-    """Get phasing statistics relative the ground truth. See https://github.com/vibansal/HapCUT2/tree/master/utilities
-    for details. """
+    """Collect phasing statistics."""
     output:
-        stats = "final.phasing_stats.txt"
+        stats = "final.phasing_stats.txt",
+        plot_stats = "final.phasing_stats.plots.txt"
     input:
         vcf1 = "final.phased.vcf.gz",
         vcf1_index = "final.phased.vcf.gz.tbi",
     params:
         vcf2 = f" -v2 {config['phasing_ground_truth']}" if config['phasing_ground_truth'] else "",
-        indels = " --indels" if config["phase_indels"] else ""
+        indels = " --indels" if config["phase_indels"] else "",
+        reference_lengths = config["genome_reference"] + ".fai",
     log: "final.phasing_stats.txt.log"
     threads: 20
     shell:
@@ -102,6 +103,8 @@ rule hapcut2_stats:
         " {params.vcf2}"
         " {params.indels}"
         " --per-chrom"
+        " --reference-lengths {params.reference_lengths}"
+        " --stats {output.plot_stats}"
         " --threads {threads}"
         " -o {output.stats} 2> {log}"
 
