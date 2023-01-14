@@ -550,6 +550,10 @@ def test_multiqc_report_complete(workdir):
         "FastQC",
         "Samtools"
     }
+    change_config(
+        workdir / CONFIGURATION_FILE_NAME,
+        [("reference_variants", REFERENCE_VARIANTS)]
+    )
     targets = ["multiqc_report.html", "multiqc_data"]
     run(workdir=workdir, snakemake_args=targets + DEFAULT_SMK_ARGS)
     assert all((workdir / t).exists() for t in targets)
