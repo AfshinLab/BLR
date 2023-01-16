@@ -989,29 +989,13 @@ rule apply_filter_indels:
         " -O {output.vcf} 2> {log}"
 
 
-rule filter_vcfs:
-    """Remove VCF entries that don't pass filters."""
-    output:
-        vcf = temporary("chunks/{base}.variants.called.{type}.filtered.pass.vcf")
-    input:
-        vcf = "chunks/{base}.variants.called.{type}.filtered.vcf"
-    shell:
-        "bcftools view"
-        # Only heterozygous
-        " -g het"
-        # Only keep genotypes that hapcut2 accepts. I.e. in {0, 1, 2}
-        # Mainly filters variants from DeepVariant
-        " -i 'GT == \"0/1\" || GT == \"0/2\" || GT == \"1/2\"'"
-        " -f 'PASS'"
-        " {input.vcf} > {output.vcf}"
-
 
 rule merge_filtered_snps_indels:
     output:
         vcf = temporary("chunks/{base}.variants.called.filtered.vcf")
     input:
-        vcf_snps = "chunks/{base}.variants.called.SNP.filtered.pass.vcf",
-        vcf_indels = "chunks/{base}.variants.called.INDEL.filtered.pass.vcf"
+        vcf_snps = "chunks/{base}.variants.called.SNP.filtered.vcf",
+        vcf_indels = "chunks/{base}.variants.called.INDEL.filtered.vcf"
     log: "chunks/{base}.variants.called.filtered.vcf.log"
     shell:
         "picard MergeVcfs"
@@ -1034,16 +1018,29 @@ def get_phase_input_vcf(wildcards):
             return {"vcf": f"chunks/{wildcards.chunk}.variants.called.vcf"}
 
 
-rule split_or_symlink_phase_input_vcf:
+rule filter_vcfs:
+    """Remove VCF entries that don't pass filters or cannot be phased."""
     output:
-        vcf = temp("chunks/{chunk}.phaseinput.vcf")
+        vcf = temporary("chunks/{chunk}.phaseinput.vcf")
     input:
         unpack(get_phase_input_vcf)
     run:
+        select_region = ""
         if config["reference_variants"]:
-            shell("bcftools view -o {output.vcf} -T {input.bed} {input.vcf}")
-        else:
-            symlink_relpath(input.vcf, output.vcf)
+            select_region = " -T {input.bed}"
+
+        shell(
+            "bcftools view"
+            # Only heterozygous
+            " -g het"
+            # Only keep genotypes that hapcut2 accepts. I.e. in {0, 1, 2}
+            # Mainly filters variants from DeepVariant
+            " -i 'GT == \"0/1\" || GT == \"0/2\" || GT == \"1/2\"'"
+            " -f 'PASS'"
+            f"{select_region}"
+            " -o {output.vcf}"
+            " {input.vcf}"
+        )
 
 
 rule merge_bams:
