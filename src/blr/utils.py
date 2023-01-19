@@ -361,13 +361,13 @@ class LastUpdatedOrderedDict(OrderedDict):
 
 def parse_filters(string: str):
     """Parse filter string with semicolon separate pairs of commad separated filter expressions and names for
-    GATK VariantFiltration commands."""
-    filters = ""
+    bcftools filter commands."""
+    filters = []
     for pair in string.split(";"):
         # Remove additional single-quotes present in old config files.
         pair = pair.replace("'", "")
         filter_expression, filter_name = pair.strip().split(",")
-        filters += f" -filter '{filter_expression}' --filter-name '{filter_name}'"
+        filters.append(f"-e '{filter_expression.strip()}' -s '{filter_name.strip()}'")
     return filters
 
 

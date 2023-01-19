@@ -963,13 +963,12 @@ rule apply_filter_snps:
         vcf = "chunks/{base}.variants.called.SNP.vcf"
     log: "chunks/{base}.variants.called.SNP.filtered.vcf.log"
     params:
-        filters = parse_filters(config["hard_filters"]["snps"])
+        filters = ' | bcftools filter - -m + '.join(parse_filters(config["hard_filters"]["snps"]))
     shell:
-        "gatk VariantFiltration"
-        " -V {input.vcf}"
+        "(bcftools filter {input.vcf}"
+        " -m +"
         " {params.filters}" 
-        " --create-output-variant-index false"
-        " -O {output.vcf} 2> {log}"
+        " -o {output.vcf}) 2> {log}"
 
 
 rule apply_filter_indels:
@@ -980,14 +979,12 @@ rule apply_filter_indels:
         vcf = "chunks/{base}.variants.called.INDEL.vcf"
     log: "chunks/{base}.variants.called.INDEL.filtered.vcf.log"
     params:
-        filters = parse_filters(config["hard_filters"]["indels"])
+        filters = ' | bcftools filter - -m + '.join(parse_filters(config["hard_filters"]["indels"]))
     shell:
-        "gatk VariantFiltration"
-        " -V {input.vcf}"
+        "(bcftools filter {input.vcf}"
+        " -m +"
         " {params.filters}" 
-        " --create-output-variant-index false"
-        " -O {output.vcf} 2> {log}"
-
+        " -o {output.vcf}) 2> {log}"
 
 
 rule merge_filtered_snps_indels:

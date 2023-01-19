@@ -62,8 +62,9 @@ phasing_contigs: chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,
 reference_variants: # string - Path to reference variants (preferably indexed) used for phasing, skip to call variants
 phasing_ground_truth: # string - Path to Phased VCF (preferably indexed) used as ground truth for additional phasing statistics.
 variant_caller: gatk # string - Call varinats using freebayes, gatk or bcftools (or deepvariant if installed)
-filter_variants: true # boolean - Filter called variants (SNPs and INDELs) before phasing
-hard_filters: # Strings describing hard filters used if filter_variants=true. Should follow same format as defaults.
+filter_variants: true # boolean - Filter called variants (SNPs and INDELs) using hard_filters before phasing 
+hard_filters: # Excluding conditions and names as comma-separated strings. Multiple filters separated by semicolon.
+  # See https://samtools.github.io/bcftools/bcftools.html#expressions for how to make conditions
   # Default thresholds partly based on Chen et al. 2019 (doi:10.1101/gr.245126.118)
   snps: QUAL < 15,lowQUAL; MQRankSum > 6.0,highMQRankSum; AF < 0.15,snpLowAF
   indels: QUAL < 15,lowQUAL; MQRankSum > 6.0,highMQRankSum; AF < 0.25,indelLowAF
