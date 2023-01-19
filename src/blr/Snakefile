@@ -935,7 +935,7 @@ rule call_variants:
                 " --output_vcf={output.vcf}"
                 " --reads={input.bam}"
                 " --ref={params.reference}"
-                " 2> {log}" 
+                " &> {log}" 
                 }
         shell(commands[config["variant_caller"]])
 
