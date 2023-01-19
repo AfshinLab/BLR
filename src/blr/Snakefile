@@ -1032,7 +1032,9 @@ rule filter_vcfs:
             " -g het"
             # Only keep genotypes that hapcut2 accepts. I.e. in {0, 1, 2}
             # Mainly filters variants from DeepVariant
-            " -i 'GT == \"0/1\" || GT == \"0/2\" || GT == \"1/2\"'"
+            # TODO - Currently 1/2 calls are also excluded here, these could be 
+            #   phased if hapcut2 is run with option `--triallelic`
+            " -i 'GT == \"0/1\" || GT == \"0/2\"'"
             " -f 'PASS'"
             f"{select_region}"
             " -o {output.vcf}"
