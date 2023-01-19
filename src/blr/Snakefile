@@ -967,7 +967,7 @@ rule apply_filter_snps:
     shell:
         "(bcftools filter {input.vcf}"
         " -m +"
-        " {params.filters}" 
+        " {params.filters}"
         " -o {output.vcf}) 2> {log}"
 
 
@@ -983,9 +983,9 @@ rule apply_filter_indels:
     shell:
         "(bcftools filter {input.vcf}"
         " -m +"
-        " {params.filters}" 
+        " {params.filters}"
         " -o {output.vcf}) 2> {log}"
-
+        
 
 rule merge_filtered_snps_indels:
     output:

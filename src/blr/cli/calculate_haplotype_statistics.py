@@ -244,7 +244,9 @@ def get_phaseblocks(vcf_file, sample_name, indels=False):
         if None in phaseset_to_block and len(phaseset_to_block) > 1:
             del phaseset_to_block[None]
 
-        chromo_to_blocks[prev_chrom] = [block for _, block in sorted(list(phaseset_to_block.items())) if len(block) > 1]
+        chromo_to_blocks[prev_chrom] = [
+            block for _, block in sorted(list(phaseset_to_block.items())) if len(block) > 1
+        ]
 
     return chromo_to_blocks, chrom_to_variants
 
@@ -788,7 +790,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
                     # or if there is a "match" that isn't a match because we are in a switched state,
                     # then we need to flip the state again and iterate the count
                     if (genotype_ref[0] != genotype[a] and not switched) or (
-                            genotype_ref[0] == genotype[a] and switched):  # current base is mismatched, implying a switch
+                            genotype_ref[0] == genotype[a] and switched):
+                        # current base is mismatched, implying a switch
                         switched = not switched  # flip the "switched" status
 
                         if last_base_was_switch:  # then this is actually a single-base mismatch
@@ -851,7 +854,8 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
             # Use switch/mismatch location to split blocks. This give N50/AN50 metrics adjusted
             # for errors. Also count the number of phased variants confirmed by the reference
             block_QAN50_spans, block_QN50_spans = get_switch_adjusted_length(
-                block_asm, position_to_genotype_ref, position_to_alleles_ref, allele_switch_loc[i], allele_mismatch_loc[i]
+                block_asm, position_to_genotype_ref, position_to_alleles_ref, allele_switch_loc[i],
+                allele_mismatch_loc[i]
             )
 
             QAN50_spanlst.extend(block_QAN50_spans)
@@ -936,7 +940,7 @@ def get_switch_adjusted_length(block_asm, position_to_genotype_ref, position_to_
 
         # check if phased in reference
         if set(genotype_ref) != set(genotype) or alleles != alleles_ref:
-           continue
+            continue
 
         positions.append(position)
         indeces.append(variant_index)

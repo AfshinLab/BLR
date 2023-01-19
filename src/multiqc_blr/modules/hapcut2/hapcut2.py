@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ BLR MultiQC plugin module for general stats"""
 
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from itertools import cycle
 import logging
 
@@ -66,8 +66,6 @@ class MultiqcModule(BaseMultiqcModule):
             for d in phasing_data_per_plot:
                 d[sample_name] = {}
 
-            sample_data = defaultdict(list)
-            sample_summary = {}
             for line in f["f"]:
                 if line.startswith("#"):
                     continue
@@ -78,7 +76,9 @@ class MultiqcModule(BaseMultiqcModule):
                 phasing_data_per_plot[index][sample_name][int(x)] = float(y)
 
         # Filter out samples to ignore
-        phasing_data_per_plot = [{name: self.ignore_samples(d) for name, d in data.items()} for data in phasing_data_per_plot]
+        phasing_data_per_plot = [
+            {name: self.ignore_samples(d) for name, d in data.items()} for data in phasing_data_per_plot
+        ]
 
         if all(len(d) == 0 for d in phasing_data_per_plot[0].values()):
             log.debug("Could not find any summary reports in {}".format(config.analysis_dir))
@@ -123,32 +123,32 @@ class MultiqcModule(BaseMultiqcModule):
             description="Plots showing countious phasing stats various levels of coverage.",
             helptext='''
             # Description of plots
-            
-            The plots display continous phasing statistics for more accurate comparison 
-            samples. All plot a fashioned on the so call *Nx-curve* for plotting phasing 
-            contiguity. Here we can define a value Nx for which phase blocks no shorter 
-            than Nx covers x% of the total phase genome length. We then plot Nx 
-            as a function of x, with x ranging from 0 to 100. 
-            
-            Instead of using comparing phase block length to the total phased genome length 
+
+            The plots display continous phasing statistics for more accurate comparison
+            samples. All plot a fashioned on the so call *Nx-curve* for plotting phasing
+            contiguity. Here we can define a value Nx for which phase blocks no shorter
+            than Nx covers x% of the total phase genome length. We then plot Nx
+            as a function of x, with x ranging from 0 to 100.
+
+            Instead of using comparing phase block length to the total phased genome length
             other phasing statistics can be evaluated for differen insights.
-            
+
             **NX**
-            Relates the phase block length to the total length on the phased assembly. 
+            Relates the phase block length to the total length on the phased assembly.
             Compare to the `N50` (value at x=50) and `auN` (area under curve) metrics above.
-            
+
             **ANX**
-            Relates the corrected phase block length to the total number of phased variants. 
-            Phase block length corrected to proportion of phased variants with in the block 
-            range. Compare to the `AN50` (value at x=50) metric above.  
-             
+            Relates the corrected phase block length to the total number of phased variants.
+            Phase block length corrected to proportion of phased variants with in the block
+            range. Compare to the `AN50` (value at x=50) metric above.
+
             **NGX**
             Relates the phase block length to the total genome length. Compare to the `NG50`
-            (value at x=50) and `auNG` (area under curve) metrics above. 
-            
+            (value at x=50) and `auNG` (area under curve) metrics above.
+
             **QNX, QAN, QNG**
             Similar to plots detailed above but the phase block length have now been split at
-            switch locations. 
+            switch locations.
             ''',
             plot=plot_html
         )
@@ -419,65 +419,65 @@ class MultiqcModule(BaseMultiqcModule):
             https://lh3.github.io/2020/04/08/a-new-metric-on-assembly-contiguity
 
             **NG50**
-            
+
             NG50 metric for haplotype contiguity. Similar to N50 but relative the genome length.
-            
+
             **auNG**
-            
+
             auNG metric for haplotype contiguity. Similar to auN but for NGx curve.
-            
+
             **Switch count**
-            
+
             Switch error counts for all overlapping blocks between the assembly and reference haplotype.
             A *switch* is defined as a stretch of multiple variants being assigned to the wrong haplotype
             in relation to the reference.
-            
-            
+
             **Switch positions**
-            
+
             The number of positions where switch errors are assayed. The number is the total number of variant
             pairs in blocks excluding the ends (ends reported as mismatch errors). Only blocks with at least 4
             variants recovered in both the assembly and reference are eligable for switch errors.
-            
+
             **Mismatch count**
-        
+
             Mismatch error counts for all overlapping blocks between the assembly and reference haplotype.
             A *mismatch* is defined as two consequtive switches over a single position in relation to the
             reference.
-    
+
             **Mismatch positions**
-            
+
             The number of positions where mismatch errors are assayed. This is every position shared between
             the assebled and referece haplotype in blocks of at least length 2.
-            
+
             **Flat count**
-            
+
             Flat error counts for all overlapping blocks between the assembly and reference haplotype. This the
             total hamming distance between the assembled and reference haplotype summed over all overlapping
             blocks.
-    
+
             **Flat positions**
-            
+
             The number of positions where flat errors are assayed. This is every position shared between
             the assebled and referece haplotype in blocks of at least length 2. Same as `mismatch positions`.
-            
+
             **QAN50**
-           
+
             Similar to AN50 but each phase block has been split at switch and mismatch locations.
-           
+
             **QN50**
-            
+
             Similar to N50 but each phase block has been split at switch and mismatch locations.
+
             **auQN**
-            
+
             Similar to auN but each phase block has been split at switch and mismatch locations.
-            
+
             **QNG50**
-            
+
             Similar to NG50 but each phase block has been split at switch and mismatch locations.
 
             **auQNG**
-            
+
             Similar to auNG but each phase block has been split at switch and mismatch locations.
             ''',
             plot=table_html

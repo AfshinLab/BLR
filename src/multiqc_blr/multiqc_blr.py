@@ -95,7 +95,7 @@ def execution_start():
     if 'hapcut2/phasing_plots' not in config.sp:
         config.update_dict(config.sp,
                            {'hapcut2/phasing_plots': {'fn': '*.txt',
-                                                      'contents': '# This file was produced by blr calculate_haplotype_statistics',
+                                                      'contents': '# This file was produced by blr calculate_haplotype_statistics',  # noqa: E501
                                                       'num_lines': 1}})
 
     if "whatshap/stats" not in config.sp:
