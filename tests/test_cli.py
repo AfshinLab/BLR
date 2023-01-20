@@ -24,6 +24,8 @@ TESTDATA_STLFR_BARCODES = str((TESTDATA / "stlfr_barcodes.txt").absolute())
 TESTDATA_TELLSEQ_READ1 = TESTDATA / "tellseq_reads.1.fastq.gz"
 TESTDATA_TELLSEQ_READ2 = TESTDATA / "tellseq_reads.2.fastq.gz"
 TESTDATA_TELLSEQ_INDEX = str((TESTDATA / "tellseq_index.fastq.gz").absolute())
+TESTDATA_ONT_BAM = str((TESTDATA / "ont.bam").absolute())
+TESTDATA_PACBIO_BAM = str((TESTDATA / "pacbio.bam").absolute())
 REFERENCE_GENOME = str((TESTDATA / "ref.fasta").absolute())
 REFERENCE_VARIANTS = str((TESTDATA / "HG002_GRCh38_GIAB_highconf.vcf.gz").absolute())
 KNOWN_SITES = str((TESTDATA / "dbSNP.vcf.gz").absolute())
@@ -565,3 +567,27 @@ def test_multiqc_report_complete(workdir):
             sections.add(line.split("\t")[0])
 
     assert sections.issubset(expected_sections)
+
+
+def test_longreads_ont(workdir):
+    change_config(
+        workdir / CONFIGURATION_FILE_NAME,
+        [("phasing_contigs", "chrA"),
+         ("reference_variants", REFERENCE_VARIANTS),
+         ("long_read_bam", TESTDATA_ONT_BAM),
+         ("long_read_type", "ont")]
+    )
+    targets = ["final.phased.vcf.gz", "final.phased.vcf.gz.tbi"]
+    run(workdir=workdir, snakemake_args=targets + DEFAULT_SMK_ARGS)
+
+
+def test_longreads_pacbio(workdir):
+    change_config(
+        workdir / CONFIGURATION_FILE_NAME,
+        [("phasing_contigs", "chrA"),
+         ("reference_variants", REFERENCE_VARIANTS),
+         ("long_read_bam", TESTDATA_PACBIO_BAM),
+         ("long_read_type", "pacbio")]
+    )
+    targets = ["final.phased.vcf.gz", "final.phased.vcf.gz.tbi"]
+    run(workdir=workdir, snakemake_args=targets + DEFAULT_SMK_ARGS)

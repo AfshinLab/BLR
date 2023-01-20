@@ -110,6 +110,7 @@ def load_yaml(filename: Union[Path, str]) -> Tuple[MutableMapping, YAML]:
     """
     with open(filename) as file:
         yaml = YAML()
+        yaml.allow_duplicate_keys = True
         data = yaml.load(file)
     return data, yaml
 
