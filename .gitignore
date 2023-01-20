@@ -14,3 +14,13 @@ __pycache__/
 
 .idea/
 /src/blr/_version.py
+
+.snakemake*
+*.log
+test_**
+outdir*
+blr-testdata*
+.vscode
+.DS_Store
+.coverage
+.ipynb_checkpointus

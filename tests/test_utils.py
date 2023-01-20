@@ -106,9 +106,11 @@ def test_calculate_N50():
 
 
 def test_parse_filters():
-    filter_command_ref = " -filter 'QUAL < 15' --filter-name 'lowQUAL'" \
-                         " -filter 'MQRankSum > 6.0' --filter-name 'highMQRankSum'" \
-                         " -filter 'AF < 0.15' --filter-name 'snpLowAF'"
+    filter_command_ref = [
+        "-e 'QUAL < 15' -s 'lowQUAL'",
+        "-e 'MQRankSum > 6.0' -s 'highMQRankSum'",
+        "-e 'AF < 0.15' -s 'snpLowAF'"
+    ]
     filter_string_singlequotes = "'QUAL < 15','lowQUAL';'MQRankSum > 6.0','highMQRankSum';'AF < 0.15','snpLowAF'"
     filter_string_noquotes = "QUAL < 15,lowQUAL;MQRankSum > 6.0,highMQRankSum;AF < 0.15,snpLowAF"
     filter_string_blankspace = " QUAL < 15,lowQUAL; MQRankSum > 6.0,highMQRankSum; AF < 0.15,snpLowAF"
