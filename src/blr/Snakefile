@@ -177,7 +177,6 @@ rule get_versions:
     output:
         yaml = "versions.yaml"
     run:
-        # TODO add deepvariant
         shell("echo 'snakemake:' $(snakemake --version) >> {output.yaml}")
         shell("echo 'blr:' $(blr --version) >> {output.yaml}")
         shell("echo 'python:' $(python --version 2>&1 | sed 's|^Python ||') >> {output.yaml}")
@@ -194,6 +193,7 @@ rule get_versions:
         shell("echo 'lariat:' $(command -v lariat >/dev/null && lariat 2>&1 | head -1 | sed 's|^Starting lariat. Version: ||' | tr -d \\') >> {output.yaml}")
         shell("echo 'gatk:' $(gatk --version 2>&1 | grep '^The' | sed 's|^The Genome Analysis Toolkit (GATK) v||') >> {output.yaml}")
         shell("echo 'freebayes:' $(freebayes --version 2>&1 | sed 's|^version:.*v||') >> {output.yaml}")
+        shell("echo 'deepvariant:' $(command -v deepvariant >/dev/null && deepvariant --version 2> /dev/null | cut -d' ' -f 3) >> {output.yaml}")
         shell("echo 'vcflib:' $(vcffilter 2>&1 | head -1 | sed 's|^vcflib ||;s| filter.*$||') >> {output.yaml}")
         shell("echo 'bcftools:' $(bcftools --version 2>&1 | head -1 | sed 's|^bcftools ||') >> {output.yaml}")
         shell("echo 'mosdepth:' $(mosdepth --version 2>&1 | sed 's|^mosdepth ||') >> {output.yaml}")
