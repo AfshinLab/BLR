@@ -188,14 +188,14 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['AN50'] = {
-            'title': 'AN50',
+            'title': 'AN50 block',
             'description': 'AN50 metric for haplotype contiguity.',
             'format': '{:,.3f}',
             'hidden': True
         }
 
         headers['N50'] = {
-            'title': 'N50',
+            'title': 'N50 block',
             'description': 'N50 metric for haplotype contiguity.',
             'format': '{:,.3f}',
             'placement': 4
@@ -209,21 +209,21 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['auN'] = {
-            'title': 'auN',
+            'title': 'auN block',
             'description': 'auN metric for haplotype contiguity.',
             'format': '{:,.3f}',
             'placement': 5
         }
 
         headers['NG50'] = {
-            'title': 'NG50',
+            'title': 'NG50 block',
             'description': 'NG50 metric for haplotype contiguity. Similar to N50 but relative the genome length.',
             'format': '{:,.3f}',
             'placement': 6
         }
 
         headers['auNG'] = {
-            'title': 'auNG',
+            'title': 'auNG block',
             'description': 'auNG metric for haplotype contiguity. Similar to auN but for NGx curve.',
             'format': '{:,.3f}',
             'hidden': True
@@ -272,35 +272,35 @@ class MultiqcModule(BaseMultiqcModule):
         }
 
         headers['QAN50'] = {
-            'title': 'QAN50',
+            'title': 'QAN50 block',
             'description': 'Similar to AN50 but each phase block has been split at switch and mismatch locations.',
             'format': '{:,.3f}',
             'hidden': True
         }
 
         headers['QN50'] = {
-            'title': 'QN50',
+            'title': 'QN50 block',
             'description': 'Similar to N50 but each phase block has been split at switch and mismatch locations.',
             'format': '{:,.3f}',
             'hidden': True
         }
 
         headers['auQN'] = {
-            'title': 'auQN',
+            'title': 'auQN block',
             'description': 'Similar to auN but each phase block has been split at switch and mismatch locations.',
             'format': '{:,.3f}',
             'hidden': True
         }
 
         headers['QNG50'] = {
-            'title': 'QNG50',
+            'title': 'QNG50 block',
             'description': 'Similar to NG50 but each phase block has been split at switch and mismatch locations.',
             'format': '{:,.3f}',
             'hidden': True
         }
 
         headers['auQNG'] = {
-            'title': 'auQNG',
+            'title': 'auQNG block',
             'description': 'Similar to auNG but each phase block has been split at switch and mismatch locations.',
             'format': '{:,.3f}',
             'hidden': True
