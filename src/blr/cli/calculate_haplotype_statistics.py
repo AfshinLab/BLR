@@ -6,6 +6,12 @@ Statistics:
 
     phased count:
         Number of phased variants.
+    phased count ref:
+        Number of phased variants in the reference haplotype
+    phased rate asm:
+        Fraction of phased variants in the assembly haplotype that are phased in the reference.
+    phased rate ref:
+        Fraction of phased variant sin the reference haplotype that are phased in the assembly.
     AN50:
         AN50 metric for haplotype contiguity. Defined as the span (in base pairs) of a block such that half
         (50%) of all phased variants are in a block of that span or longer. Blocks are adjusted for unphased
@@ -348,6 +354,7 @@ class ErrorResult:
         flat_count=None,
         flat_positions=None,
         phased_count=None,
+        phased_count_ref=None,
         num_snps=None,
         maxblk_snps=None,
         AN50_spanlst=None,
@@ -376,6 +383,7 @@ class ErrorResult:
         self.flat_count = create_dict(flat_count, int, ref)
         self.flat_positions = create_dict(flat_positions, int, ref)
         self.phased_count = create_dict(phased_count, int, ref)
+        self.phased_count_ref = create_dict(phased_count_ref, int, ref)
         self.AN50_spanlst = create_dict(AN50_spanlst, list, ref)
         self.N50_spanlst = create_dict(N50_spanlst, list, ref)
         self.QAN50_spanlst = create_dict(QAN50_spanlst, list, ref)
@@ -405,6 +413,7 @@ class ErrorResult:
         new_err.flat_count = merge_dicts(self.flat_count, other.flat_count)
         new_err.flat_positions = merge_dicts(self.flat_positions, other.flat_positions)
         new_err.phased_count = merge_dicts(self.phased_count, other.phased_count)
+        new_err.phased_count_ref = merge_dicts(self.phased_count_ref, other.phased_count_ref)
         new_err.AN50_spanlst = merge_dicts(self.AN50_spanlst, other.AN50_spanlst)
         new_err.N50_spanlst = merge_dicts(self.N50_spanlst, other.N50_spanlst)
         new_err.QAN50_spanlst = merge_dicts(self.QAN50_spanlst, other.QAN50_spanlst)
@@ -443,6 +452,20 @@ class ErrorResult:
     def get_phased_count(self):
         return sum(self.phased_count.values()) if self.phased_count.values() else "n/a"
 
+    def get_phased_count_ref(self):
+        return sum(self.phased_count_ref.values()) if self.phased_count_ref.values() else "n/a"
+
+    def get_asm_phased_in_ref(self):
+        if self.get_phased_count_ref() > 0 and self.get_phased_count() > 0:
+            # Only calculate if there are phased variants in the reference and assembly
+            return self.get_flat_positions() / self.get_phased_count()
+        return "n/a"
+
+    def get_ref_phased_in_asm(self):
+        if self.get_phased_count_ref() > 0:
+            # Only calculate if there are phased variants in the reference
+            return self.get_flat_positions() / self.get_phased_count_ref()
+        return "n/a"
     # error rate accessor functions
     def get_switch_rate(self):
         switch_count = self.get_switch_count()
@@ -590,6 +613,9 @@ QNG50:              {self.get_QNG50(reference_lengths)}
 QN50:               {self.get_QN50()}
 auQN:               {self.get_auQN()}
 auQNG:              {self.get_auQNG(reference_lengths)}
+phased count ref:   {self.get_phased_count_ref()}
+phased rate asm:    {self.get_asm_phased_in_ref()}
+phased rate ref:    {self.get_ref_phased_in_asm()}
 phased count:       {self.get_phased_count()}
 AN50:               {self.get_AN50()}
 N50:                {self.get_N50()}
@@ -731,6 +757,7 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
     QN50_spanlst = []
 
     AN50_spanlst, N50_spanlst, maxblk_snps, phased_count = parse_assembled_blocks(blocks_asm)
+    phased_count_ref = sum(len(block) for block in blocks_ref)
 
     for block_ref in blocks_ref:
         # convert block_ref to a dict for convenience
@@ -882,6 +909,7 @@ def error_rate_calc(blocks_ref, blocks_asm, ref_name, indels=False, num_snps=Non
         flat_count=flat_count,
         flat_positions=flat_positions,
         phased_count=phased_count,
+        phased_count_ref=phased_count_ref,
         num_snps=num_snps,
         maxblk_snps=maxblk_snps,
         AN50_spanlst=AN50_spanlst,

@@ -306,6 +306,27 @@ class MultiqcModule(BaseMultiqcModule):
             'hidden': True
         }
 
+        headers['phased count ref'] = {
+            'title': 'Phased count ref',
+            'description': 'Count of total variants phased in reference haplotype',
+            'format': '{:,.0f}',
+            'hidden': True
+        }
+
+        headers['phased rate asm'] = {
+            'title': '% Phased asm',
+            'description': 'Percentage of phased variants in the assembly haplotype that are phased in the reference.',
+            'format': '{:,.3%}',
+            'hidden': True
+        }
+
+        headers['phased rate ref'] = {
+            'title': '% Phased ref',
+            'description': 'Percentage of phased variant sin the reference haplotype that are phased in the assembly.',
+            'format': '{:,.3%}',
+            'hidden': True
+        }
+
         # Colorbrewer2 scales from
         # https://github.com/axismaps/colorbrewer/blob/9a37cbbfe7cde61c060c68ecdd1fd3a5095ef4a5/flash/colorbrewer.js
         scales = ["Blues", "Greens", "Greys", "Oranges", "Purples", "Reds", "BuGn", "BuPu", "GnBu", "OrRd", "PuBu",
