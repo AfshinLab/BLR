@@ -80,7 +80,12 @@ rule split_input_into_chunks:
         bai = "final.bam.bai",
         bed = "chunks/{chunk}.bed",
     shell:
-        "samtools view -M -L {input.bed} -o {output.bam} {input.bam}"
+        "samtools view"
+        # Strip phasing tags in case that input BAM was symlinked
+        " -x PC -x HP -x PS"
+        " -M -L {input.bed}"
+        "-o {output.bam}"
+        " {input.bam}"
 
 
 rule get_unmapped_reads_from_input:
@@ -90,7 +95,13 @@ rule get_unmapped_reads_from_input:
         bam = "final.bam",
         bai = "final.bam.bai"
     shell:
-        "samtools view -bh {input.bam} '*' > {output.bam}"
+        "samtools view"
+        # Strip phasing tags in case that input BAM was symlinked
+        " -x PC -x HP -x PS"  
+        " -bh"
+        " -o {output.bam}"
+        " {input.bam}"
+        " '*'"
 
 
 rule touch_files:
@@ -109,16 +120,23 @@ rule merge_or_link_input_bams:
         crais = expand("inputs/{name}.cram.crai", name=input_crams),
     threads: 20
     priority: 50
-    shell:
-        "samtools merge"
-        " -p"
-        " -@ {threads}"
-        " - {input.bams} {input.crams}"
-        " |"
-        " samtools view"
-        " -x PC -x HP -x PS"  # Strip phasing tags 
-        " -o {output.bam}"
-        " -"
+    run:
+        # If the input is a single BAM its ok to symlink here. CRAM or 
+        # mulitple CRAM/BAM files need to be merged
+        if len(input.bams) == 1:
+            symlink_relpath(input.tsvs[0], output.tsv)
+        else:
+            shell(
+                "samtools merge"
+                " -p"
+                " -@ {threads}"
+                " - {input.bams} {input.crams}"
+                " |"
+                " samtools view"
+                " -x PC -x HP -x PS"  # Strip phasing tags 
+                " -o {output.bam}"
+                " -"
+            )
 
 
 rule concat_or_link_input_molecule_stats:
