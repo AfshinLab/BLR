@@ -10,6 +10,8 @@ import sys
 from typing import List, Tuple, Union, Optional
 
 from ruamel.yaml import YAML
+from ruamel.yaml.parser import ParserError
+
 from snakemake.utils import validate
 
 logger = logging.getLogger(__name__)
@@ -70,7 +72,10 @@ def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]]
     for key, value in changes_set:
         # Convert relative paths to absolute
         value = make_paths_absolute(value, workdir=filename.parent)
-        value = YAML(typ='safe').load(value)
+        try:
+            value = YAML(typ='safe').load(value)
+        except ParserError:
+            logger.warning(f"ParserError raised for value {value} in key {key} .")
         item = configs
 
         # allow nested keys
