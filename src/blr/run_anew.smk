@@ -84,7 +84,7 @@ rule split_input_into_chunks:
         # Strip phasing tags in case that input BAM was symlinked
         " -x PC -x HP -x PS"
         " -M -L {input.bed}"
-        "-o {output.bam}"
+        " -o {output.bam}"
         " {input.bam}"
 
 
@@ -124,7 +124,7 @@ rule merge_or_link_input_bams:
         # If the input is a single BAM its ok to symlink here. CRAM or 
         # mulitple CRAM/BAM files need to be merged
         if len(input.bams) == 1:
-            symlink_relpath(input.tsvs[0], output.tsv)
+            symlink_relpath(input.bams[0], output.bam)
         else:
             shell(
                 "samtools merge"
