@@ -38,7 +38,7 @@ setup(
             "blr.yaml",
             "multiqc_config.yaml",
             "naibr.config",
-            "naibr-environment.yml",
+            "envs/*.yml",
             "run_anew.smk",
         ]
     },

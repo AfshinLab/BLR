@@ -41,6 +41,9 @@ elif config["library_type"] == "tellseq":
 # Import rules for phasing
 include: "rules/phasing.smk"
 
+# Import rules for SV calling
+include: "rules/call_svs.smk"
+
 # Create read group string to tag reads.
 platform = "DNBSEQ" if config["library_type"] == "stlfr" else "ILLUMINA"
 readgroup = ReadGroup(identifier=config["sample_nr"], library=config['library_type'], sample="20", platfrom_unit="unit1",
