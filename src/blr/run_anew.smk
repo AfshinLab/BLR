@@ -21,7 +21,6 @@ final_input = [
     "final.molecule_stats.filtered.tsv",
     "unmapped.bam",
     expand("chunks/{chunk[0].name}.calling.bam", chunk=chunks["all"]),
-    "final.bam"
 ]
 if config["library_type"] in {"dbs", "blr", "tellseq"}:
     final_input.append("barcodes.clstr.gz")
@@ -76,67 +75,45 @@ rule split_input_into_chunks:
     output:
         bam = "chunks/{chunk}.calling.bam"
     input:
-        bam = "final.bam",
-        bai = "final.bam.bai",
+        bams = expand("inputs/{name}.bam", name=input_bams),
+        bais = expand("inputs/{name}.bam.bai", name=input_bams),
+        crams = expand("inputs/{name}.cram", name=input_crams),
+        crais = expand("inputs/{name}.cram.crai", name=input_crams),
         bed = "chunks/{chunk}.bed",
     shell:
-        "samtools view"
-        # Strip phasing tags in case that input BAM was symlinked
-        " -x PC -x HP -x PS"
-        " -M -L {input.bed}"
+        "samtools merge"
+        " -p"
+        " -u"  # Output uncompressed BAM
+        " -L {input.bed}"
+        " - {input.bams} {input.crams}"
+        " |"
+        " samtools view"
+        " -x PC -x HP -x PS"  # Strip phasing tags 
         " -o {output.bam}"
-        " {input.bam}"
+        " -"
 
 
 rule get_unmapped_reads_from_input:
     output:
-        bam = "unmapped.bam"
+        bam = "unmapped.bam",
+        tmp_bams = temp(expand("inputs/{name}.unmapped.bam", name=input_bams+input_crams)),
     input:
-        bam = "final.bam",
-        bai = "final.bam.bai"
-    shell:
-        "samtools view"
-        # Strip phasing tags in case that input BAM was symlinked
-        " -x PC -x HP -x PS"  
-        " -bh"
-        " -o {output.bam}"
-        " {input.bam}"
-        " '*'"
+        bams = expand("inputs/{name}.bam", name=input_bams),
+        bais = expand("inputs/{name}.bam.bai", name=input_bams),
+        crams = expand("inputs/{name}.cram", name=input_crams),
+        crais = expand("inputs/{name}.cram.crai", name=input_crams),
+    run:
+        inputs = (*input.bams, *input.crams)
+        for in_bam, tmp_bam in zip(inputs, output.tmp_bams):
+            shell("samtools view -x PC -x HP -x PS -uh {in_bam} '*' -o {tmp_bam}")
+
+        shell("samtools cat -o {output.bam} {output.tmp_bams}")
 
 
 rule touch_files:
     output:
         touch("trimmed.barcoded.1_fastqc.html"),
         touch("trimmed.barcoded.2_fastqc.html")
-
-
-rule merge_or_link_input_bams:
-    output:
-        bam = "final.bam"
-    input:
-        bams = expand("inputs/{name}.bam", name=input_bams),
-        bais = expand("inputs/{name}.bam.bai", name=input_bams),
-        crams = expand("inputs/{name}.cram", name=input_crams),
-        crais = expand("inputs/{name}.cram.crai", name=input_crams),
-    threads: 20
-    priority: 50
-    run:
-        # If the input is a single BAM its ok to symlink here. CRAM or 
-        # mulitple CRAM/BAM files need to be merged
-        if len(input.bams) == 1:
-            symlink_relpath(input.bams[0], output.bam)
-        else:
-            shell(
-                "samtools merge"
-                " -p"
-                " -@ {threads}"
-                " - {input.bams} {input.crams}"
-                " |"
-                " samtools view"
-                " -x PC -x HP -x PS"  # Strip phasing tags 
-                " -o {output.bam}"
-                " -"
-            )
 
 
 rule concat_or_link_input_molecule_stats:
