@@ -92,6 +92,10 @@ def final_input(wildcards):
         "final.naibr_sv_calls.bedpe",
         "final.naibr_sv_calls.vcf.gz",
         "final.naibr_sv_calls.vcf.gz.tbi",
+        "final.manta_sv_calls.vcf.gz",
+        "final.manta_sv_calls.vcf.gz.tbi",
+        "final.mtglink_insertions.vcf.gz",
+        "final.mtglink_insertions.vcf.gz.tbi",
         "final.sv_sizes.tsv"
     ]
     if not config["reference_variants"]:
@@ -1111,11 +1115,20 @@ rule concat_called_vcfs:
 rule generate_primary_bed:
     """Generate BED of primary contigs"""
     output:
-        bed = temp("primary.bed")
+        bed = "primary.bed.gz"
     input:
         beds = expand("chunks/{chunk[0].name}.bed", chunk=chunks["primary"])
     shell:
-        "cat {input.beds} > {output.bed}"
+        "cat {input.beds} | bgzip -c > {output.bed}"
+
+
+rule index_bed:
+    output:
+        index = "{file}.bed.gz.tbi"
+    input:
+        bed = "{file}.bed.gz"
+    shell:
+        "tabix -p bed {input.bed}"
 
 
 rule mosdepth:
@@ -1126,7 +1139,7 @@ rule mosdepth:
     input:
         bam = "final.bam",
         bai = "final.bam.bai",
-        bed = "primary.bed"
+        bed = "primary.bed.gz"
     params:
         prefix = "final"
     threads: 4
