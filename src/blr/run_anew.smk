@@ -80,18 +80,29 @@ rule split_input_into_chunks:
         crams = expand("inputs/{name}.cram", name=input_crams),
         crais = expand("inputs/{name}.cram.crai", name=input_crams),
         bed = "chunks/{chunk}.bed",
-    shell:
-        "samtools merge"
-        " -p"
-        " -u"  # Output uncompressed BAM
-        " -L {input.bed}"
-        " - {input.bams} {input.crams}"
-        " |"
-        " samtools view"
-        " -x PC -x HP -x PS"  # Strip phasing tags 
-        " -o {output.bam}"
-        " -"
-
+    run:
+        inputs = [*input.bams, *input.crams]
+        if len(inputs) == 1:
+            shell(
+                "samtools view"
+                " -x PC -x HP -x PS"  # Strip phasing tags 
+                f" -o {output.bam}"
+                f" -M -L {input.bed}"
+                f" {inputs[0]}"
+            )
+        else:
+            shell(
+                "samtools merge"
+                " -p"
+                " -u"  # Output uncompressed BAM
+                f" -L {input.bed}"
+                f" - {inputs}"
+                " |"
+                " samtools view"
+                " -x PC -x HP -x PS"  # Strip phasing tags 
+                f" -o {output.bam}"
+                " -"
+            )
 
 rule get_unmapped_reads_from_input:
     output:
@@ -103,11 +114,17 @@ rule get_unmapped_reads_from_input:
         crams = expand("inputs/{name}.cram", name=input_crams),
         crais = expand("inputs/{name}.cram.crai", name=input_crams),
     run:
-        inputs = (*input.bams, *input.crams)
-        for in_bam, tmp_bam in zip(inputs, output.tmp_bams):
-            shell("samtools view -x PC -x HP -x PS -uh {in_bam} '*' -o {tmp_bam}")
+        inputs = [*input.bams, *input.crams]
+        if len(inputs) == 1:
+            shell(f"samtools view -x PC -x HP -x PS {inputs[0]} '*' -o {output.bam}")
+            shell("touch {output.tmp_bams}")
+        else:
+            for in_bam, tmp_bam in zip(inputs, output.tmp_bams):
+                # Write temporary uncompressed BAM
+                shell(f"samtools view -x PC -x HP -x PS -u {in_bam} '*' -o {tmp_bam}")
 
-        shell("samtools cat -o {output.bam} {output.tmp_bams}")
+            # Concatenate BAMs
+            shell(f"samtools cat -o {output.bam} {output.tmp_bams}")
 
 
 rule touch_files:
