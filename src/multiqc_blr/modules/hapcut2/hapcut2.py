@@ -109,6 +109,7 @@ class MultiqcModule(BaseMultiqcModule):
             'id': 'hapcut2_phasing_plot',
             'title': "HapCUT2: Phasing plots",
             'xlab': "X [%]",
+            'logswitch': True,
             "ymin": 0,
             'data_labels': [
                 {'name': name["name"], 'ylab': name["label"]} for name in stat_names_final
@@ -525,8 +526,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Return if not any per-chrom statistics
         nr_stats_per_chrom = sum(data != {} for sample, data in phasing_data_per_chrom[0].items())
-        has_multiple_chroms = any(len(data) > 0 for sample, data in phasing_data_per_chrom[0].items())
-        if nr_stats_per_chrom == 0 or has_multiple_chroms:
+        if nr_stats_per_chrom == 0:
             return len(phasing_data), 0
 
         # TODO Write data per chrom to file
