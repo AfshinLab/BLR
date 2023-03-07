@@ -90,13 +90,15 @@ def execution_start():
         config.update_dict(config.sp,
                            {'hapcut2/phasing_stats': {'fn': '*.txt',
                                                       'contents': 'switch rate:',
-                                                      'num_lines': 2}})
+                                                      'num_lines': 2,
+                                                      'max_filesize': 32768}})
 
     if 'hapcut2/phasing_plots' not in config.sp:
         config.update_dict(config.sp,
                            {'hapcut2/phasing_plots': {'fn': '*.txt',
                                                       'contents': '# This file was produced by blr calculate_haplotype_statistics',  # noqa: E501
-                                                      'num_lines': 1}})
+                                                      'num_lines': 1,
+                                                      'max_filesize': 16384}})
 
     if "whatshap/stats" not in config.sp:
         config.update_dict(config.sp,

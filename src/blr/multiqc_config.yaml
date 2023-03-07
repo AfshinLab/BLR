@@ -23,7 +23,12 @@ extra_fn_clean_exts:
     module: picard
 
 fn_ignore_dirs:
-  - 'fastq_bins'
+  - "fastq_bins"
+  - ".snakemake"
+
+fn_ignore_files:
+  - "*.vcf.gz"
+  - "*.crai"
 
 module_order:
   - hapcut2
@@ -112,8 +117,6 @@ sp:
     fn: "*.haplotag.log"
   fastqc:
     fn_re: "trimmed.barcoded.[1|2].fastq.gz"
-  hapcut2/phasing_stats:
-    fn: "*.phasing_stats.txt"
   stats/sv_sizes:
     fn: "*.sv_sizes.tsv"
   stats/molecule_stats:
