@@ -167,6 +167,10 @@ class MultiqcModule(BaseMultiqcModule):
             for row in s_data.itertuples():
                 if phased_chroms and row.chromosome not in phased_chroms:
                     continue
+
+                if row.chromosome == "ALL":
+                    continue
+
                 snvs_phased_data[s_name][row.chromosome] = row.percent_SNVs_phased
                 phased_snvs += row.phased_snvs
                 snvs += row.heterozygous_snvs
