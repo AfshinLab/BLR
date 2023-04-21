@@ -96,7 +96,7 @@ rule split_input_into_chunks:
                 " -p"
                 " -u"  # Output uncompressed BAM
                 f" -L {input.bed}"
-                f" - {inputs}"
+                f" - {' '.join(inputs)}"
                 " |"
                 " samtools view"
                 " -x PC -x HP -x PS"  # Strip phasing tags 
