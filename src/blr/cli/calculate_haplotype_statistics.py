@@ -466,6 +466,7 @@ class ErrorResult:
             # Only calculate if there are phased variants in the reference
             return self.get_flat_positions() / self.get_phased_count_ref()
         return "n/a"
+
     # error rate accessor functions
     def get_switch_rate(self):
         switch_count = self.get_switch_count()
