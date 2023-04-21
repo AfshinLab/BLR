@@ -554,7 +554,8 @@ def test_multiqc_report_complete(workdir):
     }
     change_config(
         workdir / CONFIGURATION_FILE_NAME,
-        [("reference_variants", REFERENCE_VARIANTS)]
+        [("phasing_contigs", "chrA"),
+         ("reference_variants", REFERENCE_VARIANTS)]
     )
     targets = ["multiqc_report.html", "multiqc_data"]
     run(workdir=workdir, snakemake_args=targets + DEFAULT_SMK_ARGS)
