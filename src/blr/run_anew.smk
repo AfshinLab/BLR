@@ -31,10 +31,10 @@ rule final:
         final_input
 
 
-input_bams = glob_wildcards("inputs/{name}.bam").name
-input_crams = glob_wildcards("inputs/{name}.cram").name
-input_tsvs = glob_wildcards("inputs/{name}.tsv").name
-input_clstrs = glob_wildcards("inputs/{name}.clstr.gz").name
+input_bams = glob_wildcards("inputs/{name}.final.bam").name
+input_crams = glob_wildcards("inputs/{name}.final.cram").name
+input_tsvs = glob_wildcards("inputs/{name}.final.molecule_stats.filtered.tsv").name
+input_clstrs = glob_wildcards("inputs/{name}.barcodes.clstr.gz").name
 
 
 rule index_bam:
@@ -75,10 +75,10 @@ rule split_input_into_chunks:
     output:
         bam = "chunks/{chunk}.calling.bam"
     input:
-        bams = expand("inputs/{name}.bam", name=input_bams),
-        bais = expand("inputs/{name}.bam.bai", name=input_bams),
-        crams = expand("inputs/{name}.cram", name=input_crams),
-        crais = expand("inputs/{name}.cram.crai", name=input_crams),
+        bams = expand("inputs/{name}.final.bam", name=input_bams),
+        bais = expand("inputs/{name}.final.bam.bai", name=input_bams),
+        crams = expand("inputs/{name}.final.cram", name=input_crams),
+        crais = expand("inputs/{name}.final.cram.crai", name=input_crams),
         bed = "chunks/{chunk}.bed",
     run:
         inputs = [*input.bams, *input.crams]
@@ -109,10 +109,10 @@ rule get_unmapped_reads_from_input:
         bam = "unmapped.bam",
         tmp_bams = temp(expand("inputs/{name}.unmapped.bam", name=input_bams+input_crams)),
     input:
-        bams = expand("inputs/{name}.bam", name=input_bams),
-        bais = expand("inputs/{name}.bam.bai", name=input_bams),
-        crams = expand("inputs/{name}.cram", name=input_crams),
-        crais = expand("inputs/{name}.cram.crai", name=input_crams),
+        bams = expand("inputs/{name}.final.bam", name=input_bams),
+        bais = expand("inputs/{name}.final.bam.bai", name=input_bams),
+        crams = expand("inputs/{name}.final.cram", name=input_crams),
+        crais = expand("inputs/{name}.final.cram.crai", name=input_crams),
     run:
         inputs = [*input.bams, *input.crams]
         if len(inputs) == 1:
@@ -137,7 +137,7 @@ rule concat_or_link_input_molecule_stats:
     output:
         tsv = "final.molecule_stats.filtered.tsv"
     input:
-        tsvs = expand("inputs/{name}.tsv", name=input_tsvs),
+        tsvs = expand("inputs/{name}.final.molecule_stats.filtered.tsv", name=input_tsvs),
     run:
         if len(input.tsvs) == 1:
             symlink_relpath(input.tsvs[0], output.tsv)
@@ -159,7 +159,7 @@ rule concat_barcode_clstrs:
     output:
         clstr = "barcodes.clstr.gz"
     input:
-        clstrs =  expand("inputs/{name}.clstr.gz", name=input_clstrs)
+        clstrs =  expand("inputs/{name}.barcodes.clstr.gz", name=input_clstrs)
     run:
         if len(input.clstrs) == 1:
             symlink_relpath(input.clstrs[0], output.clstr)
