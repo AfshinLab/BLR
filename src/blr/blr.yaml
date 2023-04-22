@@ -7,6 +7,8 @@ molecule_tag: MI # string - SAM-tag to store molecule index
 sequence_tag: RX # string - SAM-tag to store original barcode sequence
 sample_nr: 1 # integer - Read group identifier and to distiguish barcodes when merging BAM files.
 heap_space: 6 # integer - Memory per core in Gb for heap space max limit
+long_read: 
+long_read_type:
 
 #################
 # Preprocessing #
@@ -77,3 +79,5 @@ naibr_path: # string - Path to existing NAIBR repository. If not provided the la
 naibr_min_mapq: 40 # integer - Minimum read mapping quality for NAIBR SV calling
 naibr_blacklist: # string - Path to bed file containing regions to skip in NAIBR SV calling
 ideogram_assembly: GRCh38 # string - Human genome assembly used, options are 'GRCh38' and 'GRCh37'.
+long_read_bam: # string - Path to indexed BAM file with PacBio or Oxford Nanopore reads mapped to the same reference genome. 
+long_read_type: # string - BAM contains PacBio ('pacbio') or Oxford Nanopore ('ont') reads

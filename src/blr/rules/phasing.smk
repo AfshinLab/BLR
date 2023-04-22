@@ -27,6 +27,50 @@ rule hapcut2_extracthairs:
         " --out {output.unlinked} 2> {log}"
 
 
+rule extract_long_read_chunk:
+    output:
+        bam = temp("chunks/{chunk}.long_read.bam")
+    input:
+        bed = "chunks/{chunk}.bed"
+    params:
+        bam = config["long_read_bam"],
+    shell:
+        "samtools view"
+        " -bh"
+        " -q 20" # Only MAPQ >= 20 reads are used for phasing
+        " -o {output.bam}"
+        " -M -L {input.bed}"
+        " {params.bam}"
+
+
+# Map long_read_type to required extractHAIRS flag
+long_read_flags = {"pacbio": "--pacbio 1", "ont": "--ont 1"}
+
+
+rule hapcut2_extracthairs_long:
+    """Extract heterozygous variants covered by long read alignments in BAM"""
+    output:
+        txt = temp("{base}.calling.linked_long.txt")
+    input:
+        bam = "{base}.long_read.bam",
+        vcf = "{base}.phaseinput.vcf",
+    log: "{base}.calling.linked_long.txt.log"
+    params:
+        long_read_flag = long_read_flags.get(config["long_read_type"], ""),
+        reference = config["genome_reference"],
+    shell:
+        "extractHAIRS"
+        " --indels 0"
+        " {params.long_read_flag}"
+        " --ep 1"  # Estimate parameters 
+        " --new_format 1"
+        " --ref {params.reference}"
+        " --bam {input.bam}"
+        " --VCF {input.vcf}"
+        " --out {output.txt}"
+        " 2> {log}"
+
+
 rule hapcut2_linkfragments:
     """Link heterozygous variants together using barcode information"""
     output:
@@ -48,25 +92,46 @@ rule hapcut2_linkfragments:
         " --distance {params.window} &> {log}"
 
 
+rule merge_fragments:
+    """Merge fragments from linked and long reads."""
+    output: 
+        txt = "{base}.calling.linked_merged.txt"
+    input:
+        txt1 = "{base}.calling.linked.txt",
+        txt2 = "{base}.calling.linked_long.txt"
+    shell:
+        "cat {input.txt1} {input.txt2} > {output.txt}"
+
+
+def get_fragments(wildcards):
+    if config["long_read_bam"] is not None:
+        return "{base}.calling.linked_merged.txt"
+    return "{base}.calling.linked.txt"
+
+
 rule hapcut2_phasing:
     """Phase heterozygous variants using HapCUT2. Output phased VCF"""
     output:
         phase = "{base}.calling.phase",
-        phased_vcf = temporary("{base}.calling.phased.vcf")
+        phased_vcf = "{base}.calling.phased.vcf.gz"
     input:
-        linked = "{base}.calling.linked.txt",
+        txt = get_fragments,
         vcf = "{base}.phaseinput.vcf",
     log: "{base}.calling.phase.log"
     shell:
         "hapcut2"
         " --nf 1"
-        " --fragments {input.linked}"
+        " --fragments {input.txt}"
         " --vcf {input.vcf}"
         " --out {output.phase}"
         " --error_analysis_mode 1"
         " --outvcf 1 &> {log}"
         " && "
-        "mv {output.phase}.phased.VCF {output.phased_vcf}"
+        # Compress phased VCF
+        "bgzip -c {output.phase}.phased.VCF > {output.phased_vcf}"
+        " && "
+        # Remove uncompressed VCF
+        " rm -f {output.phase}.phased.VCF"
 
 
 rule hapcut2_stats:
