@@ -21,7 +21,7 @@ jobs:
           environment-file: environment.osx-64.lock
           use-only-tar-bz2: true
       - name: Install test deps
-        run: mamba install pytest pip
+        run: mamba install pytest
       - name: Install BLR
         run: pip install .
       - name: Download test dataset
