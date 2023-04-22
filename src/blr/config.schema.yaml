@@ -100,6 +100,16 @@ properties:
     type: string
     pattern: "(dbs)|(blr)|(10x)|(stlfr)|(tellseq)" # TODO Remove blr
     description: Library type
+  long_read_bam:
+    type: ["string", "null"]
+    default: null
+    description: Path to indexed BAM file with PacBio or Oxford Nanopore reads mapped to the same reference genome. 
+    pattern: ".*(.bam)$"
+  long_read_type: 
+    type: ["string", "null"]
+    default: null
+    description: BAM contains PacBio ('pacbio') or Oxford Nanopore ('ont') reads
+    pattern: "(pacbio)|(ont)"
   max_molecules_per_bc:
     type: integer
     description: Max number of molecules allowed for a single barcode
