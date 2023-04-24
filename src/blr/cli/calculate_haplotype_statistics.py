@@ -111,7 +111,7 @@ def main(args):
 
     stats, chromosomes = vcf_vcf_error_rate(args.vcf1, args.vcf2, args.indels, chromosomes, args.threads)
 
-    chrom_lengths = get_chrom_lengths(args.reference_lengths, chromosomes)
+    chrom_lengths = get_chrom_lengths(args.vcf1, args.reference_lengths, chromosomes)
 
     with smart_open(args.output) as file:
         if args.per_chrom:
@@ -129,10 +129,29 @@ def main(args):
     logger.info("Finished")
 
 
-def get_chrom_lengths(reference_lengths, chromosomes):
+def get_chrom_lengths_from_vcf(vcf, chromosomes):
+    """Return dict mapping chromsome names to lengths from VCF header"""
     chrom_lengths = defaultdict(int)
+    with VariantFile(vcf) as vcf_reader:
+        for name, contig in vcf_reader.header.contigs.iteritems():
+            if name in chromosomes and contig.length is not None:
+                chrom_lengths[name] = contig.length
+
+    if len(chrom_lengths) < len(chromosomes):
+        missing = sorted(set(chromosomes) - set(chrom_lengths), key=chromosome_rank)
+        logger.warning(f"Not all phased chromosomes found in {vcf} header. "
+                       f"Missing chromosomes: {','.join(missing)}")
+
+    return chrom_lengths
+
+
+def get_chrom_lengths(vcf, reference_lengths, chromosomes):
+    """Return dict mapping chromsome names to lengths. Use reference_lengths
+    if available otherwise look in VCF header"""
+    chrom_lengths = defaultdict(int)
+
     if reference_lengths is None:
-        return chrom_lengths
+        return get_chrom_lengths_from_vcf(vcf, chromosomes)
 
     if not os.path.exists(reference_lengths):
         logger.warning(f"Path to '-r/--reference-lengths' file not found ({reference_lengths})")
