@@ -96,7 +96,7 @@ import sys
 
 from pysam import VariantFile
 
-from blr.utils import smart_open, tqdm
+from blr.utils import smart_open, tqdm, parse_fai
 from blr._version import version
 
 logger = logging.getLogger(__name__)
@@ -158,12 +158,9 @@ def get_chrom_lengths(vcf, reference_lengths, chromosomes):
         return chrom_lengths
 
     with open(reference_lengths) as f:
-        for line in f:
-            els = line.strip().split("\t")
-            assert len(els) > 1
-            chrom_name, chrom_length, *_ = els
-            if chrom_name in chromosomes:
-                chrom_lengths[chrom_name] = int(chrom_length)
+        for record in parse_fai(f):
+            if record.name in chromosomes:
+                chrom_lengths[record.name] = record.length
 
     if len(chrom_lengths) < len(chromosomes):
         missing = sorted(set(chromosomes) - set(chrom_lengths), key=chromosome_rank)
