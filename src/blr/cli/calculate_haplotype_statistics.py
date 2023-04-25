@@ -465,11 +465,11 @@ class ErrorResult:
     def get_num_snps(self):
         return sum(self.num_snps.values())
 
-    def get_phased_count(self):
-        return sum(self.phased_count.values()) if self.phased_count.values() else "n/a"
+    def get_phased_count(self) -> int:
+        return sum(self.phased_count.values()) if self.phased_count.values() else 0
 
-    def get_phased_count_ref(self):
-        return sum(self.phased_count_ref.values()) if self.phased_count_ref.values() else "n/a"
+    def get_phased_count_ref(self) -> int:
+        return sum(self.phased_count_ref.values()) if self.phased_count_ref.values() else 0
 
     def get_asm_phased_in_ref(self):
         if self.get_phased_count_ref() > 0 and self.get_phased_count() > 0:
