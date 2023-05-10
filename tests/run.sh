@@ -15,7 +15,7 @@ ema
 bwa 2>&1 | head -5 || true
 mosdepth --version
 freebayes --version
-vcffilter 2>&1 | head -1
+vcffilter 2>&1 | head -1 || true
 fastqc --version
 multiqc --version
 bcftools --version
