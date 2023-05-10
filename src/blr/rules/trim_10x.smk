@@ -21,11 +21,6 @@ if config["read_mapper"] != "ema":
     config["_fastq_bin_nrs"] = [str(i).zfill(3) for i in range(config['fastq_bins'])]
 
 
-rule link_to_whitelist:
-    output: "barcodes_whitelist.txt"
-    shell: "ln -s {config[barcode_whitelist]} {output}"
-
-
 rule count_10x:
     """Create list of per-barcode count"""
     output:
@@ -33,14 +28,15 @@ rule count_10x:
         counts_fcnt = temp("reads.ema-fcnt")
     input:
         r1_fastq="reads.1.fastq.gz",
-        r2_fastq="reads.2.fastq.gz",
-        whitelist="barcodes_whitelist.txt"
+        r2_fastq="reads.2.fastq.gz"
+    params:
+        whitelist = config["barcode_whitelist"]
     log: "ema_count.log"
     shell:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
         " ema count"
-        " -w {input.whitelist}"
+        " -w {params.whitelist}"
         " -o reads 2> {log}"
 
 
@@ -54,7 +50,8 @@ rule preproc_10x:
         r2_fastq="reads.2.fastq.gz",
         counts_ncnt = "reads.ema-ncnt",
         counts_fcnt = "reads.ema-fcnt",
-        whitelist = "barcodes_whitelist.txt",
+    params:
+        whitelist = config["barcode_whitelist"]
     log: "ema_preproc.log"
     threads: 20
     params:
@@ -65,7 +62,7 @@ rule preproc_10x:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
         " ema preproc"
-        " -w {input.whitelist}"
+        " -w {params.whitelist}"
         " -n {params.bins}"
         "{params.hamming_correction}"
         " -t {threads}"
