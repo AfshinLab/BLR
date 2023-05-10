@@ -51,13 +51,13 @@ rule preproc_10x:
         counts_ncnt = "reads.ema-ncnt",
         counts_fcnt = "reads.ema-fcnt",
     params:
-        whitelist = config["barcode_whitelist"]
-    log: "ema_preproc.log"
-    threads: 20
-    params:
+        whitelist = config["barcode_whitelist"],
         hamming_correction = "" if not config["apply_hamming_correction"] else " -h",
         bins = config["fastq_bins"],
         bins_dir = config["_ema_bins_dir"]
+    log: "ema_preproc.log"
+    threads: 20
+
     shell:
         "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
         " tr '\t' '\n' |"
