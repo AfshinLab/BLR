@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 
 
 def bams_for_lsv_calling(wildcards):
@@ -35,72 +36,79 @@ rule build_config:
         " 2> {log}"
 
 
-rule get_naibr_path:
-    """Symlink existing NAIBR repo if specified or clone the latest version"""
-    output:
-        naibr_path = temp(directory("NAIBR"))
-    log: "NAIBR.log"
-    run:
-        if config["naibr_path"]:
-            shell("ln -s {config[naibr_path]} {output.naibr_path}")
-        else:
-            # Using forked branch with fix for NAIBR repo.
-            # TODO Use original repo as below when https://github.com/raphael-group/NAIBR/pull/20 and 
-            # https://github.com/raphael-group/NAIBR/pull/21 is merged.
-            # shell("git clone https://github.com/raphael-group/NAIBR.git {output.naibr_path}")
-            shell("git clone --branch fix-coverage https://github.com/pontushojer/NAIBR.git {output.naibr_path} &> {log}")
-
-
 rule lsv_calling:
     """
     Runs NAIBR for LSV calling. This involves activating a python2 env, changing wd, running and changing back wd and
     env.
     """
     output:
-        results = "{base}.naibr_sv_calls.tsv"
+        tsv = "chunks/{chunk}.naibr_sv_calls.tsv",
+        bedpe = "chunks/{chunk}.naibr_sv_calls.bedpe",
+        vcf = "chunks/{chunk}.naibr_sv_calls.vcf"
     input:
-        config = "{base}.naibr.config",
-        naibr_path = "NAIBR"
-    log: "{base}.naibr_sv_calls.tsv.log"
+        config = "chunks/{chunk}.naibr.config",
+    log: "chunks/{chunk}.naibr_sv_calls.tsv.log"
     threads: 2
     conda: "../envs/naibr.yml"
     params:
         cwd = os.getcwd(),
-        outdir = lambda wildcards: f"{wildcards.base}_naibr"
+        outdir = lambda wildcards: f"chunks/{wildcards.chunk}_naibr"
     shell:
-        "mkdir -p {params.outdir}"
+        "naibr {input.config}"
+        " &> {log}"
         " &&"
-        " cd {input.naibr_path}"
+        " mv {params.outdir}/NAIBR_SVs.bedpe {output.tsv}"
         " &&"
-        " python"
-        " NAIBR.py"
-        " {params.cwd}/{input.config}"
-        " &> {params.cwd}/{log}"
+        " mv {params.outdir}/NAIBR_SVs.reformat.bedpe {output.bedpe}"
         " &&"
-        " cd - > /dev/null"
-        " &&"
-        " mv {params.outdir}/NAIBR_SVs.bedpe {output.results}"
+        " mv {params.outdir}/NAIBR_SVs.vcf {output.vcf}"
         " &&"
         " rm -rf {params.outdir}"
 
 
-rule format_naibr_bedpe:
+def concat_lsv_calls_bedpe_input(wildcards):
+    return expand(
+        "chunks/{chunk[0].name}.naibr_sv_calls.{filetype}", 
+        chunk=chunks["phased"], 
+        filetype=wildcards.filetype
+    )
+
+rule concat_lsv_calls:
     output:
-        bedpe = "final.naibr_sv_calls.bedpe"
+        file = "final.naibr_sv_calls.{filetype,(bedpe|tsv)}"
     input:
-        tsv = "final.naibr_sv_calls.tsv"
-    script:
-        "../scripts/format_naibr_bedpe.py"
+        concat_lsv_calls_bedpe_input
+    run:
+        dfs = list()
+        for file in input:
+            try:
+                dfs.append(pd.read_csv(file, sep="\t"))
+            except pd.errors.EmptyDataError:
+                continue
+
+        concat = pd.concat(dfs, ignore_index=True)
+        concat.to_csv(output.file, sep="\t", index=False)
 
 
-rule format_naibr_vcf:
+def concat_lsv_calls_vcf_input(wildcards):
+    return expand(
+        "chunks/{chunk[0].name}.naibr_sv_calls.vcf", 
+        chunk=chunks["phased"], 
+    )
+
+
+rule concat_lsv_calls_vcf:
     output:
-        vcf = temp("final.naibr_sv_calls.vcf")
+        vcf = "final.naibr_sv_calls.vcf"
     input:
-        tsv = "final.naibr_sv_calls.tsv", 
-        fai = config["genome_reference"] + ".fai"
-    script:
-        "../scripts/format_naibr_vcf.py"
+        concat_lsv_calls_vcf_input
+    shell:
+        "bcftools concat"
+        " {input}"
+        " | "
+        "bcftools sort"
+        " -o {output.vcf}"
+        " -"
 
 
 rule aggregate_sv_sizes:
