@@ -240,7 +240,7 @@ Deactivate and re-activate the environment for the change to take effect. To
 
 ## Development
 
-Issues are tracked through [FrickTobias/BLR/issues](https://github.com/FrickTobias/BLR/issues). For more information on development go [here](doc/develop.rst).
+For more information on development go [here](doc/develop.rst).
 
 ## Old version
 
