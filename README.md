@@ -1,4 +1,6 @@
-# Barcode Linked Reads (BLR)
+
+![BLR logo](./doc/assets/logo_dark.png#gh-dark-mode-only)
+![BLR logo](./doc/assets/logo.png#gh-light-mode-only)
 
 [![CI](https://github.com/AfshinLab/BLR/actions/workflows/ci.yml/badge.svg)](https://github.com/AfshinLab/BLR/actions/workflows/ci.yml) [![CI macos](https://github.com/AfshinLab/BLR/actions/workflows/ci_macos.yml/badge.svg)](https://github.com/AfshinLab/BLR/actions/workflows/ci_macos.yml)
 - [About the pipeline](#About-the-pipeline)
@@ -9,7 +11,7 @@
 
 ## About the pipeline
 
-The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs. It was originally developed for the prep-processing of [Droplet Barcode Sequencing (DBS)](doc/platforms.rst#dbs) data for the paper [High throughput barcoding method for genome-scale phasing][1] for input into the 10x LongRanger pipeline (see [Old version](#Old-version)) but have since been heavily modified to run completely independant of LongRanger. The pipeline also allow for input FASTQs from other linked-read technologies such as: 
+The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs. It was originally developed for the prep-processing of [Droplet Barcode Sequencing (DBS)](doc/platforms.rst#dbs) data for the paper [High throughput barcoding method for genome-scale phasing][1] for input into the 10x LongRanger pipeline (see [Old version](#Old-version)) but have since been heavily modified to run completely independant of LongRanger. The pipeline also allow for input FASTQs from other linked-read technologies such as:
 
 - [10x Genomics Chromium Genome](doc/platforms.rst#x-genomics)
 - [Universal Sequencing TELL-seq](doc/platforms.rst#tell-seq)
@@ -87,28 +89,28 @@ This is useful if you want to test your changes localy before submitting them
 
 To run the pipeline you need to provide a path to a FASTA with your reference
  genome. The FASTA should be indexed depending on which mapper you whish to
-  use. 
-  
+  use.
+
  - `bowtie2` uses a `bowtie2`-indexed reference
 
 
         bowtie2-build genome.fasta genome.fasta
 
- - `bwa`, `minimap2`, `ema` and `lariat` uses a `bwa`-indexed reference 
+ - `bwa`, `minimap2`, `ema` and `lariat` uses a `bwa`-indexed reference
 
 
-        bwa index genome.fasta  
+        bwa index genome.fasta
 
 Additionally you need to index your FASTA using `samtools faidx` to get the
  `genome.fasta.fai` file
 
     samtools faidx genome.fasta
-    
+
 If using `gatk` for variant calling or doing base recalibrartion you will
  need to generate a sequence dictionary (`genome.dict` file) which can be done
   using:
 
-    gatk CreateSequenceDictionary -R genome.fasta  
+    gatk CreateSequenceDictionary -R genome.fasta
 
 ### 5. Merging different analysis runs
 
@@ -132,8 +134,8 @@ In order to merge the files and run analysis on the merged files a special subsc
     blr run --anew
 
 Using this the files will be merged and the workflow run from varinat calling
- and on. 
- 
+ and on.
+
  Note that this approach can also be used to rerun a single sample with
   different configurations from variant calling and on.
 
@@ -158,9 +160,9 @@ The `-d` option prepends the directory name to each sample allowing differentiat
 
 Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) if not already installed. You could also try copy-pasting the following to your terminal. This will download miniconda, install it to you `$HOME` folder.
 
-    if [[ $OSTYPE = "linux-gnu" ]]; then 
+    if [[ $OSTYPE = "linux-gnu" ]]; then
         wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-    elif [[ $OSTYPE = "darwin"* ]]; then 
+    elif [[ $OSTYPE = "darwin"* ]]; then
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh
     fi
     bash miniconda.sh -b -p $HOME/miniconda
@@ -172,7 +174,7 @@ Clone the BLR repository.
 
     git clone https://github.com/AfshinLab/BLR.git
 
-Install [conda-lock](https://github.com/conda-incubator/conda-lock#installation). 
+Install [conda-lock](https://github.com/conda-incubator/conda-lock#installation).
 
     conda install -c conda-forge conda-lock
 
@@ -202,7 +204,7 @@ To enable [DeepVariant](https://github.com/google/deepvariant), install it separ
 
 To use DeepVariant for variant calling in your analysis, run:
 
-    blr config --set variant_caller deepvariant    
+    blr config --set variant_caller deepvariant
 
 #### 3.2 Lariat aligner
 
@@ -230,12 +232,12 @@ Snakemake will generate separate conda environments for certain tools, e.g
 
 It is also possible to set this variable as a part of the main conda
  environment (in this case `blr`) using the following command:
- 
+
     conda env config vars set CONDA_ENVS=/path/to/common/conda-envs/ -n blr
 
 Deactivate and re-activate the environment for the change to take effect. To
  remove this variable from the environment run:
- 
+
     conda env config vars unset CONDA_ENVS -n blr
 
 ## Development
