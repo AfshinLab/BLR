@@ -472,12 +472,13 @@ def test_version_exit_code_zero():
     assert e.value.code == 0
 
 
-def test_init_from_workdir(tmp_path, workdir):
+@pytest.mark.parametrize("input", ["final.bam", "final.phased.cram"])
+def test_init_from_workdir(tmp_path, workdir, input):
     old_workdir = workdir
     new_workdir = tmp_path / "from_old"
 
     # Generate all require files is old workdir
-    run(workdir=old_workdir, snakemake_args=["final.bam", "final.molecule_stats.filtered.tsv"] + DEFAULT_SMK_ARGS)
+    run(workdir=old_workdir, snakemake_args=[input, "final.molecule_stats.filtered.tsv"] + DEFAULT_SMK_ARGS)
 
     # Initialize new dir based on old and run setup.
     init_from_dir(new_workdir, [old_workdir], "dbs")

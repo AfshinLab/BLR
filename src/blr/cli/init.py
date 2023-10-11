@@ -198,6 +198,12 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
             target_name = f"dir{nr}.{file.name}"
             create_symlink(file, input_dir, target_name)
 
+            # Also symlink BAM/CRAM index files if they exist
+            if file.name.endswith(".bam") and (file.with_suffix(".bam.bai")).exists():
+                create_symlink(file.with_suffix(".bam.bai"), input_dir, target_name + ".bai")
+            elif file.name.endswith(".cram") and (file.with_suffix(".cram.crai")).exists():
+                create_symlink(file.with_suffix(".cram.crai"), input_dir, target_name + ".crai")
+
     logger.info(f"Directory {directory} initialized.")
     logger.info(f"Edit {directory}/{CONFIGURATION_FILE_NAME}.")
     logger.info(f"Run 'cd {directory} && blr run --anew' to start the analysis.")
