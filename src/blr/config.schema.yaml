@@ -52,9 +52,9 @@ properties:
     default: true
     description: Filter called variants (SNPs and INDELs) before phasing
   genome_reference:
-    type: [ "string", "null" ]
-    description: Reference index prefix
-    default: null
+    type: string
+    description: Path to indexed genome reference FASTA file
+    pattern: "(.*.fa)|(.*.fasta)"
   h1:
     type: string
     description: h1 adaptor sequnce, appears before barcode in read1
