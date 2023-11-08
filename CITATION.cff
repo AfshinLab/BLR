@@ -35,7 +35,7 @@ repository-code: 'https://github.com/AfshinLab/BLR'
 abstract: >-
   An end-to-end Snakemake workflow for whole genome
   haplotyping and structural variant calling from FASTQs
-  from multiple linked-read  technologies.
+  from multiple linked-read technologies.
 license: MIT
 preferred-citation:
   type: article
