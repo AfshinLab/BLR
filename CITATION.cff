@@ -1,0 +1,63 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  BLR: a flexible pipeline for haplotype analysis of
+  multiple linked-read technologies
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Pontus
+    family-names: Höjer
+  - given-names: Tobias
+    family-names: Frick
+  - given-names: Humam
+    family-names: Siga
+  - given-names: Parham
+    family-names: Pourbozorgi
+  - given-names: Hooman
+    family-names: Aghelpasand
+  - given-names: Marcel
+    family-names: Martin
+  - given-names: Afshin
+    family-names: Ahmadian
+identifiers:
+  - type: doi
+    value: 10.1093/nar/gkad1010
+    description: Publication describing BLR
+  - type: doi
+    value: 10.17044/scilifelab.21525945
+    description: Archived version of BLR used for publication
+repository-code: 'https://github.com/AfshinLab/BLR'
+abstract: >-
+  An end-to-end Snakemake workflow for whole genome
+  haplotyping and structural variant calling from FASTQs
+  from multiple linked-read  technologies.
+license: MIT
+preferred-citation:
+  type: article
+  authors:
+    - given-names: Pontus
+      family-names: Höjer
+    - given-names: Tobias
+      family-names: Frick
+    - given-names: Humam
+      family-names: Siga
+    - given-names: Parham
+      family-names: Pourbozorgi
+    - given-names: Hooman
+      family-names: Aghelpasand
+    - given-names: Marcel
+      family-names: Martin
+    - given-names: Afshin
+      family-names: Ahmadian
+  doi: "10.1093/nar/gkad1010"
+  journal: "Nucleic Acids Research"
+  title: "BLR: a flexible pipeline for haplotype analysis of multiple linked-read technologies"
+  pages: gkad1010
+  year: 2023
+  month: 11
+  url: "https://doi.org/10.1093/nar/gkad1010"
