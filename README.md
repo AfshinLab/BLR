@@ -7,17 +7,34 @@
 - [Usage](#Usage)
 - [Installation](#Installation)
 - [Development](#development)
-- [Old version](#Old-version)
+- [Citation](#citation)
 
 ## About the pipeline
 
-The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs. It was originally developed for the prep-processing of [Droplet Barcode Sequencing (DBS)](doc/platforms.rst#dbs) data for the paper [High throughput barcoding method for genome-scale phasing][1] for input into the 10x LongRanger pipeline (see [Old version](#Old-version)) but have since been heavily modified to run completely independant of LongRanger. The pipeline also allow for input FASTQs from other linked-read technologies such as:
+The BLR pipeline is end-to-end Snakemake workflow for whole genome haplotyping and structural variant calling from FASTQs, independent of LongRanger. The pipeline allow for input FASTQs from multiple linked-read technologies such as:
 
+- [Droplet Barcode Sequencing (DBS)](doc/platforms.rst#dbs)
 - [10x Genomics Chromium Genome](doc/platforms.rst#x-genomics)
 - [Universal Sequencing TELL-seq](doc/platforms.rst#tell-seq)
 - [MGI stLFR](doc/platforms.rst#stlfr)
 
 Read more about the integrated linked-read platforms [here](doc/platforms.rst).
+
+![BLR pipeline](./doc/assets/pipeline.png)
+
+The BLR pipeline is designed to be flexible and modular, allowing for easy integration of new linked-read technologies and tools. The pipeline is also designed to be run on a cluster environment, but can also be run locally.
+
+Outlined below are the main processing step. Tools written in parenthesis indicate which are currently implemented for the current step with the preferred tool in *italic*.
+
+- **FASTQ processing** (*tool depends on technology*): This initial step normalizes input FASTQ based on the linked-read technology used. This includes demultiplexing, barcode extraction and filtering as well as adaptor trimming.
+- **Mapping** (*EMA*, BWA, minimap2, bowtie2, lariat): The reads are mapped to the reference genome using one of the available mappers. 
+- **BAM processing** (*BLR/Picard MarkDuplicates*): Collapse overlapping barcodes, mark duplicates, infer molecules (MI-tag) and filter reads. 
+- **Variant calling** (*DeepVariant*, GATK, FreeBayes, BCFtools): Call and filter short variants.
+- **Variant phasing** (*HapCUT2*): Phase variants using the inferred molecules.
+- **Haplotag alignments** (*WhatsHap*): Assign haplotype to reads (HP-tag).
+- **Structural variant (SV) calling** (*NAIBR*): Call large structural variants (SV).
+
+Statistics are collected using standards tools such as FastQC, Picard and mosdepth as well as custom scripts that are part of BLR. These are then complied using [MultiQC](https://multiqc.info/) into a final HTML report.
 
 ## Usage
 
@@ -244,10 +261,19 @@ Deactivate and re-activate the environment for the change to take effect. To
 
 For more information on development go [here](doc/develop.rst).
 
-## Old version
+## Citation
 
-To run the analysis described in [High throughput barcoding method for genome-scale phasing][1], look at the [stable branch](https://github.com/AfhsinLab/BLR/tree/stable) for this git repository.
+The BLR pipeline is outlined in:
 
-That version of BLR Analysis is also available at [OMICtools](https://omictools.com/blr-tool).
+> Höjer, P., Frick, T., Siga, H. *et al.* BLR: a flexible pipeline for haplotype analysis of multiple linked-read technologies, *Nucleic Acids Research*, gkad1010 (2023). https://doi.org/10.1093/nar/gkad1010
 
-[1]: https://doi.org/10.1038/s41598-019-54446-x "Redin et al. 2019"
+This is the main citation for the BLR pipeline. 
+
+BLR was originally developed for the prep-processing of [Droplet Barcode Sequencing (DBS)](doc/platforms.rst#dbs) data for input into the 10x LongRanger pipeline, see paper 
+
+> Redin, D., Frick, T., Aghelpasand, H. *et al.* High throughput barcoding method for genome-scale phasing. *Sci Rep* 9, 18116 (2019). https://doi.org/10.1038/s41598-019-54446-x
+
+It has since been heavily modified to run completely independant of LongRanger. To run the analysis described in [Redin et al. 2019][2] look at the [stable branch](https://github.com/AfshinLab/BLR/tree/stable) for this git repository. That version is also available at [OMICtools](https://omictools.com/blr-tool).
+
+[1]: https://doi.org/10.1093/nar/gkad1010 "Höjer et al. 2023"
+[2]: https://doi.org/10.1038/s41598-019-54446-x "Redin et al. 2019"
