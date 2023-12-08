@@ -1,0 +1,7 @@
+name: mtglink
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - bioconda::mtglink=2.4.1

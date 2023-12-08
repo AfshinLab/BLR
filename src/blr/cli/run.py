@@ -101,7 +101,7 @@ def run(
         if workdir is not None:
             cmd += ["--directory", str(workdir)]
 
-        if "CONDA_ENVS" in os.environ:
+        if "CONDA_ENVS" in os.environ and not no_conda:
             cmd += ["--conda-prefix", os.environ["CONDA_ENVS"]]
 
         if snakemake_args is not None:
