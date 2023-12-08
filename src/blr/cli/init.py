@@ -101,7 +101,7 @@ def create_and_populate_analysis_directory(directory: Path, reads1: Path, reads2
     write_config_to_dir(CONFIGURATION_FILE_NAME, directory)
 
     # Update with library type into
-    change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)])
+    change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)], validate=False)
 
     create_symlink(reads1, directory, "reads.1.fastq.gz")
     create_symlink(reads2, directory, "reads.2.fastq.gz")
@@ -188,7 +188,7 @@ def init_from_dir(directory: Path, workdirs: List[Path], library_type: str):
     write_config_to_dir(CONFIGURATION_FILE_NAME, directory)
 
     # Update with library type into
-    change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)])
+    change_config(directory / CONFIGURATION_FILE_NAME, [("library_type", library_type)], validate=False)
 
     input_dir = directory / "inputs"
     input_dir.mkdir()

@@ -12,7 +12,7 @@ from typing import List, Tuple, Union, Optional
 from ruamel.yaml import YAML
 from ruamel.yaml.parser import ParserError
 
-from snakemake.utils import validate
+from snakemake.utils import validate as validate_yaml
 
 logger = logging.getLogger(__name__)
 DEFAULT_PATH = Path("blr.yaml")
@@ -58,7 +58,7 @@ def print_config(filename: Union[Path, str]):
     print(f"{'=' * width}")
 
 
-def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]], prompt: bool = False):
+def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]], prompt: bool = False, validate: bool = True):
     """
     Change config YAML file at filename using the changes_set key-value pairs.
     :param filename: Path to YAML config file to change.
@@ -92,8 +92,9 @@ def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]]
                 logger.info(f"Changing value of '{key}': {repr(prev_value)} --> {repr(value)}")
 
     # Confirm that configs is valid.
-    with resource_path('blr', SCHEMA_FILE) as schema_path:
-        validate(configs, str(schema_path))
+    if validate:
+        with resource_path('blr', SCHEMA_FILE) as schema_path:
+            validate_yaml(configs, str(schema_path))
 
     # Write first to temporary file then overwrite filename.
     tmpfile = Path(str(filename) + ".tmp")
