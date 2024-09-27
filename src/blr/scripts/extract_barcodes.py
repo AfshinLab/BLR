@@ -5,12 +5,10 @@ import argparse
 from collections import defaultdict
 import os
 import re
-import subprocess
 import sys
 
 from Bio import SeqIO
 import gfapy
-from gfapy.sequence import rc
 import pysam
 
 
@@ -225,7 +223,7 @@ def extractBarcodesFromChunkRegions(
     # ----------------------------------------------------
     # Pre-Processing
     # ----------------------------------------------------
-    ## Create the object 'gap' from the class 'Gap'
+    # Create the object 'gap' from the class 'Gap'
     gap = Gap(current_gap)
     if not gap:
         print(
@@ -264,7 +262,8 @@ def extractBarcodesFromChunkRegions(
     # Initiate a dictionary to count the occurences of each barcode extracted on the chunk/flank regions.
     barcodesOccurrencesDict = defaultdict(int)
 
-    # Obtain the left barcodes extracted on the left region (left chunk/flank) and store the barcodes and their occurences in the dict 'barcodes_occ'.
+    # Obtain the left barcodes extracted on the left region (left chunk/flank) and store the barcodes and their
+    # occurences in the dict 'barcodes_occ'.
     leftRegion = leftScaffold.chunk(chunk_L)
     if not leftRegion:
         print("Unable to obtain the left region (left flank).", file=sys.stderr)
@@ -273,7 +272,8 @@ def extractBarcodesFromChunkRegions(
         bamFile, gapLabel, leftRegion, barcodesOccurrencesDict
     )
 
-    # Obtain the right barcodes extracted on the right region (right chunk/flank) and store the barcodes and their occurences in the dict 'barcodes_occ'.
+    # Obtain the right barcodes extracted on the right region (right chunk/flank) and store the barcodes and their
+    # occurences in the dict 'barcodes_occ'.
     rightRegion = rightScaffold.chunk(chunk_R)
     if not rightRegion:
         print("Unable to obtain the right region (right flank).", file=sys.stderr)
@@ -295,7 +295,8 @@ def extractBarcodesFromChunkRegions(
     )
     try:
         with open(unionBarcodesFile, "w") as unionBarcFile:
-            ## Filter barcodes by the minimal occurrence of barcodes observed in the union set from the two flanking gap/target sequences ('barcodesMinOcc')
+            # Filter barcodes by the minimal occurrence of barcodes observed in the union set from the two flanking
+            # gap/target sequences ('barcodesMinOcc')
             for (barcode, occurrence) in barcodesOccurrencesDict.items():
                 if occurrence >= barcodesMinOcc:
                     unionBarcFile.write(barcode + "\n")
@@ -306,28 +307,6 @@ def extractBarcodesFromChunkRegions(
         )
         raise err
 
-def get_region(current_gap, gfaFile, flanksize, chunkSize):
-    gap = Gap(current_gap)
-
-    # Get some information on the current gap/target we are working on.
-    gap.info()
-    gapLabel = gap.label()
-
-    # Create two objects ('leftScaffold' and 'rightScaffold') from the class 'Scaffold'.
-    leftScaffold = Scaffold(current_gap, gap.left, gfaFile)
-    rightScaffold = Scaffold(current_gap, gap.right, gfaFile)
-
-    chunk_L = chunkSize
-    chunk_R = chunkSize
-
-    leftRegion = leftScaffold.chunk(chunk_L)
-    rightRegion = rightScaffold.chunk(chunk_R)
-
-    gfa_name = gfaFile.split("/")[-1]
-    unionBarcodesFile = (
-        f"{gfa_name}.{gapLabel}.g{gap.length}.flank{chunkSize}.occ{barcodesMinOcc}.bxu"
-    )
-    
 
 def main(outdir, gfa, bam, flanksize, minbarcocc):
     gfa_path = os.path.abspath(gfa)
@@ -376,7 +355,7 @@ if __name__ == "__main__":
         bam = args.bam
         flanksize = args.flanksize
         minbarcocc = args.minbarcocc
-        log = f"{args.outdir}.log
+        log = f"{args.outdir}.log"
 
     # Write stdout to log file
     with open(log, "w") as sys.stdout:

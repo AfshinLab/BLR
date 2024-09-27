@@ -58,7 +58,12 @@ def print_config(filename: Union[Path, str]):
     print(f"{'=' * width}")
 
 
-def change_config(filename: Union[Path, str], changes_set: List[Tuple[str, str]], prompt: bool = False, validate: bool = True):
+def change_config(
+        filename: Union[Path, str],
+        changes_set: List[Tuple[str, str]],
+        prompt: bool = False,
+        validate: bool = True
+):
     """
     Change config YAML file at filename using the changes_set key-value pairs.
     :param filename: Path to YAML config file to change.

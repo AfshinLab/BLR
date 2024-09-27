@@ -67,13 +67,13 @@ def main(args):
                 no_conda=args.no_use_conda,
                 snakefile="run_anew.smk",
                 snakemake_args=args.snakemake_args)
-        
+
         # If --anew and --dryrun is not used, run the remaining pipeline.
         if not (args.anew and any(flag in args.snakemake_args for flag in ['-n', '--dryrun'])):
             run(cores=args.cores,
                 no_conda=args.no_use_conda,
                 snakemake_args=args.snakemake_args)
-        else:  
+        else:
             print("Unable to perform dryrun for remaining pipeline when using --anew.", file=sys.stderr)
 
     except subprocess.CalledProcessError as e:

@@ -24,7 +24,7 @@ jobs:
         run:
           pip install flake8
       - name: Run flake8
-        run:
+        run: |
           flake8 src/ tests/
           flake8 --select=W292 --filename '*.yaml,*.yml'
 
