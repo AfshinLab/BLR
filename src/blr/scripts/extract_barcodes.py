@@ -376,7 +376,7 @@ if __name__ == "__main__":
         bam = args.bam
         flanksize = args.flanksize
         minbarcocc = args.minbarcocc
-        log = f"{args.outdir}.log
+        log = f"{args.outdir}.log"
 
     # Write stdout to log file
     with open(log, "w") as sys.stdout:
