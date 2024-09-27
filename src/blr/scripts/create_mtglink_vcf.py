@@ -10,14 +10,15 @@ import argparse
 from pathlib import Path
 import dataclasses
 from collections import defaultdict
+import sys
 
 import pysam
 
 
-# TODO - This currently works in a very basic manner and needs to be improved. 
+# TODO - This currently works in a very basic manner and needs to be improved.
 #        Ideally we should do a realignment of the assembled sequence to the reference
-#        to get a more accurate representation of the insert. 
-#        Relevant discussion: https://github.com/anne-gcd/MTG-Link/issues/25 
+#        to get a more accurate representation of the insert.
+#        Relevant discussion: https://github.com/anne-gcd/MTG-Link/issues/25
 
 @dataclasses.dataclass
 class Gap:
@@ -33,12 +34,14 @@ class Gap:
 
 
 COMPLEMENT = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+
+
 def revcomp(seq):
     return "".join(COMPLEMENT.get(base, base) for base in reversed(seq))
 
 
 def parse_record(record):
-    # >chr1_0-13239699-L+:chr1_13239799-27878410-R+_fwd_1/1.k61 _ len.1085_qual.AB 
+    # >chr1_0-13239699-L+:chr1_13239799-27878410-R+_fwd_1/1.k61 _ len.1085_qual.AB
     record_id = record.name
 
     info = record.comment.split(" ")[1]
@@ -48,10 +51,10 @@ def parse_record(record):
     *gap_name, direction, kmer = record_id.split("_")
     kmer = kmer.split(".")[1]
     gap_name = "_".join(gap_name)
-    gap_chr =  gap_name.split(":")[0].split("_")[0]
+    gap_chr = gap_name.split(":")[0].split("_")[0]
     gap_start = int(gap_name.split(":")[0].split("-")[1])
     gap_end = int(gap_name.split(":")[1].split("-")[0].split("_")[1])
-    return Gap(gap_name, gap_chr, gap_start, gap_end, direction, kmer, length, qual, record)    
+    return Gap(gap_name, gap_chr, gap_start, gap_end, direction, kmer, length, qual, record)
 
 
 def main(fasta, vcf_in, vcf_out, flank, debug=False):
@@ -66,7 +69,6 @@ def main(fasta, vcf_in, vcf_out, flank, debug=False):
     n_written = 0
     print("Reading VCF", vcf_in)
     with pysam.VariantFile(vcf_in) as reader:
-        sample = reader.header.samples[0]
         print("Writing VCF", vcf_out)
         with pysam.VariantFile(vcf_out, "w", header=reader.header) as writer:
             for nr, (name, gap) in enumerate(records.items(), start=1):
@@ -78,12 +80,12 @@ def main(fasta, vcf_in, vcf_out, flank, debug=False):
 
                 if debug:
                     print(gap.name, gap.chrom, gap.start, gap.end)
-                
+
                 variants = list(reader.fetch(gap.chrom, gap.start, gap.end))
                 variants = [v for v in variants if v.info["SVTYPE"] == "INS"]
-    
+
                 if debug:
-                    for nr, v in enumerate(variants):
+                    for nr, variant in enumerate(variants):
                         print("VARIANT", nr)
                         manta_left = variant.info["LEFT_SVINSSEQ"][0]
                         manta_left_cap = min(100, len(manta_left), len(insert))
@@ -93,7 +95,7 @@ def main(fasta, vcf_in, vcf_out, flank, debug=False):
                         print("MTG  ", insert[:manta_left_cap])
                         print("MANTA", manta_right[-manta_right_cap:])
                         print("MTG  ", insert[-manta_right_cap:])
-                    
+
                     print("-" * 80)
 
                 if len(variants) > 1:
@@ -101,13 +103,13 @@ def main(fasta, vcf_in, vcf_out, flank, debug=False):
                     for v in variants:
                         print("-", v)
                     continue
-    
+
                 if len(variants) == 0:
                     print("No variant in gap", gap.name)
                     continue
-    
+
                 variant = variants[0]
-                
+
                 # Update variant with assembled insert sequence
                 variant.alts = [variant.ref + insert]
                 variant.info["SVLEN"] = len(insert)
@@ -129,13 +131,14 @@ if __name__ == "__main__":
         debug = False
     else:
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument("fasta", type=Path, help="Main FASTA file outputted by MTG-Link e.g '*assembled_sequences.fasta'")
+        parser.add_argument("fasta", type=Path,
+                            help="Main FASTA file outputted by MTG-Link e.g '*assembled_sequences.fasta'")
         parser.add_argument("vcf", type=Path, help="VCF used for input to MTG-Link")
         parser.add_argument("-o", "--output", type=Path, help="Output VCF", default="-")
         parser.add_argument(
-            "--flank", default=550, type=int, 
+            "--flank", default=550, type=int,
             help="Length of sequence flanking the gap of each side. Will be removed from"
-                "the conting. Default: %(default)s"
+                 "the conting. Default: %(default)s"
         )
         parser.add_argument("--debug", action="store_true", help="Debug mode")
         args = parser.parse_args()
