@@ -169,7 +169,8 @@ class Scaffold(Gap):
             if (self.orient == "+" and self.scaffold == self.left) or (
                 self.orient == "-" and self.scaffold == self.right
             ):
-                start = self.slen - c
+                # If the flanksize is set greater than scaffold length this becomes negative
+                start = max(0, self.slen - c)
                 end = self.slen
             # if right_fwd or left_rev
             elif (self.orient == "+" and self.scaffold == self.right) or (
