@@ -159,7 +159,7 @@ class Scaffold(Gap):
 
             # NB: The 'contig_name' should match the contig name on the BAM file
             contig_name = re.split(r"_[0-9]+-[0-9]+", str(self.name))[0]
-            return str(contig_name) + ":" + str(max(0, start)) + "-" + str(end)
+            return str(contig_name) + ":" + str(max(1, start)) + "-" + str(end)
 
         # ----------------------------------------------------
         # For gaps/targets between scaffolds' sequences
@@ -170,13 +170,13 @@ class Scaffold(Gap):
                 self.orient == "-" and self.scaffold == self.right
             ):
                 # If the flanksize is set greater than scaffold length this becomes negative
-                start = max(0, self.slen - c)
+                start = max(1, self.slen - c)
                 end = self.slen
             # if right_fwd or left_rev
             elif (self.orient == "+" and self.scaffold == self.right) or (
                 self.orient == "-" and self.scaffold == self.left
             ):
-                start = 0
+                start = 1
                 end = c
             return str(self.name) + ":" + str(start) + "-" + str(end)
 
