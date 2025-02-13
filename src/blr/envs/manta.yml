@@ -4,6 +4,6 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - bioconda::manta=1.6.0
+  - bioconda::manta[version=1.6.0, build=*_3]
   - bioconda::samtools=1.12
-  - conda-forge::python<3
+  - conda-forge::python=2.7*
