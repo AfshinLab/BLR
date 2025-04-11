@@ -11,7 +11,7 @@ from blr.cli.run import run
 from blr.cli.config import change_config
 from blr.utils import get_bamtag
 
-TESTDATA = Path("blr-testdata")
+TESTDATA = Path("tests/testdata")
 
 TESTDATA_DBS_READ1 = TESTDATA / "dbs_reads.1.fastq.gz"
 TESTDATA_DBS_READ2 = TESTDATA / "dbs_reads.2.fastq.gz"

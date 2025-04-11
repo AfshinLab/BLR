@@ -22,7 +22,7 @@ bcftools --version
 gatk --version
 whatshap --version
 
-pushd blr-testdata
+pushd tests/testdata
 bwa index ref.fasta
 bowtie2-build ref.fasta ref.fasta > /dev/null
 samtools faidx ref.fasta

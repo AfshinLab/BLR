@@ -1,0 +1,11 @@
+.snakemake/
+*.log
+*.amb
+*.ann
+*.bwt
+*.pac
+*.sa
+*.bt2
+*.fai
+*.dict
+HG002_GRCh38_ONT-UL_UCSC_20200508.phased.bam.bai

@@ -1,0 +1,362 @@
+# This is actually GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+genome = "/proj/uppstore2018173/private/references/bowtie2/genome.fa"
+
+# This was used for test datasets up to 0.3 (the BAM file doesn’t exist anymore)
+# bam = "/proj/uppstore2018173/private/analysis/190423.HiSeq.emTn5.Next.reseq_3.XIII/XIII.reseq_3.R1.fastq.sort.tag.rmdup.x2.filt.bam"
+# fastq = "/proj/uppstore2018173/private/rawdata/190416.HiSeq.emTn5.Next.reseq_2-3.XII-XVII/XIII.reseq_3.R{nr}.fastq.gz"
+
+# This was used for test dataset from 0.4 and up to 0.5 but was removed. The .phase file used should however contain the same sequences.
+# bam = "/proj/uppstore2018173/private/analysis/200529.P14314.contDNA.rerun/mapped.sorted.tag.bcmerge.mkdup.mol.filt.bam"
+
+bam = "/proj/uppstore2018173/private/analysis/200529.P14314.contDNA.rerun/mapped.sorted.tag.bcmerge.mkdup.mol.filt.phase.bam"
+fastq = "/proj/uppstore2018173/private/rawdata/191010.NovoSeq.emTn5.Next.Mus.Patient.Cont/P14314/P14314_1006/02-FASTQ/190926_A00621_0130_BHN5HWDSXX/P14314_1006_S6_L004_R{nr}_001.fastq.gz"
+bam_tellseq = "/proj/uppstore2018173/private/pontus/Chen_HG002_NA24385_TELLseq_5ng_mapping/out.bam"
+fastq_tellseq = "/proj/uppstore2018173/nobackup/downloaded_data/Chen_HG002_NA24385_TELLseq_5ng_fastqs/SRR10689414/190704_A502_NA24385_R{nr}.fastq.000.gz.1"
+tellseq_index = "/proj/uppstore2018173/nobackup/downloaded_data/Chen_HG002_NA24385_TELLseq_5ng_fastqs/SRR10689414/190704_A502_NA24385_I1.fastq.000.gz.1"
+bam_stlfr = "/proj/uppstore2018173/private/pontus/GIAB_HG002_NA24385_BGI_stLFR/out.bam"
+fastq_stlfr = "/proj/uppstore2018173/private/references/GIAB_HG002_NA24385_BGI_stLFR_fastqs/stLFR_NA24385_split_read.{nr}.fq.gz"
+bam_tenx = "/proj/uppstore2018173/private/pontus/GIAB_HG002_NA24385_10xChromium/ema_final.bam"
+fastq_tenx = "/proj/uppstore2018173/nobackup/downloaded_data/GIAB_HG002_NA24385_10xChromium_fastqs/ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/AshkenazimTrio/HG002_NA24385_son/10Xgenomics_ChromiumGenome/NA24385.fastqs/read-RA_si-{index}_lane-001-chunk-0002.fastq.gz" # Interleaved
+
+dbsnp="/sw/data/GATK/hg38/dbsnp_138.hg38.vcf.gz"
+
+rule all:
+  input:
+    "ref.fasta",
+    "dbs_reads.1.fastq.gz",
+    "dbs_reads.2.fastq.gz",
+    "tellseq_reads.1.fastq.gz",
+    "tellseq_reads.2.fastq.gz",
+    "tellseq_index.fastq.gz",
+    "stlfr_reads.1.fastq.gz",
+    "stlfr_reads.2.fastq.gz",
+    "stlfr_barcodes.txt",
+    "tenx_reads.1.fastq.gz",
+    "tenx_reads.2.fastq.gz",
+    "tenx_barcode_whitelist.txt",
+    "HG002_GRCh38_GIAB_highconf.vcf.gz",
+    "HG002_GRCh38_GIAB_highconf.vcf.gz.tbi",
+    "HG002_GRCh38_GIAB_highconf_triophased.vcf.gz",
+    "HG002_GRCh38_GIAB_highconf_triophased.vcf.gz.tbi",
+    "dbSNP.vcf.gz",
+    "dbSNP.vcf.gz.tbi",
+	"ont.bam"
+
+rule reference:
+    # chromosome sizes in kbp: 50, 40, 9, 1
+    output: "ref.fasta"
+    shell:
+        "samtools faidx {genome} chr1:10000001-10050000 | sed -r 's/^>.*/>chrA/' > {output}.tmp\n"
+        "samtools faidx {genome} chr1:10050001-10090000 | sed -r 's/^>.*/>chrB/' >> {output}.tmp\n"
+        "samtools faidx {genome} chr1:10090001-10099000 | sed -r 's/^>.*/>chrC/' >> {output}.tmp\n"
+        "samtools faidx {genome} chr1:10099001-10100000 | sed -r 's/^>.*/>chrD/' >> {output}.tmp\n"
+        "mv {output}.tmp {output}"
+
+def bam_input(wildcards):
+  files = {
+    "dbs": bam,
+    "tellseq": bam_tellseq,
+    "stlfr": bam_stlfr,
+    "tenx": bam_tenx
+  }
+  return files[wildcards.tech]
+
+rule bam_region:
+  output:
+    bam=temp("{tech}_out.bam")
+  input: 
+    bam=bam_input
+  shell: "samtools view -b -o {output.bam} {input.bam} chr1:10000000-10100000"
+
+rule names:
+  output:
+    txt=temp("{tech}_names.txt")
+  input: 
+    bam="{tech}_out.bam"
+  run:
+    command = "samtools view {input.bam} | cut -f1 "
+    if wildcards.tech == "stlfr":
+      command += "| shuf -n 10000 --random-source {input.bam}"
+    elif wildcards.tech == "dbs":
+      command += "| sed 's|_FILTERED| |' "
+
+    shell(command + "| shuf -n 1000 --random-source {input.bam} > {output.txt}")
+
+def fastq_input(wildcards):
+  files = {
+    "dbs": fastq,
+    "tellseq": fastq_tellseq,
+    "stlfr": fastq_stlfr
+  }
+  return files[wildcards.tech]
+
+rule reads:
+  output:
+    fastq_gz="{tech}_reads.{nr,(1|2)}.fastq.gz"
+  input:
+    names="{tech}_names.txt",
+    fastq=fastq_input,
+  wildcard_constraints:
+    tech="(dbs|stlfr|tellseq)"
+  shell:
+    "pigz -dc {input.fastq} | grep -F -A 3 --no-group-separator -f {input.names} | gzip -9 > {output.fastq_gz}"
+
+rule reads_tenx:
+  output:
+    fastq1=temp("tenx_reads_{index}.1.fastq.gz"),
+    fastq2=temp("tenx_reads_{index}.2.fastq.gz")
+  input:
+    names="tenx_names.txt",
+    fastq=fastq_tenx
+  shell:
+    "pigz -dc {input.fastq} | grep -F -A 3 --no-group-separator -f {input.names} | "
+    "paste - - - - - - - - | tee >(cut -f 1-4 | tr '\t' '\n' | gzip -9 > {output.fastq1}) | cut -f 5-8 | "
+    "tr '\t' '\n' | gzip -9 > {output.fastq2}"
+
+rule cat_tenx_fastqs:
+  output:
+     fastq="tenx_reads.{nr,(1|2)}.fastq.gz"
+  input:
+     fastqs=expand("tenx_reads_{index}.{{nr}}.fastq.gz", index=["AAGTTGCA", "CTTGGTAC", "GCACAATG", "TGCACCGT"]),
+  shell:
+     "cat {input.fastqs} > {output.fastq}"
+
+rule index_tellseq:
+  output: "{tech}_index.fastq.gz"
+  input: 
+    fastq=tellseq_index,
+    names="{tech}_names.txt"
+  shell:
+    "pigz -dc {input.fastq} | grep -F -A 3 --no-group-separator -f {input.names} | gzip -9 > {output}"
+
+rule download_giab_highconf:
+    output:
+        "HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_highconf.vcf.gz"
+    shell:
+        "wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/AshkenazimTrio/HG002_NA24385_son/NISTv3.3.2/GRCh38/supplementaryFiles/{output}"
+
+rule download_giab_highconf_triophased:
+    output:
+        "HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_highconf_triophased.vcf.gz"
+    shell:
+        "wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/AshkenazimTrio/HG002_NA24385_son/NISTv3.3.2/GRCh38/{output}"
+
+rule highconf:
+    output:
+        vcf="HG002_GRCh38_GIAB_{base,(highconf|highconf_triophased)}.vcf",
+        log=temp("HG002_GRCh38_GIAB_{base,(highconf|highconf_triophased)}.vcf.tmp.log"),
+        recode=temp("HG002_GRCh38_GIAB_{base,(highconf|highconf_triophased)}.vcf.tmp.recode.vcf")
+    input:
+        vcf="HG002_GRCh38_GIAB_highconf_CG-Illfb-IllsentieonHC-Ion-10XsentieonHC-SOLIDgatkHC_CHROM1-22_v.3.3.2_{base}.vcf.gz"
+    shell:
+        "vcftools"
+        " --gzvcf {input.vcf}"
+        " --chr chr1"
+        " --from-bp 10000000"
+        " --to-bp 10100000"
+        " --recode-INFO-all"
+        " --out {output.vcf}.tmp"
+        " --recode"
+        " && "
+        r"""awk -vFS="\t" -vOFS="\t" '
+            /^chr1\t/ {{
+                x = $2 - 10000000;
+                if (x <= 50000)      {{ $2 = x;         $1 = "chrA"; }}
+                else if (x <= 90000) {{ $2 = x - 50000; $1 = "chrB"; }}
+                else if (x <= 99000) {{ $2 = x - 90000; $1 = "chrC"; }}
+                else                 {{ $2 = x - 99000; $1 = "chrD"; }}
+            }}
+            /^##contig=/ {{
+                if (!wrote_header) {{
+                    print("##contig=<ID=chrA,length=50000>");
+                    print("##contig=<ID=chrB,length=40000>");
+                    print("##contig=<ID=chrC,length=9000>");
+                    print("##contig=<ID=chrD,length=1000>");
+                    wrote_header = 1;
+                }}
+                next;
+            }}
+            1
+            ' {output.vcf}.tmp.recode.vcf > {output.vcf}"""
+
+rule dbsnp:
+    output:
+        vcf="dbSNP.vcf",
+        log=temp("dbSNP.vcf.tmp.log"),
+        recode=temp("dbSNP.vcf.tmp.recode.vcf")
+    input:
+        vcf=dbsnp,
+    shell:
+        "vcftools"
+        " --gzvcf {input.vcf}"
+        " --chr chr1"
+        " --from-bp 10000000"
+        " --to-bp 10100000"
+        " --recode-INFO-all"
+        " --out {output.vcf}.tmp"
+        " --recode"
+        " && "
+        r"""awk -vFS="\t" -vOFS="\t" '
+            /^chr1\t/ {{
+                x = $2 - 10000000;
+                if (x <= 50000)      {{ $2 = x;         $1 = "chrA"; }}
+                else if (x <= 90000) {{ $2 = x - 50000; $1 = "chrB"; }}
+                else if (x <= 99000) {{ $2 = x - 90000; $1 = "chrC"; }}
+                else                 {{ $2 = x - 99000; $1 = "chrD"; }}
+            }}
+            /^##contig=/ {{
+                if (!wrote_header) {{
+                    print("##contig=<ID=chrA,length=50000>");
+                    print("##contig=<ID=chrB,length=40000>");
+                    print("##contig=<ID=chrC,length=9000>");
+                    print("##contig=<ID=chrD,length=1000>");
+                    wrote_header = 1;
+                }}
+                next;
+            }}
+            1
+            ' {output.vcf}.tmp.recode.vcf > {output.vcf}"""
+
+rule download_stlfr_barcodes:
+  output:
+    "stlfr_barcodes.txt"
+  shell:
+    "wget -O {output} https://raw.githubusercontent.com/stLFR/stLFR_read_demux/master/scripts/barcode.list"
+
+rule download_tenx_barcodes:
+  output:
+    txt=temp("tenx_barcodes_raw.txt"),
+    log=temp("tenx_barcodes_raw.txt.log")
+  shell:
+    "wget -O {output.txt} https://github.com/10XGenomics/longranger/raw/master/tenkit/lib/python/tenkit/barcodes/4M-with-alts-february-2016.txt 2> {output.log}"
+
+
+rule count_tenx:
+    """Create list of per-barcode count"""
+    output:
+        counts_ncnt = temp("reads.ema-ncnt"),
+        counts_fcnt = temp("reads.ema-fcnt")
+    input:
+        r1_fastq="tenx_reads.1.fastq.gz",
+        r2_fastq="tenx_reads.2.fastq.gz",
+        whitelist="tenx_barcodes_raw.txt"
+    shell:
+        "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
+        " tr '\t' '\n' |"
+        " ema count"
+        " -w {input.whitelist}"
+        " -o reads"
+
+rule preproc_10x:
+    """Trim reads and bin reads containing the same barcode together. Reads missing barcodes outputed to ema-nobc."""
+    output:
+        bins = temp(directory("temp_bins"))
+    input:
+        r1_fastq="tenx_reads.1.fastq.gz",
+        r2_fastq="tenx_reads.2.fastq.gz",
+        counts_ncnt = "reads.ema-ncnt",
+        counts_fcnt = "reads.ema-fcnt",
+        whitelist = "tenx_barcodes_raw.txt"
+    shell:
+        "paste <(pigz -c -d {input.r1_fastq} | paste - - - -) <(pigz -c -d {input.r2_fastq} | paste - - - -) |"
+        " tr '\t' '\n' |"
+        " ema preproc"
+        " -w {input.whitelist}"
+        " -b"
+        " -h"
+        " -o {output.bins} {input.counts_ncnt}"
+
+rule barcode_subset:
+     output: "tenx_barcode_whitelist.txt"
+     input: "temp_bins"
+     shell:
+        "cat {input}/ema-bin-* | paste - - - - | cut -f1 | cut -d' ' -f2 |"
+        " sed 's|BX:Z:||' | sed 's|-1| |' | sort | uniq > {output}"
+
+
+rule compress_vcf:
+    output:
+        vcf_gz = "{base}.vcf.gz",
+    input:
+        vcf = "{base}.vcf"
+    shell:
+        "bgzip -c {input.vcf} > {output.vcf_gz}"
+
+
+rule index_vcf:
+    output:
+        "{base}.vcf.gz.tbi"
+    input:
+        vcf = "{base}.vcf.gz"
+    shell:
+        "tabix -p vcf {input.vcf}"
+
+
+rule get_ont_reads:
+	output:
+		fastq = temp("ont.fastq.gz"),
+		bai = temp("HG002_GRCh38_ONT-UL_UCSC_20200508.phased.bam.bai")
+	params:
+		bam = "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/UCSC_Ultralong_OxfordNanopore_Promethion/HG002_GRCh38_ONT-UL_UCSC_20200508.phased.bam"
+	shell:
+		# Extract reads covering chrA and subsample
+		"samtools view -s 0.07 -h -x HP -x PS {params.bam} chr1:10000001-10050000"
+		" | "
+		"samtools fastq -0 {output.fastq}"
+
+rule bwa_index:
+	output:
+		expand("ref.fasta{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"])
+	input:
+		fasta = "ref.fasta"
+	shell:
+		"bwa index {input.fasta}"
+
+
+rule map_ont_reads:
+	output:
+		bam = "ont.bam",
+		bai = "ont.bam.bai"
+	input:
+		fastq = "ont.fastq.gz",
+		fasta = "ref.fasta",
+		index = rules.bwa_index.output
+	shell:
+		# Map reads to reference, params from 
+		# https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/UCSC_Ultralong_OxfordNanopore_Promethion/README_ONT-UL_UCSC_HG002.md
+		"minimap2 -x map-ont -a -z 600,200 {input.fasta} {input.fastq}"
+		" | "
+		"samtools sort -o {output.bam}"
+		" && "
+		"samtools index {output.bam}"
+
+
+rule get_pacbio_reads:
+	output:
+		fastq = temp("pacbio.fastq.gz"),
+		bai = temp("HG002.SequelII.merged_15kb_20kb.pbmm2.GRCh38.haplotag.10x.bam.bai")
+	params:
+		# PacBio Hifi reads mapped to GRCh38 at ~55.90X coverage
+		bam = "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_CCS_15kb_20kb_chemistry2/GRCh38/HG002.SequelII.merged_15kb_20kb.pbmm2.GRCh38.haplotag.10x.bam"
+	shell:
+		# Extract reads covering chrA and subsample
+		"samtools view -s 0.1 -h -x HP -x PS {params.bam} chr1:10000001-10050000"
+		" | "
+		"samtools fastq -0 {output.fastq}"
+
+
+rule map_pacbio_reads:
+	output:
+		bam = "pacbio.bam",
+		bai = "pacbio.bam.bai"
+	input:
+		fastq = "pacbio.fastq.gz",
+		fasta = "ref.fasta",
+		index = rules.bwa_index.output
+	shell:
+		# Map reads to reference
+		"minimap2 -x map-hifi -a {input.fasta} {input.fastq}"
+		" | "
+		"samtools sort -o {output.bam}"
+		" && "
+		"samtools index {output.bam}"
