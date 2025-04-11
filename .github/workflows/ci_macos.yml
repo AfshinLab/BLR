@@ -24,13 +24,6 @@ jobs:
         run: mamba install pytest
       - name: Install BLR
         run: pip install .
-      - name: Download test dataset
-        env:
-          testdata_version: "0.7"
-        run: |
-          wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-${testdata_version}.tar.gz
-          tar xf blr-testdata-${testdata_version}.tar.gz
-          ln -s blr-testdata-${testdata_version} blr-testdata
       - name: Run tests
         run: |
           tests/run.sh
