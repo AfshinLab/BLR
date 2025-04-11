@@ -6,6 +6,7 @@
 - [About the pipeline](#About-the-pipeline)
 - [Usage](#Usage)
 - [Installation](#Installation)
+- [Testrun](#testrun)
 - [Development](#development)
 - [Citation](#citation)
 
@@ -89,18 +90,13 @@ For more options, see the documentation.
 
 ### 3. Test files
 
-For unit testing we use test files for different platforms. The latest version of these can be downloaded and unpacked using the following commands:
-
-    wget -nv https://export.uppmax.uu.se/uppstore2018173/blr-testdata-0.6.tar.gz
-    tar xf blr-testdata-0.6.tar.gz
-    ln -s blr-testdata-0.6 blr-testdata
-
-Now unit testing can be run locally from within the BLR directory using:
+Testdata is provided in the `tests/testdata` directory. Unit tests can be run locally from within the BLR directory using:
 
     bash tests/run.sh
 
-This is useful if you want to test your changes localy before submitting them
- as a PR.
+This is useful if you want to test your changes localy before submitting them as a PR.
+
+If you which to a testrun on a small dataset see the [Testrun](#testrun) section. 
 
 ### 4. Reference genome setup
 
@@ -256,6 +252,42 @@ Deactivate and re-activate the environment for the change to take effect. To
  remove this variable from the environment run:
 
     conda env config vars unset CONDA_ENVS -n blr
+
+## Testrun 
+
+Once everything has been installed it possible to perform a testrun. Testdata is provided in the `tests/testdata` directory. 
+
+Below are the steps to setup and run a `dbs` dataset testrun. 
+
+1. Index the reference FASTA if not already done.
+
+```{bash}
+pushd tests/testdata
+bwa index ref.fasta
+bowtie2-build ref.fasta ref.fasta > /dev/null
+samtools faidx ref.fasta
+test -f ref.dict || gatk CreateSequenceDictionary -R ref.fasta
+popd
+```
+
+2. Initialize and move into the work directory.
+
+```{bash}
+blr init dbs_testrun --r1 tests/testdata/dbs_reads.1.fastq.gz -l dbs
+cd dbs_testrun
+```
+
+3. Update the configs.
+
+```{bash}
+blr config -s genome_reference ../tests/testdata/ref.fasta -s chunk_size 50000 -s phasing_contigs null -s min_mapq 0 -s fastq_bins 5
+```
+
+4. Run the pipeline
+
+```{bash}
+blr run 
+```
 
 ## Development
 
